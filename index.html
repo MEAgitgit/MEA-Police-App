@@ -94,12 +94,24 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 .badge-submitted{background:#EFF6FF;color:#2563EB;}
 .badge-closed{background:#F3F4F6;color:#6B7280;}
 
-/* ── Offense list ── */
+/* ── Offense list (clean Figma style) ── */
+.off-row{display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid rgba(0,0,60,.06);cursor:pointer;transition:all .15s;}
+.off-row:last-of-type{border-bottom:none;}
+.off-row:active{opacity:.6;}
+.off-row.selected .off-dot{background:var(--blue);border-color:var(--blue);}
+.off-row.selected .off-text{color:var(--blue);}
+.off-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--g3);flex-shrink:0;transition:all .15s;}
+.off-text{flex:1;font-family:var(--font);font-size:16px;font-weight:600;color:var(--navy);letter-spacing:-.2px;}
+.off-chev{color:var(--g3);flex-shrink:0;transition:transform .15s;}
+.off-row.selected .off-chev{color:var(--blue);transform:rotate(90deg);}
+.off-sub{display:flex;align-items:center;gap:12px;padding:10px 0 10px 22px;font-size:14px;font-weight:500;color:var(--g4);cursor:pointer;transition:color .12s;}
+.off-sub:hover,.off-sub:active{color:var(--blue);}
+.off-sub-dot{width:5px;height:5px;border-radius:50%;background:var(--g3);flex-shrink:0;}
+
+/* ── Legacy offense classes (keep for other screens) ── */
 .offense-item{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--g2);margin-bottom:10px;cursor:pointer;transition:all .15s;background:#fff;}
 .offense-item:active,.offense-item.selected{border-color:var(--blue);background:rgba(20,75,216,.04);}
 .offense-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
-.offense-sub{margin-left:50px;font-size:13px;color:var(--g4);padding:8px 0 2px;cursor:pointer;}
-.offense-sub:hover{color:var(--blue);}
 
 /* ── Evidence thumbnails ── */
 .evidence-row{display:flex;gap:10px;margin-top:12px;}
@@ -170,7 +182,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       <div style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;margin-bottom:16px;overflow:hidden;">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </div>
-      <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:4px;">Corey Grable</div>
+      <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:4px;">Mike Dercolo</div>
       <div style="font-size:13px;color:rgba(255,255,255,.45);margin-bottom:6px;">Badge #4187 · Revere PD</div>
       <div class="pin-dots" id="pin-dots">
         <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
@@ -204,7 +216,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </div>
         <div>
-          <div style="font-size:18px;font-weight:700;color:#fff;">Corey Grable</div>
+          <div style="font-size:18px;font-weight:700;color:#fff;">Mike Dercolo</div>
           <div style="font-size:12px;color:rgba(255,255,255,.55);">Officer · Revere PD</div>
         </div>
       </div>
@@ -244,68 +256,64 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 <!-- ████ SCREEN 3: SELECT AN OFFENSE ████ -->
 <div id="s-offense" class="s" style="background:#fff;">
   <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
-  <div class="light-nav">
-    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <h2>Select an Offense</h2>
+  <div style="padding:20px 24px 0;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <button class="back-circle" onclick="goBack()" style="width:32px;height:32px;background:none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    </div>
+    <h1 style="font-family:var(--font);font-size:28px;font-weight:800;color:var(--navy);letter-spacing:-.6px;margin-bottom:8px;">Select an Offense</h1>
+    <p style="font-size:14px;color:var(--g4);line-height:1.5;margin-bottom:4px;">Choose the offense category that most closely matches the incident.</p>
   </div>
-  <div class="scroll" style="padding:0 20px;">
-    <p style="font-size:14px;color:var(--g4);margin-bottom:20px;line-height:1.5;">Choose the offense category that most closely matches the incident. Sub-categories will appear where applicable.</p>
-    <div class="offense-item" onclick="selectOffense(this,'Trespassing','🚧')">
-      <div class="offense-icon" style="background:#FEF3C7;">🚧</div>
-      <div style="flex:1;">
-        <div style="font-size:15px;font-weight:700;color:var(--navy);">Trespassing</div>
-        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 266, §120</div>
+  <div class="scroll" style="padding:0 24px;margin-top:16px;">
+    <div style="font-size:11px;font-weight:700;color:var(--g3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Recent Issues</div>
+
+    <div class="off-row" onclick="selectOffense(this,'Trespassing')">
+      <div class="off-dot"></div>
+      <div class="off-text">Trespassing</div>
+      <svg class="off-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+
+    <div class="off-row" onclick="selectOffense(this,'Shoplifting')">
+      <div class="off-dot"></div>
+      <div class="off-text">Shoplifting</div>
+      <svg class="off-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div id="shoplifting-subs" style="display:none;">
+      <div class="off-sub" onclick="selectSub('Store-level shoplifting')">
+        <div class="off-sub-dot"></div>Store-level shoplifting
       </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-    </div>
-    <div class="offense-item" onclick="selectOffense(this,'Shoplifting','🛒')">
-      <div class="offense-icon" style="background:#EFF6FF;">🛒</div>
-      <div style="flex:1;">
-        <div style="font-size:15px;font-weight:700;color:var(--navy);">Shoplifting</div>
-        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 266, §30A — under $250</div>
+      <div class="off-sub" onclick="selectSub('Conceal merchandise')">
+        <div class="off-sub-dot"></div>Conceal merchandise
       </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
     </div>
-    <div id="shoplifting-subs" style="display:none;margin:-6px 0 10px;">
-      <div class="offense-sub" onclick="selectSub('Store-level shoplifting')">• Store-level shoplifting</div>
-      <div class="offense-sub" onclick="selectSub('Conceal merchandise')">• Conceal merchandise</div>
+
+    <div class="off-row" onclick="selectOffense(this,'Property Crime')">
+      <div class="off-dot"></div>
+      <div class="off-text">Property Crime</div>
+      <svg class="off-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
     </div>
-    <div class="offense-item" onclick="selectOffense(this,'Property Crime','🏠')">
-      <div class="offense-icon" style="background:#FEE2E2;">🏠</div>
-      <div style="flex:1;">
-        <div style="font-size:15px;font-weight:700;color:var(--navy);">Property Crime</div>
-        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 266, §127 — Vandalism</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+
+    <div class="off-row" onclick="selectOffense(this,'Disorderly Conduct')">
+      <div class="off-dot"></div>
+      <div class="off-text">Disorderly Conduct</div>
+      <svg class="off-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
     </div>
-    <div class="offense-item" onclick="selectOffense(this,'Disorderly Conduct','📢')">
-      <div class="offense-icon" style="background:#F3E8FF;">📢</div>
-      <div style="flex:1;">
-        <div style="font-size:15px;font-weight:700;color:var(--navy);">Disorderly Conduct</div>
-        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 272, §53</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+
+    <div class="off-row" onclick="selectOffense(this,'Receiving Stolen Property')">
+      <div class="off-dot"></div>
+      <div class="off-text">Receiving Stolen Property</div>
+      <svg class="off-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
     </div>
-    <div class="offense-item" onclick="selectOffense(this,'Receiving Stolen Property','📦')">
-      <div class="offense-icon" style="background:#ECFDF5;">📦</div>
-      <div style="flex:1;">
-        <div style="font-size:15px;font-weight:700;color:var(--navy);">Receiving Stolen Property</div>
-        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 266, §60</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+
+    <div class="off-row" onclick="selectOffense(this,'Simple Drug Possession')">
+      <div class="off-dot"></div>
+      <div class="off-text">Simple Drug Possession</div>
+      <svg class="off-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
     </div>
-    <div class="offense-item" onclick="selectOffense(this,'Drug Possession','💊')">
-      <div class="offense-icon" style="background:#FFF7ED;">💊</div>
-      <div style="flex:1;">
-        <div style="font-size:15px;font-weight:700;color:var(--navy);">Simple Drug Possession</div>
-        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 94C, §34 — Class B-E</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-    </div>
-    <div style="height:100px;"></div>
+
+    <div style="height:80px;"></div>
   </div>
-  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
-    <button class="btn" id="offense-next-btn" onclick="nav('location')" style="opacity:.4;pointer-events:none;">Next</button>
+  <div style="padding:12px 24px calc(var(--sb)+12px);background:#fff;">
+    <button class="btn" id="offense-next-btn" onclick="nav('location')" style="opacity:.35;pointer-events:none;">Next</button>
   </div>
 </div>
 
@@ -401,13 +409,13 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       <label class="form-label">Add Evidence</label>
       <div class="evidence-row">
         <div class="evidence-thumb" onclick="showToast('Photo evidence viewer')">
-          <img src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=150&h=150&fit=crop" alt="Evidence 1">
+          <img src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=150&h=150&fit=crop" alt="Store aisle">
         </div>
         <div class="evidence-thumb" onclick="showToast('Photo evidence viewer')">
-          <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=150&h=150&fit=crop" alt="Evidence 2">
+          <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=150&h=150&fit=crop" alt="Checkout register">
         </div>
-        <div class="evidence-thumb" onclick="showToast('Photo evidence viewer')">
-          <img src="https://images.unsplash.com/photo-1557821552-17105176677c?w=150&h=150&fit=crop" alt="Evidence 3">
+        <div class="evidence-thumb" onclick="showToast('Photo evidence viewer')" style="filter:grayscale(1);">
+          <img src="https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=150&h=150&fit=crop" alt="Shopping cart">
         </div>
         <div class="evidence-add" onclick="showToast('Camera / photo library opened')">+</div>
       </div>
@@ -466,7 +474,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <div>
       <label class="form-label" style="color:var(--navy);">📋 Formatted Incident Notes:</label>
       <div id="formatted-notes" style="background:#fff;border:1.5px solid var(--blue);border-radius:10px;padding:14px;font-size:13.5px;color:var(--navy);line-height:1.7;" contenteditable="true">
-        <strong>Incident Report — Officer C. Grable, Badge #4187</strong><br><br>
+        <strong>Incident Report — Officer M. Dercolo, Badge #4187</strong><br><br>
         On March 19, 2026, at approximately 2235 hours, the reporting officer was on routine patrol in the vicinity of 375 Broadway, Revere, MA 02151, near a CVS Pharmacy location.<br><br>
         The store manager approached the officer and reported that a male individual, later identified as <strong>Orazio Rispo</strong>, had exited the premises without tendering payment for merchandise.<br><br>
         <strong>Items taken:</strong> Baby formula (1 unit), diapers (1 package). Estimated total retail value: <strong>$89.97</strong>.<br><br>
@@ -705,7 +713,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       <div class="evidence-row">
         <div class="evidence-thumb"><img src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=100&h=100&fit=crop"></div>
         <div class="evidence-thumb"><img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=100&h=100&fit=crop"></div>
-        <div class="evidence-thumb"><img src="https://images.unsplash.com/photo-1557821552-17105176677c?w=100&h=100&fit=crop"></div>
+        <div class="evidence-thumb" style="filter:grayscale(1);"><img src="https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=100&h=100&fit=crop"></div>
       </div>
     </div>
     <!-- Eligibility answers -->
@@ -806,7 +814,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       <div class="review-row"><span class="review-label">Program</span><span class="review-value" style="color:var(--blue);">SWIFT Diversion</span></div>
       <div class="review-row"><span class="review-label">Duration</span><span class="review-value">90 days</span></div>
       <div class="review-row"><span class="review-label">Enrollment</span><span class="review-value" style="color:var(--green);">SMS Sent</span></div>
-      <div class="review-row"><span class="review-label">Issuing Officer</span><span class="review-value">C. Grable #4187</span></div>
+      <div class="review-row"><span class="review-label">Issuing Officer</span><span class="review-value">M. Dercolo #4187</span></div>
     </div>
     <!-- Timeline -->
     <div style="margin-bottom:16px;">
@@ -864,13 +872,13 @@ const ORDER = ['pin','dashboard','offense','location','time','notes','voice','vo
 
 // ── CITATIONS DATA ──
 const CITATIONS = [
-  {id:'MA2048',name:'Orazio Rispo',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/19/2026',time:'10:35 PM',location:'375 Broadway, Revere',items:'Baby formula, diapers — $89.97',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Subject detained without incident near CVS Pharmacy. Store manager reported unpaid merchandise. Subject cooperative, no warrants.'},
-  {id:'MA2041',name:'Derek Fontaine',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/18/2026',time:'3:12 PM',location:'200 Squire Rd, Revere',items:'Clothing — 2 jackets — $134.00',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Loss prevention at Target detained subject at exit. Two jackets concealed in backpack. No prior record.'},
-  {id:'MA2039',name:'Priya Chakrabarti',offense:'Trespassing',statute:'G.L. c. 266, §120',icon:'🚧',iconBg:'#FEF3C7',status:'Submitted',badge:'badge-submitted',date:'03/17/2026',time:'11:48 PM',location:'Revere Beach Pavilion',items:'N/A',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Subject found sleeping in closed pavilion area after hours. No damage to property. Subject stated housing instability. Referred to shelter services.'},
-  {id:'MA2035',name:'Marcus Webb',offense:'Disorderly Conduct',statute:'G.L. c. 272, §53',icon:'📢',iconBg:'#F3E8FF',status:'Pending',badge:'badge-pending',date:'03/16/2026',time:'1:20 AM',location:'151 Bennington St, Revere',items:'N/A',officer:'C. Grable #4187',firstTime:false,phone:true,eligible:true,notes:'Loud verbal altercation outside bar. No physical contact. Subject calmed upon officer arrival. One prior misdemeanor (2024, resolved).'},
-  {id:'MA2030',name:'Sarah Kim',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/15/2026',time:'6:45 PM',location:'339 Squire Rd, Revere',items:'Groceries — $47.50',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Subject concealed grocery items (canned goods, pasta) in handbag at Market Basket. Manager declined to press charges. Subject enrolled in food assistance referral.'},
-  {id:'MA2022',name:'James Dougherty',offense:'Property Crime',statute:'G.L. c. 266, §127',icon:'🏠',iconBg:'#FEE2E2',status:'Closed',badge:'badge-closed',date:'03/12/2026',time:'9:10 PM',location:'88 Beach St, Revere',items:'Minor graffiti — spray paint',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Subject observed spray-painting wall of abandoned building. Minimal damage. Subject agreed to clean up. Community service assigned via SWIFT.'},
-  {id:'MA2018',name:'Lucia Fernandez',offense:'Drug Possession',statute:'G.L. c. 94C, §34',icon:'💊',iconBg:'#FFF7ED',status:'Submitted',badge:'badge-submitted',date:'03/10/2026',time:'2:30 PM',location:'Wonderland Station, Revere',items:'Small quantity — personal use',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Subject found with small amount of Class B substance during routine patrol near transit station. No paraphernalia. Subject cooperative. Referred to substance abuse program.'}
+  {id:'MA2048',name:'Orazio Rispo',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/19/2026',time:'10:35 PM',location:'375 Broadway, Revere',items:'Baby formula, diapers — $89.97',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Subject detained without incident near CVS Pharmacy. Store manager reported unpaid merchandise. Subject cooperative, no warrants.'},
+  {id:'MA2041',name:'Derek Fontaine',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/18/2026',time:'3:12 PM',location:'200 Squire Rd, Revere',items:'Clothing — 2 jackets — $134.00',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Loss prevention at Target detained subject at exit. Two jackets concealed in backpack. No prior record.'},
+  {id:'MA2039',name:'Priya Chakrabarti',offense:'Trespassing',statute:'G.L. c. 266, §120',icon:'🚧',iconBg:'#FEF3C7',status:'Submitted',badge:'badge-submitted',date:'03/17/2026',time:'11:48 PM',location:'Revere Beach Pavilion',items:'N/A',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Subject found sleeping in closed pavilion area after hours. No damage to property. Subject stated housing instability. Referred to shelter services.'},
+  {id:'MA2035',name:'Marcus Webb',offense:'Disorderly Conduct',statute:'G.L. c. 272, §53',icon:'📢',iconBg:'#F3E8FF',status:'Pending',badge:'badge-pending',date:'03/16/2026',time:'1:20 AM',location:'151 Bennington St, Revere',items:'N/A',officer:'M. Dercolo #4187',firstTime:false,phone:true,eligible:true,notes:'Loud verbal altercation outside bar. No physical contact. Subject calmed upon officer arrival. One prior misdemeanor (2024, resolved).'},
+  {id:'MA2030',name:'Sarah Kim',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/15/2026',time:'6:45 PM',location:'339 Squire Rd, Revere',items:'Groceries — $47.50',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Subject concealed grocery items (canned goods, pasta) in handbag at Market Basket. Manager declined to press charges. Subject enrolled in food assistance referral.'},
+  {id:'MA2022',name:'James Dougherty',offense:'Property Crime',statute:'G.L. c. 266, §127',icon:'🏠',iconBg:'#FEE2E2',status:'Closed',badge:'badge-closed',date:'03/12/2026',time:'9:10 PM',location:'88 Beach St, Revere',items:'Minor graffiti — spray paint',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Subject observed spray-painting wall of abandoned building. Minimal damage. Subject agreed to clean up. Community service assigned via SWIFT.'},
+  {id:'MA2018',name:'Lucia Fernandez',offense:'Drug Possession',statute:'G.L. c. 94C, §34',icon:'💊',iconBg:'#FFF7ED',status:'Submitted',badge:'badge-submitted',date:'03/10/2026',time:'2:30 PM',location:'Wonderland Station, Revere',items:'Small quantity — personal use',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Subject found with small amount of Class B substance during routine patrol near transit station. No paraphernalia. Subject cooperative. Referred to substance abuse program.'}
 ];
 
 // ── NAVIGATION ──
@@ -987,8 +995,8 @@ function closeCiteDetail() {
 }
 
 // ── OFFENSE SELECTION ──
-function selectOffense(el, name, icon) {
-  document.querySelectorAll('.offense-item').forEach(o => o.classList.remove('selected'));
+function selectOffense(el, name) {
+  document.querySelectorAll('.off-row').forEach(o => o.classList.remove('selected'));
   el.classList.add('selected');
   selectedOffense = name;
   const btn = document.getElementById('offense-next-btn');

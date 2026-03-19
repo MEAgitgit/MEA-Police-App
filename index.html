@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MEA Officer">
+<title>MEA — Officer Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --dark:#060A1E;--dark2:#0A0F30;--navy:#00003C;--navy2:#13276A;
+  --blue:#144BD8;--blue2:#2D5BF7;--baby-blue:#82CBF5;
+  --white:#fff;--off:#F4F6FF;--g1:#F0F2FA;--g2:#E2E6F3;--g3:#B8BFD8;--g4:#7B84A3;
+  --green:#00B67A;--red:#E8444F;--orange:#E8744F;
+  --font:'Plus Jakarta Sans',sans-serif;--body:'Inter',sans-serif;
+  --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoothing:antialiased;overflow:hidden;}
+[onclick],[role=button]{cursor:pointer;}
+
+/* ── App shell ── */
+#app{position:relative;width:100%;max-width:430px;height:100vh;height:100svh;margin:0 auto;overflow:hidden;background:var(--dark);}
+@media(min-width:500px){
+  body{display:flex;align-items:center;justify-content:center;background:#02040F;}
+  #app{height:min(932px,100svh);border-radius:48px;box-shadow:0 0 0 12px #111,0 40px 80px rgba(0,0,0,.8);}
+}
+
+/* ── Screen system ── */
+.s{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden;}
+.s.on{display:flex;}
+.s.in{animation:sIn .28s cubic-bezier(.4,0,.2,1) forwards;}
+.s.back{animation:sBack .28s cubic-bezier(.4,0,.2,1) forwards;}
+@keyframes sIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@keyframes sBack{from{transform:translateX(-24%)}to{transform:translateX(0)}}
+
+.scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.scroll::-webkit-scrollbar{display:none;}
+
+/* ── Status bars ── */
+.sb-dark{height:calc(50px + var(--st));padding:var(--st) 20px 6px;display:flex;align-items:flex-end;justify-content:space-between;flex-shrink:0;color:#fff;font-size:15px;font-weight:600;}
+.sb-light{height:calc(50px + var(--st));padding:var(--st) 20px 6px;display:flex;align-items:flex-end;justify-content:space-between;flex-shrink:0;color:#000;font-size:15px;font-weight:600;}
+.sb-icons{display:flex;gap:5px;align-items:center;}
+
+/* ── Buttons ── */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:56px;border-radius:28px;border:none;background:linear-gradient(160deg,#4A7AFF 0%,#2D5BF7 40%,#144BD8 100%);color:#fff;font-family:var(--font);font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 8px 28px rgba(20,75,216,.35);transition:transform .12s,opacity .12s;}
+.btn:active{transform:scale(.97);opacity:.9;}
+.btn-sm{height:48px;border-radius:24px;font-size:15px;}
+.btn-outline{background:transparent;border:1.5px solid rgba(255,255,255,.3);color:rgba(255,255,255,.85);box-shadow:none;}
+.btn-dark{background:var(--navy);box-shadow:none;}
+.btn-red{background:linear-gradient(160deg,#F87171,#DC2626);box-shadow:0 8px 28px rgba(220,38,38,.3);}
+.btn-green{background:linear-gradient(160deg,#34D399,#059669);box-shadow:0 8px 28px rgba(5,150,105,.3);}
+.btn-ghost{background:none;border:none;color:rgba(255,255,255,.55);font-size:15px;width:auto;height:auto;padding:10px 0;box-shadow:none;}
+
+/* ── Back nav ── */
+.light-nav{display:flex;align-items:center;gap:12px;padding:8px 20px 14px;flex-shrink:0;}
+.back-circle{width:36px;height:36px;border-radius:50%;background:var(--g1);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.light-nav h2{font-size:17px;font-weight:700;color:var(--navy);}
+
+/* ── Form elements ── */
+.form-label{display:block;font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.form-input{width:100%;height:48px;border:1.5px solid var(--g2);border-radius:12px;padding:0 14px;font-family:var(--font);font-size:15px;color:var(--navy);background:#fff;outline:none;transition:border-color .15s;}
+.form-input:focus{border-color:var(--blue);}
+.form-textarea{width:100%;border:1.5px solid var(--g2);border-radius:12px;padding:12px 14px;font-family:var(--font);font-size:14px;color:var(--navy);background:#fff;outline:none;resize:none;min-height:100px;transition:border-color .15s;}
+.form-textarea:focus{border-color:var(--blue);}
+
+/* ── Toggle buttons ── */
+.toggle-row{display:flex;gap:12px;margin-top:20px;}
+.toggle-btn{flex:1;height:56px;border-radius:14px;border:2px solid var(--g2);background:#fff;font-family:var(--font);font-size:17px;font-weight:700;color:var(--navy);cursor:pointer;transition:all .15s;}
+.toggle-btn.active-yes{border-color:var(--green);background:rgba(0,182,122,.08);color:var(--green);}
+.toggle-btn.active-no{border-color:var(--red);background:rgba(232,68,79,.08);color:var(--red);}
+
+/* ── PIN pad ── */
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:0 40px;max-width:320px;margin:0 auto;}
+.pin-key{width:72px;height:72px;border-radius:50%;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:#fff;font-family:var(--font);font-size:28px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s;justify-self:center;}
+.pin-key:active{background:rgba(255,255,255,.12);}
+.pin-key.empty{border:none;background:none;cursor:default;}
+.pin-dots{display:flex;gap:14px;justify-content:center;margin:28px 0;}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid rgba(255,255,255,.3);background:transparent;transition:all .15s;}
+.pin-dot.filled{background:var(--baby-blue);border-color:var(--baby-blue);}
+
+/* ── Citation cards ── */
+.cite-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid var(--g2);cursor:pointer;transition:transform .12s,box-shadow .12s;}
+.cite-card:active{transform:scale(.98);box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.cite-card-top{display:flex;align-items:center;gap:12px;}
+.cite-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.cite-badge{display:inline-flex;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px;}
+.badge-active{background:#ECFDF5;color:#059669;}
+.badge-pending{background:#FEF3C7;color:#D97706;}
+.badge-submitted{background:#EFF6FF;color:#2563EB;}
+.badge-closed{background:#F3F4F6;color:#6B7280;}
+
+/* ── Offense list ── */
+.offense-item{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--g2);margin-bottom:10px;cursor:pointer;transition:all .15s;background:#fff;}
+.offense-item:active,.offense-item.selected{border-color:var(--blue);background:rgba(20,75,216,.04);}
+.offense-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.offense-sub{margin-left:50px;font-size:13px;color:var(--g4);padding:8px 0 2px;cursor:pointer;}
+.offense-sub:hover{color:var(--blue);}
+
+/* ── Evidence thumbnails ── */
+.evidence-row{display:flex;gap:10px;margin-top:12px;}
+.evidence-thumb{width:72px;height:72px;border-radius:10px;overflow:hidden;border:1.5px solid var(--g2);cursor:pointer;position:relative;flex-shrink:0;}
+.evidence-thumb img{width:100%;height:100%;object-fit:cover;}
+.evidence-add{width:72px;height:72px;border-radius:10px;border:2px dashed var(--g3);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--g3);font-size:24px;}
+
+/* ── OTP boxes ── */
+.otp-row{display:flex;gap:8px;justify-content:center;}
+.otp-box{width:48px;height:64px;border-radius:12px;background:var(--g1);border:1.5px solid transparent;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:28px;font-weight:700;color:var(--navy);transition:border-color .15s;}
+.otp-box.filled{background:rgba(20,75,216,.06);border-color:var(--blue);}
+
+/* ── Voice animation ── */
+.voice-ring{width:120px;height:120px;border-radius:50%;border:3px solid var(--blue);display:flex;align-items:center;justify-content:center;position:relative;margin:0 auto;}
+.voice-ring.recording{animation:voicePulse 1.5s ease-in-out infinite;}
+.voice-ring::before,.voice-ring::after{content:'';position:absolute;border-radius:50%;border:2px solid rgba(20,75,216,.3);animation:voiceRipple 2s ease-out infinite;}
+.voice-ring::before{width:150px;height:150px;animation-delay:0s;}
+.voice-ring::after{width:180px;height:180px;animation-delay:.5s;}
+.voice-ring:not(.recording)::before,.voice-ring:not(.recording)::after{display:none;}
+@keyframes voicePulse{0%,100%{transform:scale(1);border-color:var(--blue);}50%{transform:scale(1.05);border-color:var(--baby-blue);}}
+@keyframes voiceRipple{0%{transform:scale(.8);opacity:.6;}100%{transform:scale(1.3);opacity:0;}}
+.voice-bars{display:flex;gap:3px;align-items:center;height:40px;}
+.voice-bar{width:4px;border-radius:2px;background:var(--blue);animation:vbar .8s ease-in-out infinite alternate;}
+.voice-bar:nth-child(1){height:12px;animation-delay:0s;}
+.voice-bar:nth-child(2){height:24px;animation-delay:.1s;}
+.voice-bar:nth-child(3){height:36px;animation-delay:.2s;}
+.voice-bar:nth-child(4){height:28px;animation-delay:.3s;}
+.voice-bar:nth-child(5){height:18px;animation-delay:.4s;}
+.voice-bar:nth-child(6){height:32px;animation-delay:.15s;}
+.voice-bar:nth-child(7){height:14px;animation-delay:.35s;}
+@keyframes vbar{0%{height:8px}100%{height:36px}}
+
+/* ── Review section ── */
+.review-section{background:var(--g1);border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+.review-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:14px;}
+.review-label{color:var(--g4);font-weight:500;}
+.review-value{color:var(--navy);font-weight:600;text-align:right;}
+
+/* ── Citation detail modal ── */
+.detail-overlay{position:absolute;inset:0;background:rgba(0,0,20,.6);z-index:100;display:none;flex-direction:column;justify-content:flex-end;}
+.detail-overlay.on{display:flex;}
+.detail-sheet{background:#fff;border-radius:24px 24px 0 0;max-height:85%;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:sheetUp .3s ease;}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.detail-header{padding:16px 20px;border-bottom:1px solid var(--g2);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:2;border-radius:24px 24px 0 0;}
+.detail-body{padding:20px;}
+
+/* ── Confirmation screen ── */
+.confirm-check{width:80px;height:80px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;animation:checkPop .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes checkPop{from{transform:scale(0)}to{transform:scale(1)}}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:#fff;padding:12px 22px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ── Map ── */
+#loc-map{width:100%;height:220px;border-radius:14px;overflow:hidden;border:1px solid var(--g2);}
+.leaflet-control-attribution{display:none !important;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ████ SCREEN 1: PIN LOGIN ████ -->
+<div id="s-pin" class="s on">
+  <div style="flex:1;display:flex;flex-direction:column;background:linear-gradient(180deg,#13276A 0%,#000513 100%);">
+    <div class="sb-dark"><span>9:41</span><div class="sb-icons">●●●</div></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px;">
+      <div style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;margin-bottom:16px;overflow:hidden;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:4px;">Corey Grable</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.45);margin-bottom:6px;">Badge #4187 · Revere PD</div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+      </div>
+      <div class="pin-grid">
+        <div class="pin-key" onclick="pinTap(1)">1</div>
+        <div class="pin-key" onclick="pinTap(2)">2</div>
+        <div class="pin-key" onclick="pinTap(3)">3</div>
+        <div class="pin-key" onclick="pinTap(4)">4</div>
+        <div class="pin-key" onclick="pinTap(5)">5</div>
+        <div class="pin-key" onclick="pinTap(6)">6</div>
+        <div class="pin-key" onclick="pinTap(7)">7</div>
+        <div class="pin-key" onclick="pinTap(8)">8</div>
+        <div class="pin-key" onclick="pinTap(9)">9</div>
+        <div class="pin-key empty"></div>
+        <div class="pin-key" onclick="pinTap(0)">0</div>
+        <div class="pin-key" onclick="pinDelete()" style="font-size:18px;">⌫</div>
+      </div>
+      <div style="margin-top:24px;font-size:14px;color:rgba(255,255,255,.35);cursor:pointer;" onclick="nav('dashboard')">Forgot PIN?</div>
+    </div>
+  </div>
+</div>
+
+<!-- ████ SCREEN 2: OFFICER DASHBOARD ████ -->
+<div id="s-dashboard" class="s">
+  <div style="background:linear-gradient(180deg,#13276A 0%,#1442D9 60%,#3A9AE8 100%);flex-shrink:0;padding-top:var(--st);">
+    <div class="sb-dark" style="padding-top:0;height:auto;padding-bottom:0;"><span>9:41</span><div class="sb-icons">●●●</div></div>
+    <div style="padding:12px 20px 0;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;overflow:hidden;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div>
+          <div style="font-size:18px;font-weight:700;color:#fff;">Corey Grable</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.55);">Officer · Revere PD</div>
+        </div>
+      </div>
+      <img src="assets/images/mea-logo.png" style="height:24px;width:auto;opacity:.9;" alt="MEA">
+    </div>
+    <!-- Stats row -->
+    <div style="display:flex;gap:10px;padding:20px 20px 24px;">
+      <div style="flex:1;background:rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;backdrop-filter:blur(10px);">
+        <div style="font-size:24px;font-weight:800;color:#fff;">7</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;">This Week</div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;backdrop-filter:blur(10px);">
+        <div style="font-size:24px;font-weight:800;color:#fff;">28</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;">This Month</div>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;backdrop-filter:blur(10px);">
+        <div style="font-size:24px;font-weight:800;color:#fff;">94%</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;">Completion</div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll" style="background:#F5F6FA;border-radius:24px 24px 0 0;margin-top:-12px;position:relative;z-index:1;">
+    <div style="padding:20px 20px 8px;display:flex;align-items:center;justify-content:space-between;">
+      <h2 style="font-size:18px;font-weight:800;color:var(--navy);letter-spacing:-.3px;">Recent Issues</h2>
+      <div style="font-size:13px;color:var(--blue);font-weight:600;cursor:pointer;">View All</div>
+    </div>
+    <div style="padding:0 20px;" id="citations-list">
+      <!-- Populated by JS -->
+    </div>
+    <div style="padding:20px;">
+      <button class="btn" onclick="nav('offense')">+ New Citation</button>
+    </div>
+    <div style="height:calc(var(--sb)+20px);"></div>
+  </div>
+</div>
+
+<!-- ████ SCREEN 3: SELECT AN OFFENSE ████ -->
+<div id="s-offense" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Select an Offense</h2>
+  </div>
+  <div class="scroll" style="padding:0 20px;">
+    <p style="font-size:14px;color:var(--g4);margin-bottom:20px;line-height:1.5;">Choose the offense category that most closely matches the incident. Sub-categories will appear where applicable.</p>
+    <div class="offense-item" onclick="selectOffense(this,'Trespassing','🚧')">
+      <div class="offense-icon" style="background:#FEF3C7;">🚧</div>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:700;color:var(--navy);">Trespassing</div>
+        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 266, §120</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div class="offense-item" onclick="selectOffense(this,'Shoplifting','🛒')">
+      <div class="offense-icon" style="background:#EFF6FF;">🛒</div>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:700;color:var(--navy);">Shoplifting</div>
+        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 266, §30A — under $250</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div id="shoplifting-subs" style="display:none;margin:-6px 0 10px;">
+      <div class="offense-sub" onclick="selectSub('Store-level shoplifting')">• Store-level shoplifting</div>
+      <div class="offense-sub" onclick="selectSub('Conceal merchandise')">• Conceal merchandise</div>
+    </div>
+    <div class="offense-item" onclick="selectOffense(this,'Property Crime','🏠')">
+      <div class="offense-icon" style="background:#FEE2E2;">🏠</div>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:700;color:var(--navy);">Property Crime</div>
+        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 266, §127 — Vandalism</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div class="offense-item" onclick="selectOffense(this,'Disorderly Conduct','📢')">
+      <div class="offense-icon" style="background:#F3E8FF;">📢</div>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:700;color:var(--navy);">Disorderly Conduct</div>
+        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 272, §53</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div class="offense-item" onclick="selectOffense(this,'Receiving Stolen Property','📦')">
+      <div class="offense-icon" style="background:#ECFDF5;">📦</div>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:700;color:var(--navy);">Receiving Stolen Property</div>
+        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 266, §60</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div class="offense-item" onclick="selectOffense(this,'Drug Possession','💊')">
+      <div class="offense-icon" style="background:#FFF7ED;">💊</div>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:700;color:var(--navy);">Simple Drug Possession</div>
+        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 94C, §34 — Class B-E</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+    <div style="height:100px;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" id="offense-next-btn" onclick="nav('location')" style="opacity:.4;pointer-events:none;">Next</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 4: LOCATION ████ -->
+<div id="s-location" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Incident Location</h2>
+  </div>
+  <div class="scroll" style="padding:0 20px;">
+    <p style="font-size:14px;color:var(--g4);margin-bottom:16px;line-height:1.5;">Confirm the location where the incident occurred. Drag the pin or enter address manually.</p>
+    <div id="loc-map"></div>
+    <div style="margin-top:14px;">
+      <label class="form-label">Address</label>
+      <input type="text" class="form-input" id="loc-address" value="375 Broadway, Revere, MA 02151" style="font-weight:600;">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <div style="flex:1;">
+        <label class="form-label">City</label>
+        <input type="text" class="form-input" value="Revere">
+      </div>
+      <div style="width:80px;">
+        <label class="form-label">State</label>
+        <input type="text" class="form-input" value="MA">
+      </div>
+      <div style="width:100px;">
+        <label class="form-label">Zip</label>
+        <input type="text" class="form-input" value="02151">
+      </div>
+    </div>
+    <div style="height:40px;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" onclick="nav('time')">Confirm Location</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 5: OFFENSE TIME ████ -->
+<div id="s-time" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Offense Time</h2>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px;">
+    <div style="font-size:13px;color:var(--g4);margin-bottom:24px;">When did the incident occur?</div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div style="background:var(--g1);border-radius:14px;padding:16px 18px;text-align:center;">
+        <div style="font-size:11px;color:var(--g4);margin-bottom:4px;">am</div>
+        <select id="time-hour" style="font-family:var(--font);font-size:48px;font-weight:700;color:var(--navy);border:none;background:none;outline:none;appearance:none;text-align:center;width:80px;">
+          <option>10</option><option>11</option><option>12</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option>
+        </select>
+      </div>
+      <div style="font-size:48px;font-weight:700;color:var(--navy);">:</div>
+      <div style="background:var(--g1);border-radius:14px;padding:16px 18px;text-align:center;">
+        <div style="font-size:11px;color:var(--g4);margin-bottom:4px;">pm</div>
+        <select id="time-min" style="font-family:var(--font);font-size:48px;font-weight:700;color:var(--navy);border:none;background:none;outline:none;appearance:none;text-align:center;width:80px;">
+          <option>35</option><option>00</option><option>05</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>40</option><option>45</option><option>50</option><option>55</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-left:8px;">
+        <button id="am-btn" class="toggle-btn" style="width:52px;height:36px;font-size:14px;border-radius:8px;" onclick="setAmPm('am',this)">AM</button>
+        <button id="pm-btn" class="toggle-btn active-yes" style="width:52px;height:36px;font-size:14px;border-radius:8px;border-color:var(--blue);background:rgba(20,75,216,.08);color:var(--blue);" onclick="setAmPm('pm',this)">PM</button>
+      </div>
+    </div>
+    <div style="margin-top:20px;">
+      <label class="form-label" style="text-align:center;">Date</label>
+      <input type="date" class="form-input" value="2026-03-19" style="text-align:center;font-weight:600;width:200px;">
+    </div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" onclick="nav('notes')">Continue</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 6: NOTES + EVIDENCE ████ -->
+<div id="s-notes" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Additional Notes</h2>
+  </div>
+  <div class="scroll" style="padding:0 20px;">
+    <p style="font-size:14px;color:var(--g4);margin-bottom:16px;line-height:1.5;">Enter additional notes about the incident, or tap the microphone to dictate and we'll format it for you.</p>
+    <div style="position:relative;">
+      <textarea class="form-textarea" id="notes-textarea" rows="5" placeholder="Enter additional notes if any..." style="min-height:130px;padding-right:50px;"></textarea>
+      <button onclick="startVoice()" id="mic-btn" style="position:absolute;right:10px;bottom:10px;width:40px;height:40px;border-radius:50%;background:var(--blue);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(20,75,216,.3);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </button>
+    </div>
+    <div style="margin-top:20px;">
+      <label class="form-label">Add Evidence</label>
+      <div class="evidence-row">
+        <div class="evidence-thumb" onclick="showToast('Photo evidence viewer')">
+          <img src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=150&h=150&fit=crop" alt="Evidence 1">
+        </div>
+        <div class="evidence-thumb" onclick="showToast('Photo evidence viewer')">
+          <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=150&h=150&fit=crop" alt="Evidence 2">
+        </div>
+        <div class="evidence-thumb" onclick="showToast('Photo evidence viewer')">
+          <img src="https://images.unsplash.com/photo-1557821552-17105176677c?w=150&h=150&fit=crop" alt="Evidence 3">
+        </div>
+        <div class="evidence-add" onclick="showToast('Camera / photo library opened')">+</div>
+      </div>
+    </div>
+    <div style="height:40px;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" onclick="nav('code')">Continue</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 6b: VOICE RECORDING ████ -->
+<div id="s-voice" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="stopVoice();goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Voice Notes</h2>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;">
+    <div class="voice-ring recording" id="voice-ring">
+      <div class="voice-bars" id="voice-bars">
+        <div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div>
+      </div>
+    </div>
+    <div id="voice-status" style="font-size:16px;font-weight:700;color:var(--navy);margin-top:24px;">Listening...</div>
+    <div id="voice-timer" style="font-size:13px;color:var(--g4);margin-top:6px;">0:00</div>
+    <div id="voice-transcript" style="margin-top:28px;font-size:14px;color:var(--g4);line-height:1.6;text-align:center;min-height:60px;max-height:120px;overflow-y:auto;"></div>
+  </div>
+  <div style="display:flex;gap:12px;padding:12px 20px calc(var(--sb)+12px);">
+    <button class="btn btn-outline" style="color:var(--navy);border-color:var(--g2);flex:1;" onclick="cancelVoice()">Cancel</button>
+    <button class="btn" style="flex:2;" id="voice-done-btn" onclick="finishVoice()" disabled>Done — Format Notes</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 6c: VOICE FORMATTED RESULT ████ -->
+<div id="s-voice-result" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Formatted Notes</h2>
+  </div>
+  <div class="scroll" style="padding:0 20px;">
+    <div style="background:#ECFDF5;border:1.5px solid #A7F3D0;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">✓</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#065F46;">Voice transcription formatted</div>
+        <div style="font-size:12px;color:#059669;margin-top:2px;">AI converted your dictation into formal incident report language</div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label class="form-label" style="color:var(--g4);">🎤 What you said:</label>
+      <div style="background:var(--g1);border-radius:10px;padding:14px;font-size:13px;color:var(--g4);line-height:1.6;font-style:italic;">
+        "So I was on Broadway near the CVS around like 10:35 tonight and I saw this guy, his name is Orazio Rispo, he was walking out of the store and the manager flagged me down and said he just pocketed some items, like baby formula and some diapers, didn't pay for them, total was about ninety bucks. I detained him, he was cooperative, no warrants, first time I've dealt with him."
+      </div>
+    </div>
+    <div>
+      <label class="form-label" style="color:var(--navy);">📋 Formatted Incident Notes:</label>
+      <div id="formatted-notes" style="background:#fff;border:1.5px solid var(--blue);border-radius:10px;padding:14px;font-size:13.5px;color:var(--navy);line-height:1.7;" contenteditable="true">
+        <strong>Incident Report — Officer C. Grable, Badge #4187</strong><br><br>
+        On March 19, 2026, at approximately 2235 hours, the reporting officer was on routine patrol in the vicinity of 375 Broadway, Revere, MA 02151, near a CVS Pharmacy location.<br><br>
+        The store manager approached the officer and reported that a male individual, later identified as <strong>Orazio Rispo</strong>, had exited the premises without tendering payment for merchandise.<br><br>
+        <strong>Items taken:</strong> Baby formula (1 unit), diapers (1 package). Estimated total retail value: <strong>$89.97</strong>.<br><br>
+        The officer detained the subject without incident. Subject was cooperative throughout the encounter. A records check returned <strong>no active warrants</strong> and <strong>no prior criminal history</strong> on file.<br><br>
+        Based on the nature of the offense (Shoplifting under $250, G.L. c. 266, §30A), the absence of prior offenses, and the subject's cooperative demeanor, this incident qualifies for <strong>pre-arrest diversion</strong> under the SWIFT program.<br><br>
+        <em>— End of narrative</em>
+      </div>
+    </div>
+    <div style="height:30px;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" onclick="acceptFormattedNotes()">Accept & Continue</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 7: CITATION CODE ████ -->
+<div id="s-code" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Citation Code</h2>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px;">
+    <p style="font-size:14px;color:var(--g4);text-align:center;margin-bottom:28px;line-height:1.5;">Enter the 6-digit citation code from the issued citation form.</p>
+    <div class="otp-row" id="code-row">
+      <div class="otp-box filled">M</div>
+      <div class="otp-box filled">A</div>
+      <div class="otp-box filled">2</div>
+      <div class="otp-box filled">0</div>
+      <div class="otp-box filled">4</div>
+      <div class="otp-box filled">8</div>
+    </div>
+    <div style="margin-top:16px;font-size:12px;color:var(--g4);">Auto-generated from incident · Edit if needed</div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" onclick="nav('scan-id')">Continue</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 8: SCAN CITIZEN ID ████ -->
+<div id="s-scan-id" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Citizen ID</h2>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;">
+    <div style="width:200px;height:200px;border:3px dashed var(--g3);border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;margin-bottom:24px;">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="1"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M2 8h2M20 8h2"/></svg>
+      <div style="font-size:13px;color:var(--g4);text-align:center;">Position the ID card<br>within the frame</div>
+    </div>
+    <h2 style="font-size:22px;font-weight:800;color:var(--navy);text-align:center;margin-bottom:8px;">Scan Citizen ID to<br>verify identity</h2>
+    <p style="font-size:14px;color:var(--g4);text-align:center;line-height:1.5;margin-bottom:28px;">Hold the citizen's driver's license or state ID up to the camera. We'll extract their information automatically.</p>
+    <button class="btn" style="max-width:280px;" onclick="nav('scanning')">Scan ID</button>
+    <div style="margin-top:16px;font-size:14px;color:var(--blue);font-weight:600;cursor:pointer;" onclick="nav('verify')">Enter Manually</div>
+  </div>
+</div>
+
+<!-- ████ SCREEN 9: SCANNING CAMERA ████ -->
+<div id="s-scanning" class="s" style="background:#111;">
+  <div class="sb-dark"><span>9:41</span><div class="sb-icons">●●●</div></div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;position:relative;">
+    <div style="position:absolute;inset:60px 20px;border:2px solid rgba(255,255,255,.3);border-radius:20px;"></div>
+    <div style="width:90%;max-width:360px;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5);transform:rotate(-3deg);">
+      <img src="assets/images/scan-id-card.png" style="width:100%;height:auto;object-fit:contain;display:block;">
+    </div>
+    <div style="position:absolute;bottom:100px;left:0;right:0;text-align:center;">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(0,0,0,.6);border-radius:20px;padding:8px 16px;backdrop-filter:blur(10px);">
+        <div style="width:8px;height:8px;border-radius:50%;background:#00B67A;animation:blink 1s infinite;"></div>
+        <span style="font-size:13px;color:#fff;font-weight:600;">Scanning ID...</span>
+      </div>
+    </div>
+  </div>
+  <style>@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}</style>
+  <script>
+    // Auto-advance after 2 seconds
+    document.getElementById('s-scanning').addEventListener('transitionend', function(){});
+  </script>
+</div>
+
+<!-- ████ SCREEN 10: VERIFY CITIZEN IDENTITY ████ -->
+<div id="s-verify" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Verify Citizen Identity</h2>
+  </div>
+  <div class="scroll" style="padding:0 20px;">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;background:var(--g1);border-radius:14px;padding:14px;">
+      <div style="width:56px;height:56px;border-radius:10px;overflow:hidden;flex-shrink:0;border:1px solid var(--g2);">
+        <img src="assets/images/selfie-confirmation.png" style="width:100%;height:100%;object-fit:cover;">
+      </div>
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--navy);">Orazio Rispo</div>
+        <div style="font-size:12px;color:var(--green);font-weight:600;margin-top:2px;">✓ ID Scanned Successfully</div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="form-label">First Name</label>
+      <input type="text" class="form-input" value="Orazio">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="form-label">Last Name</label>
+      <input type="text" class="form-input" value="Rispo">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="form-label">Date of Birth</label>
+      <input type="text" class="form-input" value="04/15/1992">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="form-label">Address</label>
+      <input type="text" class="form-input" value="45 Revere Beach Blvd, Revere, MA 02151">
+    </div>
+    <div style="border-top:1px solid var(--g2);padding-top:16px;margin-top:8px;margin-bottom:14px;">
+      <label class="form-label" style="font-size:13px;color:var(--navy);margin-bottom:12px;">Contacts</label>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" value="orazio@email.com">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="form-label">Phone Number</label>
+      <input type="tel" class="form-input" value="(617) 555-4716">
+    </div>
+    <div style="height:30px;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" onclick="nav('q1')">Continue</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 11: FIRST TIME OFFENSE? ████ -->
+<div id="s-q1" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;padding:0 24px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+      <div style="width:44px;height:44px;border-radius:50%;overflow:hidden;border:1.5px solid var(--g2);flex-shrink:0;">
+        <img src="assets/images/selfie-confirmation.png" style="width:100%;height:100%;object-fit:cover;">
+      </div>
+      <div style="font-size:13px;color:var(--g4);">Orazio Rispo</div>
+    </div>
+    <h1 style="font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-.8px;line-height:1.15;">First Time<br>Offense?</h1>
+    <div class="toggle-row">
+      <button class="toggle-btn" onclick="setToggle(this,'yes','q1')" data-q="q1">Yes</button>
+      <button class="toggle-btn" onclick="setToggle(this,'no','q1')" data-q="q1">No</button>
+    </div>
+    <div style="flex:1;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" id="q1-next" onclick="nav('q2')" style="opacity:.4;pointer-events:none;">Continue</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 12: LAST OFFENSE WITHIN 24 MONTHS? ████ -->
+<div id="s-q2" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;padding:0 24px;">
+    <h1 style="font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-.8px;line-height:1.15;">Was the last<br>offense within<br>24 months?</h1>
+    <div class="toggle-row">
+      <button class="toggle-btn" onclick="setToggle(this,'yes','q2')" data-q="q2">Yes</button>
+      <button class="toggle-btn" onclick="setToggle(this,'no','q2')" data-q="q2">No</button>
+    </div>
+    <div style="flex:1;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" id="q2-next" onclick="nav('q3')" style="opacity:.4;pointer-events:none;">Continue</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 13: ACCESS TO SMART PHONE? ████ -->
+<div id="s-q3" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;padding:0 24px;">
+    <h1 style="font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-.8px;line-height:1.15;">Access to a<br>smart phone?</h1>
+    <div class="toggle-row">
+      <button class="toggle-btn" onclick="setToggle(this,'yes','q3')" data-q="q3">Yes</button>
+      <button class="toggle-btn" onclick="setToggle(this,'no','q3')" data-q="q3">No</button>
+    </div>
+    <div style="flex:1;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" id="q3-next" onclick="nav('review')" style="opacity:.4;pointer-events:none;">Continue</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 14: REVIEW & SUBMIT ████ -->
+<div id="s-review" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Review & Submit</h2>
+  </div>
+  <div class="scroll" style="padding:0 20px;">
+    <!-- Offense summary -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <div class="offense-icon" style="background:#EFF6FF;width:44px;height:44px;border-radius:12px;font-size:20px;">🛒</div>
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--navy);" id="review-offense">Shoplifting</div>
+        <div style="font-size:12px;color:var(--g4);margin-top:2px;">G.L. c. 266, §30A — Shoplifting under $250</div>
+      </div>
+    </div>
+    <!-- Eligibility badge -->
+    <div style="background:#ECFDF5;border:1.5px solid #A7F3D0;border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#065F46;">This person was determined to be <strong>eligible for diversion</strong> under the SWIFT program</div>
+    </div>
+    <!-- Citizen info -->
+    <div class="review-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Citizen Information</div>
+      <div class="review-row"><span class="review-label">Name</span><span class="review-value">Orazio Rispo</span></div>
+      <div class="review-row"><span class="review-label">DOB</span><span class="review-value">04/15/1992</span></div>
+      <div class="review-row"><span class="review-label">Phone</span><span class="review-value">(617) 555-4716</span></div>
+      <div class="review-row"><span class="review-label">Address</span><span class="review-value" style="font-size:12px;">45 Revere Beach Blvd</span></div>
+    </div>
+    <!-- Incident details -->
+    <div class="review-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Incident Details</div>
+      <div class="review-row"><span class="review-label">Location</span><span class="review-value" style="font-size:12px;">375 Broadway, Revere</span></div>
+      <div class="review-row"><span class="review-label">Date / Time</span><span class="review-value">03/19/2026 · 10:35 PM</span></div>
+      <div class="review-row"><span class="review-label">Citation Code</span><span class="review-value">MA2048</span></div>
+    </div>
+    <!-- Evidence -->
+    <div class="review-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Evidence</div>
+      <div class="evidence-row">
+        <div class="evidence-thumb"><img src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=100&h=100&fit=crop"></div>
+        <div class="evidence-thumb"><img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=100&h=100&fit=crop"></div>
+        <div class="evidence-thumb"><img src="https://images.unsplash.com/photo-1557821552-17105176677c?w=100&h=100&fit=crop"></div>
+      </div>
+    </div>
+    <!-- Eligibility answers -->
+    <div class="review-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Eligibility Check</div>
+      <div class="review-row"><span class="review-label">First time offense</span><span class="review-value" style="color:var(--green);">✓ Yes</span></div>
+      <div class="review-row"><span class="review-label">Prior in 24 months</span><span class="review-value" style="color:var(--green);">✓ No</span></div>
+      <div class="review-row"><span class="review-label">Has smartphone</span><span class="review-value" style="color:var(--green);">✓ Yes</span></div>
+    </div>
+    <div style="height:20px;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" onclick="submitCitation()">Submit</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 15: CONFIRMATION ████ -->
+<div id="s-confirm" class="s">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,#13276A 0%,#000513 100%);padding:0 30px;">
+    <div class="confirm-check">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h1 style="font-size:28px;font-weight:800;color:#fff;text-align:center;margin-bottom:8px;">Citation Submitted</h1>
+    <p style="font-size:15px;color:rgba(255,255,255,.6);text-align:center;line-height:1.6;margin-bottom:8px;">The citation has been filed and the citizen has been enrolled in the SWIFT diversion program.</p>
+    <div style="background:rgba(255,255,255,.08);border-radius:12px;padding:16px 20px;width:100%;margin-top:20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:13px;color:rgba(255,255,255,.5);">Citation</span>
+        <span style="font-size:13px;font-weight:700;color:#fff;">MA2048</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:13px;color:rgba(255,255,255,.5);">Citizen</span>
+        <span style="font-size:13px;font-weight:700;color:#fff;">Orazio Rispo</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:13px;color:rgba(255,255,255,.5);">Program</span>
+        <span style="font-size:13px;font-weight:700;color:var(--baby-blue);">SWIFT Diversion</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-size:13px;color:rgba(255,255,255,.5);">Next Step</span>
+        <span style="font-size:13px;font-weight:700;color:var(--green);">SMS sent to citizen</span>
+      </div>
+    </div>
+    <button class="btn" style="margin-top:32px;" onclick="nav('dashboard')">Back to Dashboard</button>
+    <button class="btn-ghost" onclick="nav('case-summary')">View Case Summary →</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 16: CASE SUMMARY ████ -->
+<div id="s-case-summary" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="nav('dashboard')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Case Summary</h2>
+  </div>
+  <div class="scroll" style="padding:0 20px;">
+    <!-- Shield icon + offense -->
+    <div style="text-align:center;padding:20px 0 16px;">
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--g1);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <h2 style="font-size:24px;font-weight:800;color:var(--navy);">Shoplifting</h2>
+      <div style="font-size:13px;color:var(--g4);margin-top:4px;">Citation MA2048 · Filed 03/19/2026</div>
+    </div>
+    <!-- Eligibility checklist -->
+    <div style="background:var(--g1);border-radius:14px;padding:16px 18px;margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--g4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Eligibility Determination</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--g2);">
+        <div style="width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <span style="font-size:14px;color:var(--navy);">Qualifying offense (§30A)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--g2);">
+        <div style="width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <span style="font-size:14px;color:var(--navy);">First-time offense</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--g2);">
+        <div style="width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <span style="font-size:14px;color:var(--navy);">No prior offenses in 24 months</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--g2);">
+        <div style="width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <span style="font-size:14px;color:var(--navy);">Smartphone access confirmed</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+        <div style="width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <span style="font-size:14px;color:var(--navy);">No active warrants</span>
+      </div>
+    </div>
+    <!-- Citizen details -->
+    <div class="review-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Citizen</div>
+      <div class="review-row"><span class="review-label">Name</span><span class="review-value">Orazio Rispo</span></div>
+      <div class="review-row"><span class="review-label">DOB</span><span class="review-value">04/15/1992</span></div>
+      <div class="review-row"><span class="review-label">Address</span><span class="review-value" style="font-size:12px;">45 Revere Beach Blvd</span></div>
+    </div>
+    <!-- Program assignment -->
+    <div class="review-section" style="background:#EFF6FF;border:1px solid #BFDBFE;">
+      <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:8px;">Program Assignment</div>
+      <div class="review-row"><span class="review-label">Program</span><span class="review-value" style="color:var(--blue);">SWIFT Diversion</span></div>
+      <div class="review-row"><span class="review-label">Duration</span><span class="review-value">90 days</span></div>
+      <div class="review-row"><span class="review-label">Enrollment</span><span class="review-value" style="color:var(--green);">SMS Sent</span></div>
+      <div class="review-row"><span class="review-label">Issuing Officer</span><span class="review-value">C. Grable #4187</span></div>
+    </div>
+    <!-- Timeline -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;">Timeline</div>
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--green);margin-top:4px;flex-shrink:0;"></div>
+        <div><div style="font-size:14px;font-weight:600;color:var(--navy);">Citation Issued</div><div style="font-size:12px;color:var(--g4);margin-top:2px;">03/19/2026 · 10:35 PM</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--blue);margin-top:4px;flex-shrink:0;"></div>
+        <div><div style="font-size:14px;font-weight:600;color:var(--navy);">SMS Enrollment Link Sent</div><div style="font-size:12px;color:var(--g4);margin-top:2px;">03/19/2026 · 10:36 PM</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div style="width:10px;height:10px;border-radius:50%;border:2px solid var(--g3);margin-top:4px;flex-shrink:0;"></div>
+        <div><div style="font-size:14px;font-weight:600;color:var(--g4);">Awaiting citizen enrollment</div><div style="font-size:12px;color:var(--g4);margin-top:2px;">Pending</div></div>
+      </div>
+    </div>
+    <div style="height:calc(var(--sb)+30px);"></div>
+  </div>
+</div>
+
+<!-- Citation Detail Overlay -->
+<div class="detail-overlay" id="cite-detail" onclick="if(event.target===this)closeCiteDetail()">
+  <div class="detail-sheet" id="cite-detail-sheet">
+    <div class="detail-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="cite-icon" id="cd-icon" style="background:#EFF6FF;">🛒</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--navy);" id="cd-offense">Shoplifting</div>
+          <div style="font-size:12px;color:var(--g4);" id="cd-statute">G.L. c. 266, §30A</div>
+        </div>
+      </div>
+      <button onclick="closeCiteDetail()" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--g1);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--g4);">✕</button>
+    </div>
+    <div class="detail-body" id="cd-body">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+</div><!-- end #app -->
+
+<script>
+// ── STATE ──
+let cur = 'pin';
+let navHistory = [];
+let pinCode = '';
+let selectedOffense = '';
+let voiceTimer = null;
+let voiceSeconds = 0;
+const ORDER = ['pin','dashboard','offense','location','time','notes','voice','voice-result','code','scan-id','scanning','verify','q1','q2','q3','review','confirm','case-summary'];
+
+// ── CITATIONS DATA ──
+const CITATIONS = [
+  {id:'MA2048',name:'Orazio Rispo',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/19/2026',time:'10:35 PM',location:'375 Broadway, Revere',items:'Baby formula, diapers — $89.97',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Subject detained without incident near CVS Pharmacy. Store manager reported unpaid merchandise. Subject cooperative, no warrants.'},
+  {id:'MA2041',name:'Derek Fontaine',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/18/2026',time:'3:12 PM',location:'200 Squire Rd, Revere',items:'Clothing — 2 jackets — $134.00',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Loss prevention at Target detained subject at exit. Two jackets concealed in backpack. No prior record.'},
+  {id:'MA2039',name:'Priya Chakrabarti',offense:'Trespassing',statute:'G.L. c. 266, §120',icon:'🚧',iconBg:'#FEF3C7',status:'Submitted',badge:'badge-submitted',date:'03/17/2026',time:'11:48 PM',location:'Revere Beach Pavilion',items:'N/A',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Subject found sleeping in closed pavilion area after hours. No damage to property. Subject stated housing instability. Referred to shelter services.'},
+  {id:'MA2035',name:'Marcus Webb',offense:'Disorderly Conduct',statute:'G.L. c. 272, §53',icon:'📢',iconBg:'#F3E8FF',status:'Pending',badge:'badge-pending',date:'03/16/2026',time:'1:20 AM',location:'151 Bennington St, Revere',items:'N/A',officer:'C. Grable #4187',firstTime:false,phone:true,eligible:true,notes:'Loud verbal altercation outside bar. No physical contact. Subject calmed upon officer arrival. One prior misdemeanor (2024, resolved).'},
+  {id:'MA2030',name:'Sarah Kim',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/15/2026',time:'6:45 PM',location:'339 Squire Rd, Revere',items:'Groceries — $47.50',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Subject concealed grocery items (canned goods, pasta) in handbag at Market Basket. Manager declined to press charges. Subject enrolled in food assistance referral.'},
+  {id:'MA2022',name:'James Dougherty',offense:'Property Crime',statute:'G.L. c. 266, §127',icon:'🏠',iconBg:'#FEE2E2',status:'Closed',badge:'badge-closed',date:'03/12/2026',time:'9:10 PM',location:'88 Beach St, Revere',items:'Minor graffiti — spray paint',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Subject observed spray-painting wall of abandoned building. Minimal damage. Subject agreed to clean up. Community service assigned via SWIFT.'},
+  {id:'MA2018',name:'Lucia Fernandez',offense:'Drug Possession',statute:'G.L. c. 94C, §34',icon:'💊',iconBg:'#FFF7ED',status:'Submitted',badge:'badge-submitted',date:'03/10/2026',time:'2:30 PM',location:'Wonderland Station, Revere',items:'Small quantity — personal use',officer:'C. Grable #4187',firstTime:true,phone:true,eligible:true,notes:'Subject found with small amount of Class B substance during routine patrol near transit station. No paraphernalia. Subject cooperative. Referred to substance abuse program.'}
+];
+
+// ── NAVIGATION ──
+function nav(id) {
+  const prev = document.getElementById('s-' + cur);
+  const next = document.getElementById('s-' + id);
+  if (!next || prev === next) return;
+  navHistory.push(cur);
+  const pi = ORDER.indexOf(cur), ni = ORDER.indexOf(id);
+  prev.classList.remove('on');
+  next.classList.add('on');
+  next.classList.add(ni >= pi || ni === -1 ? 'in' : 'back');
+  setTimeout(() => next.classList.remove('in', 'back'), 300);
+  cur = id;
+  if (id === 'location') setTimeout(initLocMap, 300);
+  if (id === 'scanning') setTimeout(() => nav('verify'), 2200);
+  if (id === 'dashboard') buildCitationsList();
+}
+
+function goBack() {
+  if (!navHistory.length) return;
+  const prev = navHistory.pop();
+  const prevEl = document.getElementById('s-' + prev);
+  const curEl = document.getElementById('s-' + cur);
+  if (!prevEl || !curEl) return;
+  curEl.classList.remove('on');
+  prevEl.classList.add('on', 'back');
+  setTimeout(() => prevEl.classList.remove('back'), 300);
+  cur = prev;
+}
+
+// ── PIN LOGIN ──
+function pinTap(n) {
+  if (pinCode.length >= 4) return;
+  pinCode += n;
+  updatePinDots();
+  if (pinCode.length === 4) {
+    setTimeout(() => { pinCode = ''; nav('dashboard'); }, 300);
+  }
+}
+function pinDelete() {
+  pinCode = pinCode.slice(0, -1);
+  updatePinDots();
+}
+function updatePinDots() {
+  const dots = document.querySelectorAll('#pin-dots .pin-dot');
+  dots.forEach((d, i) => d.classList.toggle('filled', i < pinCode.length));
+}
+
+// ── CITATIONS LIST ──
+function buildCitationsList() {
+  const list = document.getElementById('citations-list');
+  if (!list) return;
+  list.innerHTML = '';
+  CITATIONS.forEach(c => {
+    list.innerHTML += `
+      <div class="cite-card" onclick="openCiteDetail('${c.id}')">
+        <div class="cite-card-top">
+          <div class="cite-icon" style="background:${c.iconBg};">${c.icon}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="font-size:15px;font-weight:700;color:var(--navy);">${c.name}</div>
+              <span class="cite-badge ${c.badge}">${c.status}</span>
+            </div>
+            <div style="font-size:13px;color:var(--g4);margin-top:3px;">${c.offense} · ${c.date}</div>
+            <div style="font-size:11px;color:var(--g3);margin-top:2px;">${c.location}</div>
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+// ── CITATION DETAIL ──
+function openCiteDetail(id) {
+  const c = CITATIONS.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('cd-offense').textContent = c.offense;
+  document.getElementById('cd-statute').textContent = c.statute;
+  document.getElementById('cd-icon').textContent = c.icon;
+  document.getElementById('cd-icon').style.background = c.iconBg;
+  const body = document.getElementById('cd-body');
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <span class="cite-badge ${c.badge}" style="font-size:13px;padding:5px 14px;">${c.status}</span>
+      <span style="font-size:12px;color:var(--g4);">Citation #${c.id}</span>
+    </div>
+    <div class="review-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Citizen</div>
+      <div class="review-row"><span class="review-label">Name</span><span class="review-value">${c.name}</span></div>
+      <div class="review-row"><span class="review-label">First offense</span><span class="review-value" style="color:${c.firstTime?'var(--green)':'var(--red)'};">${c.firstTime?'✓ Yes':'✗ No'}</span></div>
+      <div class="review-row"><span class="review-label">Smartphone</span><span class="review-value" style="color:${c.phone?'var(--green)':'var(--red)'};">${c.phone?'✓ Yes':'✗ No'}</span></div>
+    </div>
+    <div class="review-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Incident Details</div>
+      <div class="review-row"><span class="review-label">Date</span><span class="review-value">${c.date} · ${c.time}</span></div>
+      <div class="review-row"><span class="review-label">Location</span><span class="review-value" style="font-size:12px;">${c.location}</span></div>
+      ${c.items!=='N/A'?`<div class="review-row"><span class="review-label">Items / Value</span><span class="review-value" style="font-size:12px;">${c.items}</span></div>`:''}
+      <div class="review-row"><span class="review-label">Officer</span><span class="review-value">${c.officer}</span></div>
+    </div>
+    <div class="review-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Officer Notes</div>
+      <div style="font-size:13px;color:var(--navy);line-height:1.6;">${c.notes}</div>
+    </div>
+    ${c.eligible?`
+    <div style="background:#ECFDF5;border:1.5px solid #A7F3D0;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+      <div style="width:24px;height:24px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <span style="font-size:13px;font-weight:600;color:#065F46;">Eligible for SWIFT diversion</span>
+    </div>`:''}
+  `;
+  document.getElementById('cite-detail').classList.add('on');
+}
+function closeCiteDetail() {
+  document.getElementById('cite-detail').classList.remove('on');
+}
+
+// ── OFFENSE SELECTION ──
+function selectOffense(el, name, icon) {
+  document.querySelectorAll('.offense-item').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedOffense = name;
+  const btn = document.getElementById('offense-next-btn');
+  btn.style.opacity = '1';
+  btn.style.pointerEvents = 'auto';
+  // Show sub-categories for shoplifting
+  const subs = document.getElementById('shoplifting-subs');
+  subs.style.display = name === 'Shoplifting' ? 'block' : 'none';
+}
+function selectSub(name) {
+  showToast('Sub-category: ' + name);
+}
+
+// ── TOGGLE BUTTONS ──
+function setToggle(el, val, q) {
+  const row = el.closest('.toggle-row');
+  row.querySelectorAll('.toggle-btn').forEach(b => { b.classList.remove('active-yes', 'active-no'); });
+  el.classList.add(val === 'yes' ? 'active-yes' : 'active-no');
+  const nextBtn = document.getElementById(q + '-next');
+  if (nextBtn) { nextBtn.style.opacity = '1'; nextBtn.style.pointerEvents = 'auto'; }
+}
+
+// ── AM/PM ──
+function setAmPm(val, el) {
+  document.getElementById('am-btn').classList.remove('active-yes');
+  document.getElementById('am-btn').style.borderColor = 'var(--g2)';
+  document.getElementById('am-btn').style.background = '#fff';
+  document.getElementById('am-btn').style.color = 'var(--navy)';
+  document.getElementById('pm-btn').classList.remove('active-yes');
+  document.getElementById('pm-btn').style.borderColor = 'var(--g2)';
+  document.getElementById('pm-btn').style.background = '#fff';
+  document.getElementById('pm-btn').style.color = 'var(--navy)';
+  el.style.borderColor = 'var(--blue)';
+  el.style.background = 'rgba(20,75,216,.08)';
+  el.style.color = 'var(--blue)';
+}
+
+// ── VOICE DICTATION ──
+function startVoice() {
+  navHistory.push(cur);
+  const prev = document.getElementById('s-' + cur);
+  prev.classList.remove('on');
+  cur = 'voice';
+  const next = document.getElementById('s-voice');
+  next.classList.add('on', 'in');
+  setTimeout(() => next.classList.remove('in'), 300);
+  // Start timer
+  voiceSeconds = 0;
+  document.getElementById('voice-timer').textContent = '0:00';
+  document.getElementById('voice-status').textContent = 'Listening...';
+  document.getElementById('voice-transcript').textContent = '';
+  document.getElementById('voice-ring').classList.add('recording');
+  document.getElementById('voice-done-btn').disabled = true;
+  voiceTimer = setInterval(updateVoiceTimer, 1000);
+  // Simulate transcription appearing
+  simulateTranscription();
+}
+function updateVoiceTimer() {
+  voiceSeconds++;
+  const m = Math.floor(voiceSeconds / 60);
+  const s = voiceSeconds % 60;
+  document.getElementById('voice-timer').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+}
+function simulateTranscription() {
+  const words = "So I was on Broadway near the CVS around like 10:35 tonight and I saw this guy, his name is Orazio Rispo, he was walking out of the store and the manager flagged me down and said he just pocketed some items, like baby formula and some diapers, didn't pay for them, total was about ninety bucks. I detained him, he was cooperative, no warrants, first time I've dealt with him.".split(' ');
+  let i = 0;
+  const el = document.getElementById('voice-transcript');
+  const interval = setInterval(() => {
+    if (i >= words.length) {
+      clearInterval(interval);
+      document.getElementById('voice-status').textContent = 'Transcription complete';
+      document.getElementById('voice-ring').classList.remove('recording');
+      document.getElementById('voice-done-btn').disabled = false;
+      document.getElementById('voice-done-btn').style.opacity = '1';
+      return;
+    }
+    el.textContent += (i > 0 ? ' ' : '"') + words[i];
+    if (i === words.length - 1) el.textContent += '"';
+    i++;
+  }, 120);
+}
+function cancelVoice() {
+  clearInterval(voiceTimer);
+  goBack();
+}
+function stopVoice() {
+  clearInterval(voiceTimer);
+}
+function finishVoice() {
+  clearInterval(voiceTimer);
+  nav('voice-result');
+}
+function acceptFormattedNotes() {
+  // Copy formatted text back to notes textarea
+  const formatted = document.getElementById('formatted-notes').innerText;
+  document.getElementById('notes-textarea').value = formatted;
+  // Navigate back to notes then forward to code
+  // Reset history to skip voice screens
+  navHistory = navHistory.filter(h => h !== 'voice' && h !== 'voice-result');
+  nav('code');
+}
+
+// ── SUBMIT ──
+function submitCitation() {
+  nav('confirm');
+}
+
+// ── LOCATION MAP ──
+let locMap = null;
+function initLocMap() {
+  if (locMap) return;
+  const el = document.getElementById('loc-map');
+  if (!el) return;
+  locMap = L.map(el, { zoomControl: false, attributionControl: false }).setView([42.4085, -71.0120], 15);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(locMap);
+  L.marker([42.4085, -71.0120]).addTo(locMap);
+  setTimeout(() => locMap.invalidateSize(), 100);
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ── INIT ──
+buildCitationsList();
+</script>
+</body>
+</html>

@@ -872,13 +872,71 @@ const ORDER = ['pin','dashboard','offense','location','time','notes','voice','vo
 
 // ── CITATIONS DATA ──
 const CITATIONS = [
-  {id:'MA2048',name:'Orazio Rispo',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/19/2026',time:'10:35 PM',location:'375 Broadway, Revere',items:'Baby formula, diapers — $89.97',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Subject detained without incident near CVS Pharmacy. Store manager reported unpaid merchandise. Subject cooperative, no warrants.'},
-  {id:'MA2041',name:'Derek Fontaine',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/18/2026',time:'3:12 PM',location:'200 Squire Rd, Revere',items:'Clothing — 2 jackets — $134.00',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Loss prevention at Target detained subject at exit. Two jackets concealed in backpack. No prior record.'},
-  {id:'MA2039',name:'Priya Chakrabarti',offense:'Trespassing',statute:'G.L. c. 266, §120',icon:'🚧',iconBg:'#FEF3C7',status:'Submitted',badge:'badge-submitted',date:'03/17/2026',time:'11:48 PM',location:'Revere Beach Pavilion',items:'N/A',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Subject found sleeping in closed pavilion area after hours. No damage to property. Subject stated housing instability. Referred to shelter services.'},
-  {id:'MA2035',name:'Marcus Webb',offense:'Disorderly Conduct',statute:'G.L. c. 272, §53',icon:'📢',iconBg:'#F3E8FF',status:'Pending',badge:'badge-pending',date:'03/16/2026',time:'1:20 AM',location:'151 Bennington St, Revere',items:'N/A',officer:'M. Dercolo #4187',firstTime:false,phone:true,eligible:true,notes:'Loud verbal altercation outside bar. No physical contact. Subject calmed upon officer arrival. One prior misdemeanor (2024, resolved).'},
-  {id:'MA2030',name:'Sarah Kim',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/15/2026',time:'6:45 PM',location:'339 Squire Rd, Revere',items:'Groceries — $47.50',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Subject concealed grocery items (canned goods, pasta) in handbag at Market Basket. Manager declined to press charges. Subject enrolled in food assistance referral.'},
-  {id:'MA2022',name:'James Dougherty',offense:'Property Crime',statute:'G.L. c. 266, §127',icon:'🏠',iconBg:'#FEE2E2',status:'Closed',badge:'badge-closed',date:'03/12/2026',time:'9:10 PM',location:'88 Beach St, Revere',items:'Minor graffiti — spray paint',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Subject observed spray-painting wall of abandoned building. Minimal damage. Subject agreed to clean up. Community service assigned via SWIFT.'},
-  {id:'MA2018',name:'Lucia Fernandez',offense:'Drug Possession',statute:'G.L. c. 94C, §34',icon:'💊',iconBg:'#FFF7ED',status:'Submitted',badge:'badge-submitted',date:'03/10/2026',time:'2:30 PM',location:'Wonderland Station, Revere',items:'Small quantity — personal use',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,notes:'Subject found with small amount of Class B substance during routine patrol near transit station. No paraphernalia. Subject cooperative. Referred to substance abuse program.'}
+  {id:'MA2048',name:'Orazio Rispo',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/19/2026',time:'10:35 PM',location:'375 Broadway, Revere',items:'Baby formula, diapers — $89.97',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,
+    notes:'Subject detained without incident near CVS Pharmacy. Store manager reported unpaid merchandise. Subject cooperative, no warrants.',
+    program:'SWIFT — MEA App-Based',duration:90,daysIn:0,enrolled:false,
+    csHours:16,csCompleted:0,csProvider:'Greater Boston Food Bank',
+    lmsModules:2,lmsCompleted:0,
+    rjTask:null,
+    services:[],
+    timeline:[{t:'Citation Issued',d:'03/19/2026 · 10:35 PM',s:'done'},{t:'SMS Enrollment Sent',d:'03/19/2026 · 10:36 PM',s:'done'},{t:'Awaiting enrollment',d:'Pending',s:'pending'}]
+  },
+  {id:'MA2041',name:'Derek Fontaine',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/18/2026',time:'3:12 PM',location:'200 Squire Rd, Revere',items:'Clothing — 2 jackets — $134.00',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,
+    notes:'Loss prevention at Target detained subject at exit. Two jackets concealed in backpack. No prior record.',
+    program:'SWIFT — MEA App-Based',duration:90,daysIn:1,enrolled:true,
+    csHours:24,csCompleted:0,csProvider:'Franklin Park Coalition',
+    lmsModules:3,lmsCompleted:0,
+    rjTask:'Write apology letter to store manager',
+    services:['Food assistance referral'],
+    timeline:[{t:'Citation Issued',d:'03/18/2026 · 3:12 PM',s:'done'},{t:'Enrolled via MEA App',d:'03/18/2026 · 8:44 PM',s:'done'},{t:'Onboarding video watched',d:'03/19/2026 · 9:10 AM',s:'done'},{t:'Community service — not started',d:'Due by 04/18',s:'pending'}]
+  },
+  {id:'MA2039',name:'Priya Chakrabarti',offense:'Trespassing',statute:'G.L. c. 266, §120',icon:'🚧',iconBg:'#FEF3C7',status:'Active',badge:'badge-active',date:'03/17/2026',time:'11:48 PM',location:'Revere Beach Pavilion',items:'N/A',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,
+    notes:'Subject found sleeping in closed pavilion area after hours. No damage to property. Subject stated housing instability. Referred to shelter services.',
+    program:'SOS — Services Over Sentences',duration:90,daysIn:2,enrolled:true,
+    csHours:8,csCompleted:2,csProvider:'Pine Street Inn',
+    lmsModules:1,lmsCompleted:1,
+    rjTask:null,
+    services:['Gavin Foundation — shelter bed reserved','SNAP benefits enrollment','Housing navigator assigned'],
+    timeline:[{t:'Citation Issued',d:'03/17/2026 · 11:48 PM',s:'done'},{t:'Enrolled via MEA App',d:'03/18/2026 · 10:15 AM',s:'done'},{t:'LMS Module 1 completed',d:'03/18/2026 · 2:30 PM',s:'done'},{t:'Shelter bed reserved — Gavin Foundation',d:'03/18/2026 · 4:00 PM',s:'done'},{t:'2h community service logged',d:'03/19/2026 · 1:15 PM',s:'done'},{t:'Next check-in due',d:'03/22/2026',s:'pending'}]
+  },
+  {id:'MA2035',name:'Marcus Webb',offense:'Disorderly Conduct',statute:'G.L. c. 272, §53',icon:'📢',iconBg:'#F3E8FF',status:'Active',badge:'badge-active',date:'03/16/2026',time:'1:20 AM',location:'151 Bennington St, Revere',items:'N/A',officer:'M. Dercolo #4187',firstTime:false,phone:true,eligible:true,
+    notes:'Loud verbal altercation outside bar. No physical contact. Subject calmed upon officer arrival. One prior misdemeanor (2024, resolved).',
+    program:'SWIFT — MEA App-Based',duration:90,daysIn:3,enrolled:true,
+    csHours:16,csCompleted:6,csProvider:'MBTA Community Service — Nubian Sq',
+    lmsModules:3,lmsCompleted:1,
+    rjTask:null,
+    services:['Anger management referral — Suffolk Behavioral Health'],
+    timeline:[{t:'Citation Issued',d:'03/16/2026 · 1:20 AM',s:'done'},{t:'Enrolled via MEA App',d:'03/16/2026 · 11:05 AM',s:'done'},{t:'LMS Module 1 completed',d:'03/17/2026 · 3:22 PM',s:'done'},{t:'6h community service logged',d:'03/18/2026 · 5:00 PM',s:'done'},{t:'Anger management intake scheduled',d:'03/21/2026',s:'pending'}]
+  },
+  {id:'MA2030',name:'Sarah Kim',offense:'Shoplifting',statute:'G.L. c. 266, §30A',icon:'🛒',iconBg:'#EFF6FF',status:'Active',badge:'badge-active',date:'03/15/2026',time:'6:45 PM',location:'339 Squire Rd, Revere',items:'Groceries — $47.50',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,
+    notes:'Subject concealed grocery items (canned goods, pasta) in handbag at Market Basket. Manager declined to press charges. Subject enrolled in food assistance referral.',
+    program:'SWIFT — MEA App-Based',duration:90,daysIn:4,enrolled:true,
+    csHours:16,csCompleted:10,csProvider:'Greater Boston Food Bank',
+    lmsModules:2,lmsCompleted:2,
+    rjTask:'Write apology letter to store',
+    rjDone:true,
+    services:['SNAP benefits enrollment','Greater Boston Food Bank — weekly pickup'],
+    timeline:[{t:'Citation Issued',d:'03/15/2026 · 6:45 PM',s:'done'},{t:'Enrolled via MEA App',d:'03/15/2026 · 9:30 PM',s:'done'},{t:'LMS Modules 1 & 2 completed',d:'03/16/2026',s:'done'},{t:'Apology letter submitted',d:'03/17/2026',s:'done'},{t:'10h community service logged',d:'03/19/2026',s:'done'},{t:'6h remaining — on track',d:'Due by 04/14',s:'pending'}]
+  },
+  {id:'MA2022',name:'James Dougherty',offense:'Property Crime',statute:'G.L. c. 266, §127',icon:'🏠',iconBg:'#FEE2E2',status:'Closed',badge:'badge-closed',date:'03/12/2026',time:'9:10 PM',location:'88 Beach St, Revere',items:'Minor graffiti — spray paint',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,
+    notes:'Subject observed spray-painting wall of abandoned building. Minimal damage. Subject agreed to clean up. Community service assigned via SWIFT.',
+    program:'SWIFT — MEA App-Based',duration:90,daysIn:7,enrolled:true,
+    csHours:24,csCompleted:24,csProvider:'Franklin Park Coalition',
+    lmsModules:3,lmsCompleted:3,
+    rjTask:'Clean graffiti at arrest site',
+    rjDone:true,
+    services:[],
+    timeline:[{t:'Citation Issued',d:'03/12/2026 · 9:10 PM',s:'done'},{t:'Enrolled via MEA App',d:'03/13/2026 · 8:00 AM',s:'done'},{t:'All LMS modules completed',d:'03/14/2026',s:'done'},{t:'Graffiti cleanup completed',d:'03/15/2026',s:'done'},{t:'24h community service completed',d:'03/19/2026',s:'done'},{t:'Program completed — case closed',d:'03/19/2026',s:'complete'}]
+  },
+  {id:'MA2018',name:'Lucia Fernandez',offense:'Drug Possession',statute:'G.L. c. 94C, §34',icon:'💊',iconBg:'#FFF7ED',status:'Active',badge:'badge-active',date:'03/10/2026',time:'2:30 PM',location:'Wonderland Station, Revere',items:'Small quantity — personal use',officer:'M. Dercolo #4187',firstTime:true,phone:true,eligible:true,
+    notes:'Subject found with small amount of Class B substance during routine patrol near transit station. No paraphernalia. Subject cooperative. Referred to substance abuse program.',
+    program:'SOS — Services Over Sentences',duration:90,daysIn:9,enrolled:true,
+    csHours:16,csCompleted:8,csProvider:'Chelsea Collaborative',
+    lmsModules:5,lmsCompleted:3,
+    rjTask:null,
+    services:['Suffolk Recovery Services — outpatient','Toxicology screening — Week 4','Housing navigator — Chelsea Collaborative'],
+    timeline:[{t:'Citation Issued',d:'03/10/2026 · 2:30 PM',s:'done'},{t:'Enrolled via MEA App',d:'03/10/2026 · 6:15 PM',s:'done'},{t:'3 LMS modules completed',d:'03/14/2026',s:'done'},{t:'8h community service logged',d:'03/17/2026',s:'done'},{t:'Outpatient intake — Suffolk Recovery',d:'03/18/2026',s:'done'},{t:'Toxicology screening due',d:'04/07/2026',s:'pending'}]
+  }
 ];
 
 // ── NAVIGATION ──
@@ -959,18 +1017,115 @@ function openCiteDetail(id) {
   document.getElementById('cd-statute').textContent = c.statute;
   document.getElementById('cd-icon').textContent = c.icon;
   document.getElementById('cd-icon').style.background = c.iconBg;
+
+  // Calculate progress
+  const csPct = c.csHours ? Math.round((c.csCompleted / c.csHours) * 100) : 0;
+  const lmsPct = c.lmsModules ? Math.round((c.lmsCompleted / c.lmsModules) * 100) : 0;
+  const rjDone = c.rjTask ? (c.rjDone ? true : false) : null;
+  const overallTasks = (c.csHours ? 1 : 0) + (c.lmsModules ? 1 : 0) + (c.rjTask ? 1 : 0);
+  const overallDone = (csPct >= 100 ? 1 : 0) + (lmsPct >= 100 ? 1 : 0) + (rjDone === true ? 1 : 0);
+  const overallPct = c.enrolled ? (overallTasks ? Math.round(((csPct + lmsPct + (rjDone === true ? 100 : rjDone === false ? 0 : 0)) / (overallTasks * 100)) * 100) : 0) : 0;
+  const isClosed = c.status === 'Closed';
+  const barColor = isClosed ? 'var(--green)' : overallPct >= 60 ? '#2D5BF7' : overallPct >= 30 ? '#D97706' : '#E8444F';
+  const statusLabel = isClosed ? 'Completed' : !c.enrolled ? 'Awaiting Enrollment' : 'In Progress';
+  const statusColor = isClosed ? 'var(--green)' : !c.enrolled ? 'var(--orange)' : 'var(--blue)';
+
   const body = document.getElementById('cd-body');
   body.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
       <span class="cite-badge ${c.badge}" style="font-size:13px;padding:5px 14px;">${c.status}</span>
       <span style="font-size:12px;color:var(--g4);">Citation #${c.id}</span>
     </div>
+
+    <!-- ═══ PROGRAM PROGRESS ═══ -->
+    ${c.enrolled || isClosed ? `
+    <div style="background:linear-gradient(135deg,#0A1628,#13276A);border-radius:14px;padding:16px 18px;margin-bottom:14px;color:#fff;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:rgba(130,203,245,.7);">Program Status</div>
+          <div style="font-size:15px;font-weight:700;margin-top:2px;">${c.program}</div>
+        </div>
+        <div style="background:${statusColor};border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;">${statusLabel}</div>
+      </div>
+      <!-- Overall progress bar -->
+      <div style="margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:11px;color:rgba(255,255,255,.5);">Overall Progress</span>
+        <span style="font-size:13px;font-weight:800;color:${barColor === 'var(--green)' ? '#34D399' : '#82CBF5'};">${isClosed ? '100' : overallPct}%</span>
+      </div>
+      <div style="height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin-bottom:14px;">
+        <div style="height:100%;width:${isClosed ? 100 : overallPct}%;background:${barColor};border-radius:4px;transition:width .6s ease;"></div>
+      </div>
+      <!-- Task breakdown -->
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🤝</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;font-weight:600;">Community Service</span>
+              <span style="font-size:12px;font-weight:700;color:${csPct>=100?'#34D399':'#82CBF5'};">${c.csCompleted}h / ${c.csHours}h</span>
+            </div>
+            <div style="height:4px;background:rgba(255,255,255,.1);border-radius:2px;margin-top:5px;overflow:hidden;">
+              <div style="height:100%;width:${csPct}%;background:${csPct>=100?'#34D399':'#82CBF5'};border-radius:2px;"></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🎓</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;font-weight:600;">Learning Modules</span>
+              <span style="font-size:12px;font-weight:700;color:${lmsPct>=100?'#34D399':'#82CBF5'};">${c.lmsCompleted} / ${c.lmsModules}</span>
+            </div>
+            <div style="height:4px;background:rgba(255,255,255,.1);border-radius:2px;margin-top:5px;overflow:hidden;">
+              <div style="height:100%;width:${lmsPct}%;background:${lmsPct>=100?'#34D399':'#82CBF5'};border-radius:2px;"></div>
+            </div>
+          </div>
+        </div>
+        ${c.rjTask ? `
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">⚖️</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;font-weight:600;">Restorative Justice</span>
+              <span style="font-size:12px;font-weight:700;color:${rjDone?'#34D399':'#FBBF24'};">${rjDone?'Complete':'Pending'}</span>
+            </div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:3px;">${c.rjTask}</div>
+          </div>
+        </div>` : ''}
+      </div>
+      ${c.daysIn > 0 ? `<div style="border-top:1px solid rgba(255,255,255,.08);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.4);">
+        <span>Day ${c.daysIn} of ${c.duration}</span>
+        <span>${c.csProvider}</span>
+      </div>` : ''}
+    </div>` : `
+    <div style="background:#FEF3C7;border:1.5px solid #FDE68A;border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">⏳</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#92400E;">Awaiting Enrollment</div>
+        <div style="font-size:12px;color:#A16207;margin-top:2px;">SMS enrollment link sent — participant has not yet opened the MEA app</div>
+      </div>
+    </div>`}
+
+    <!-- ═══ SERVICES & SUPPORT ═══ -->
+    ${c.services && c.services.length ? `
+    <div class="review-section" style="background:#EFF6FF;border:1px solid #BFDBFE;">
+      <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:10px;">Services & Support</div>
+      ${c.services.map(s => `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0;"></div>
+          <span style="font-size:13px;color:var(--navy);">${s}</span>
+        </div>`).join('')}
+    </div>` : ''}
+
+    <!-- ═══ CITIZEN INFO ═══ -->
     <div class="review-section">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Citizen</div>
       <div class="review-row"><span class="review-label">Name</span><span class="review-value">${c.name}</span></div>
       <div class="review-row"><span class="review-label">First offense</span><span class="review-value" style="color:${c.firstTime?'var(--green)':'var(--red)'};">${c.firstTime?'✓ Yes':'✗ No'}</span></div>
       <div class="review-row"><span class="review-label">Smartphone</span><span class="review-value" style="color:${c.phone?'var(--green)':'var(--red)'};">${c.phone?'✓ Yes':'✗ No'}</span></div>
     </div>
+
+    <!-- ═══ INCIDENT DETAILS ═══ -->
     <div class="review-section">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Incident Details</div>
       <div class="review-row"><span class="review-label">Date</span><span class="review-value">${c.date} · ${c.time}</span></div>
@@ -978,10 +1133,31 @@ function openCiteDetail(id) {
       ${c.items!=='N/A'?`<div class="review-row"><span class="review-label">Items / Value</span><span class="review-value" style="font-size:12px;">${c.items}</span></div>`:''}
       <div class="review-row"><span class="review-label">Officer</span><span class="review-value">${c.officer}</span></div>
     </div>
+
+    <!-- ═══ OFFICER NOTES ═══ -->
     <div class="review-section">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Officer Notes</div>
       <div style="font-size:13px;color:var(--navy);line-height:1.6;">${c.notes}</div>
     </div>
+
+    <!-- ═══ TIMELINE ═══ -->
+    ${c.timeline ? `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;">Activity Timeline</div>
+      ${c.timeline.map(e => `
+        <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;padding-left:2px;">
+          <div style="width:10px;height:10px;border-radius:50%;margin-top:4px;flex-shrink:0;${
+            e.s==='done' ? 'background:var(--green);' :
+            e.s==='complete' ? 'background:var(--green);box-shadow:0 0 0 3px rgba(0,182,122,.2);' :
+            'border:2px solid var(--g3);'
+          }"></div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:${e.s==='pending'?'var(--g4)':'var(--navy)'};">${e.t}</div>
+            <div style="font-size:11px;color:var(--g4);margin-top:1px;">${e.d}</div>
+          </div>
+        </div>`).join('')}
+    </div>` : ''}
+
     ${c.eligible?`
     <div style="background:#ECFDF5;border:1.5px solid #A7F3D0;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
       <div style="width:24px;height:24px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>

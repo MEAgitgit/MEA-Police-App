@@ -172,6 +172,60 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 </style>
 </head>
 <body>
+
+<!-- ████ PASSWORD GATE ████ -->
+<div id="pw-gate" style="
+  position:fixed;inset:0;z-index:99999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  background:linear-gradient(180deg,#13276A 0%,#000513 100%);
+  transition:opacity .35s ease;
+">
+  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:28px;font-weight:800;color:#fff;letter-spacing:2px;">MEA</div>
+  <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:rgba(255,255,255,.55);margin-bottom:24px;">Officer Portal</div>
+  <input id="pw-input" type="password" maxlength="4" inputmode="numeric" placeholder="Enter password"
+    style="
+      width:220px;height:50px;border-radius:14px;border:1.5px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);color:#fff;text-align:center;font-family:'Inter',sans-serif;
+      font-size:18px;letter-spacing:6px;outline:none;transition:border-color .2s;
+    "
+    onfocus="this.style.borderColor='#4A7AFF'" onblur="this.style.borderColor='rgba(255,255,255,.18)'"
+  >
+  <div id="pw-err" style="font-family:'Inter',sans-serif;font-size:13px;color:#E8444F;height:20px;line-height:20px;">&nbsp;</div>
+  <button id="pw-btn" style="
+    width:220px;height:50px;border-radius:25px;border:none;cursor:pointer;
+    background:linear-gradient(160deg,#4A7AFF 0%,#2D5BF7 40%,#144BD8 100%);
+    color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-size:17px;font-weight:700;
+    box-shadow:0 8px 28px rgba(20,75,216,.35);transition:transform .12s,opacity .12s;
+  ">Enter</button>
+</div>
+<script>
+(function(){
+  var gate=document.getElementById('pw-gate');
+  var inp=document.getElementById('pw-input');
+  var btn=document.getElementById('pw-btn');
+  var err=document.getElementById('pw-err');
+  // Password required every time
+  function tryPass(){
+    if(inp.value==='4321'){
+      gate.style.opacity='0';
+      setTimeout(function(){gate.style.display='none';},350);
+    }else{
+      err.textContent='Incorrect password';
+      inp.style.borderColor='#E8444F';
+      inp.style.animation='none';
+      void inp.offsetWidth;
+      inp.style.animation='pwShake .4s ease';
+      setTimeout(function(){err.innerHTML='&nbsp;';inp.style.borderColor='rgba(255,255,255,.18)';},1800);
+    }
+  }
+  btn.addEventListener('click',tryPass);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')tryPass();});
+})();
+</script>
+<style>
+@keyframes pwShake{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-8px)}30%,60%,90%{transform:translateX(8px)}}
+</style>
+
 <div id="app">
 
 <!-- ████ SCREEN 1: PIN LOGIN ████ -->

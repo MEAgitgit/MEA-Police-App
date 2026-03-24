@@ -444,116 +444,11 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     </div>
   </div>
   <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
-    <button class="btn" onclick="nav('items')">Continue</button>
+    <button class="btn" onclick="nav('notes')">Continue</button>
   </div>
 </div>
 
-<!-- ████ SCREEN 5b: ITEMS STOLEN ████ -->
-<div id="s-items" class="s" style="background:#fff;">
-  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
-  <div class="light-nav">
-    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <h2>Items Taken</h2>
-  </div>
-  <div class="scroll" style="padding:0 20px;">
-    <p style="font-size:14px;color:var(--g4);margin-bottom:16px;line-height:1.5;">Document each stolen item. Snap a photo, say the name, or type it — we'll estimate the retail value instantly.</p>
-
-    <!-- ── THREE ACTION BUTTONS ── -->
-    <div style="display:flex;gap:10px;margin-bottom:18px;">
-      <!-- Snap Photo -->
-      <button onclick="document.getElementById('item-camera-input').click()" style="flex:1;padding:14px 8px;border-radius:14px;border:1.5px solid var(--blue);background:linear-gradient(160deg,rgba(20,75,216,.08),rgba(20,75,216,.02));color:var(--blue);font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        Snap Photo
-      </button>
-      <input type="file" id="item-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="handleItemCamera(this)">
-      <!-- Voice -->
-      <button onclick="startItemVoice()" id="item-mic-btn" style="flex:1;padding:14px 8px;border-radius:14px;border:1.5px solid var(--navy);background:linear-gradient(160deg,rgba(0,0,60,.06),rgba(0,0,60,.02));color:var(--navy);font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="2"/></svg>
-        Say Items
-      </button>
-      <!-- Type -->
-      <button onclick="document.getElementById('item-manual-input').focus();document.getElementById('item-type-section').style.display='block';" style="flex:1;padding:14px 8px;border-radius:14px;border:1.5px solid var(--g3);background:var(--g1);color:var(--g4);font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
-        Type Item
-      </button>
-    </div>
-
-    <!-- ── VOICE LISTENING STATE (hidden until mic tapped) ── -->
-    <div id="item-voice-status" style="display:none;background:linear-gradient(135deg,#FEF2F2,#FFF);border:1.5px solid #FECACA;border-radius:14px;padding:16px;margin-bottom:14px;">
-      <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
-        <div style="width:12px;height:12px;border-radius:50%;background:#E8444F;animation:pulse 1s infinite;"></div>
-        <span style="font-size:14px;font-weight:700;color:var(--navy);">Listening — say each item...</span>
-      </div>
-      <div id="item-voice-live" style="font-size:13px;color:var(--g4);margin-top:8px;font-style:italic;min-height:24px;text-align:center;line-height:1.5;"></div>
-      <button onclick="stopItemVoice()" style="display:block;margin:10px auto 0;padding:10px 28px;border-radius:24px;border:none;background:var(--red);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Done Listening</button>
-    </div>
-
-    <!-- ── TYPE INPUT (hidden until type button tapped) ── -->
-    <div id="item-type-section" style="display:none;margin-bottom:14px;">
-      <div style="display:flex;gap:8px;">
-        <input type="text" id="item-manual-input" class="form-input" placeholder='e.g. "Don Julio 1942" or "24 pack Pampers"' style="flex:1;font-size:14px;" onkeydown="if(event.key==='Enter'){addManualItem();}">
-        <button onclick="addManualItem()" style="padding:10px 16px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Add</button>
-      </div>
-    </div>
-
-    <!-- ── PHOTO IDENTIFY PANEL (appears after snapping a photo) ── -->
-    <div id="item-photo-panel" style="display:none;background:var(--g1);border-radius:14px;padding:14px;margin-bottom:14px;">
-      <div style="display:flex;gap:12px;align-items:flex-start;">
-        <div id="item-photo-preview" style="width:80px;height:80px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#ddd;">
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px;">What is this item?</div>
-          <div style="display:flex;gap:6px;margin-bottom:6px;">
-            <input type="text" id="photo-item-name-input" class="form-input" placeholder="e.g. Don Julio 1942 tequila" style="flex:1;font-size:13px;padding:8px 12px;" onkeydown="if(event.key==='Enter'){confirmPhotoItem();}">
-          </div>
-          <div style="display:flex;gap:6px;">
-            <button onclick="startPhotoVoiceId()" id="photo-voice-btn" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--blue);background:rgba(20,75,216,.06);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/></svg>
-              Say it
-            </button>
-            <button onclick="confirmPhotoItem()" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">
-              Look Up Price
-            </button>
-          </div>
-          <div id="photo-voice-listening" style="display:none;margin-top:6px;text-align:center;">
-            <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
-              <div style="width:8px;height:8px;border-radius:50%;background:#E8444F;animation:pulse 1s infinite;"></div>
-              <span style="font-size:11px;color:var(--navy);font-weight:600;">Listening...</span>
-            </div>
-            <div id="photo-voice-live-text" style="font-size:12px;color:var(--g4);margin-top:4px;font-style:italic;"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── ITEMS LIST WITH PRICES ── -->
-    <div id="items-list-container" style="display:none;background:var(--g1);border-radius:14px;padding:14px 16px;margin-bottom:14px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <span style="font-size:16px;">🏷</span>
-        <span style="font-size:13px;font-weight:700;color:var(--navy);">Items & Estimated Values</span>
-        <span id="items-jurisdiction-badge" style="margin-left:auto;font-size:10px;color:var(--g4);background:#fff;padding:2px 8px;border-radius:10px;"></span>
-      </div>
-      <div id="items-list-rows"></div>
-      <div id="items-list-total" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:4px;border-top:2px solid var(--navy);">
-        <span style="font-size:14px;font-weight:800;color:var(--navy);">Estimated Total</span>
-        <span id="items-total-amount" style="font-size:18px;font-weight:800;color:var(--blue);">$0.00</span>
-      </div>
-    </div>
-
-    <!-- ── PHOTO EVIDENCE THUMBNAILS ── -->
-    <div id="item-photo-thumbs" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
-
-    <!-- Add Another prompt -->
-    <div id="add-another-prompt" style="display:none;text-align:center;margin-bottom:14px;">
-      <button onclick="document.getElementById('item-camera-input').click()" style="padding:10px 20px;border-radius:20px;border:1.5px solid var(--blue);background:rgba(20,75,216,.04);color:var(--blue);font-size:13px;font-weight:700;cursor:pointer;">+ Add Another Item</button>
-    </div>
-
-    <div style="height:20px;"></div>
-  </div>
-  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
-    <button class="btn" onclick="finishItemsScreen()">Continue</button>
-  </div>
-</div>
+<!-- ████ SCREEN 5b: ITEMS STOLEN — removed, merged into voice-result ████ -->
 
 <!-- ████ SCREEN 6: NOTES + EVIDENCE ████ -->
 <div id="s-notes" class="s" style="background:#fff;">
@@ -571,30 +466,8 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       </button>
     </div>
     <div style="margin-top:20px;">
-      <label class="form-label">Add Evidence</label>
-      <div class="evidence-row">
-        <div class="evidence-thumb" onclick="showToast('Photo evidence viewer')">
-          <img src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=150&h=150&fit=crop" alt="Store aisle">
-        </div>
-        <div class="evidence-thumb" onclick="showToast('Photo evidence viewer')">
-          <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=150&h=150&fit=crop" alt="Checkout register">
-        </div>
-        <div class="evidence-thumb" onclick="showToast('Photo evidence viewer')" style="filter:grayscale(1);">
-          <img src="https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=150&h=150&fit=crop" alt="Shopping cart">
-        </div>
-        <div class="evidence-add" onclick="showToast('Camera / photo library opened')">+</div>
-      </div>
-    </div>
-    <div style="margin-top:16px;">
-      <label class="form-label">Photograph Stolen Items</label>
-      <p style="font-size:12px;color:var(--g4);margin-bottom:8px;">Take photos of items to auto-search retail prices</p>
-      <button onclick="openItemCamera()" style="width:100%;padding:12px;border:2px dashed var(--blue);border-radius:12px;background:rgba(20,75,216,.04);color:var(--blue);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        Photograph Items for Price Lookup
-      </button>
-      <input type="file" id="item-photo-input-notes" accept="image/*" capture="environment" style="display:none;" onchange="handleItemPhoto(this)">
-      <div id="item-photo-gallery" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
-      <div id="item-photo-results-notes" style="display:none;margin-top:12px;"></div>
+      <label class="form-label">Evidence & Item Photos</label>
+      <p style="font-size:12px;color:var(--g4);margin-bottom:8px;">Tap the mic to dictate the incident, then you'll photograph each item on the next screen</p>
     </div>
     <div style="height:40px;"></div>
   </div>
@@ -713,6 +586,15 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 
       <!-- Photo thumbnails -->
       <div id="item-photo-thumbs" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+
+      <!-- Add Another Item prompt (hidden until first item added) -->
+      <div id="add-another-prompt" style="display:none;margin-top:10px;text-align:center;">
+        <div style="font-size:12px;color:#059669;font-weight:600;margin-bottom:6px;">Item added!</div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="document.getElementById('vr-camera-input').click();this.parentElement.parentElement.style.display='none';" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--blue);background:rgba(20,75,216,.06);color:var(--blue);font-size:13px;font-weight:700;cursor:pointer;">+ Next Item</button>
+          <button onclick="this.parentElement.parentElement.style.display='none';speakPrompt('All items captured. Review the summary below.');" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--green);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Done — All Items</button>
+        </div>
+      </div>
     </div>
 
     <!-- ITEMS LIST WITH PRICES -->
@@ -975,13 +857,11 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       <div class="review-row"><span class="review-label">Date / Time</span><span class="review-value">03/19/2026 · 10:35 PM</span></div>
       <div class="review-row"><span class="review-label">Citation Code</span><span class="review-value">MA2048</span></div>
     </div>
-    <!-- Evidence -->
-    <div class="review-section">
-      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Evidence</div>
-      <div class="evidence-row">
-        <div class="evidence-thumb"><img src="https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=100&h=100&fit=crop"></div>
-        <div class="evidence-thumb"><img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=100&h=100&fit=crop"></div>
-        <div class="evidence-thumb" style="filter:grayscale(1);"><img src="https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=100&h=100&fit=crop"></div>
+    <!-- Evidence (dynamically populated from photos taken) -->
+    <div class="review-section" id="review-evidence-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Evidence Photos</div>
+      <div class="evidence-row" id="review-evidence-photos">
+        <div style="font-size:12px;color:var(--g4);font-style:italic;">No photos submitted</div>
       </div>
     </div>
     <!-- Items & Values -->
@@ -1219,7 +1099,7 @@ let voiceTranscriptText = '';
 let formattedNotesText = '';
 let _lastPriceResults = { found: [], total: 0 };
 let _parsedPersonName = '';
-const ORDER = ['pin','dashboard','offense','location','time','items','notes','voice','voice-result','code','scan-id','scanning','verify','q1','q2','q3','review','confirm','case-summary'];
+const ORDER = ['pin','dashboard','offense','location','time','notes','voice','voice-result','code','scan-id','scanning','verify','q1','q2','q3','review','confirm','case-summary'];
 
 // ── CITATIONS DATA ──
 const CITATIONS = [
@@ -1890,6 +1770,10 @@ function finishVoice() {
   nav('voice-result');
   // Populate initial readback
   setTimeout(updateReadbackText, 500);
+  // Speak the prompt to the officer after a short delay
+  setTimeout(() => {
+    speakPrompt('Transcription complete. Now send me photos of each stolen item, one at a time.');
+  }, 800);
 }
 
 // ══════════════════════════════════════════
@@ -2026,31 +1910,129 @@ async function searchSingleItemPrice(query, jurisdiction) {
 
 // Fallback price DB for when search fails
 const FALLBACK_PRICES = {
-  'baby formula':49.99,'formula':49.99,'enfamil':42.99,'similac':44.99,
-  'diapers':28.99,'pampers diapers':29.99,'pampers':29.99,'huggies diapers':27.99,'huggies':27.99,
-  'baby wipes':8.49,'wipes':8.49,
-  'coca cola':2.49,'coca-cola':2.49,'pepsi':2.49,'soda':2.49,
-  'red bull':3.49,'monster energy':3.49,'energy drink':3.99,'gatorade':2.49,'celsius':2.99,
-  'juice':4.49,'milk':4.99,'water':1.99,'beer':9.99,'wine':12.99,'vodka':19.99,
-  'cereal':5.49,'bread':4.29,'eggs':5.99,'chips':4.99,'cookies':4.49,'candy':2.99,
-  'snacks':6.99,'granola bars':5.99,'protein bars':3.49,
-  'jacket':67.00,'jackets':67.00,'hoodie':45.00,'shirt':24.99,'jeans':39.99,'shoes':64.99,'sneakers':74.99,
-  'cologne':44.00,'perfume':55.00,'shampoo':8.99,'deodorant':7.99,'toothpaste':5.49,
-  'earbuds':29.99,'headphones':34.99,'airpods':129.99,'phone case':19.99,'phone charger':14.99,
-  'backpack':39.99,'sunglasses':24.99,'cigarettes':13.99,'spray paint':5.99,
-  'laundry detergent':12.99,'tide':13.99,'paper towels':9.99,'toilet paper':11.99,
-  'ice cream':6.99,'frozen pizza':7.99,'chicken':9.99,'steak':14.99,
-  'tylenol':9.99,'advil':10.99,'vitamins':14.99,
-  'mosquito spray':8.99,'off spray':8.99,'bug spray':7.99,'insect repellent':9.49,
-  'sunscreen':10.99,'lotion':8.49,'body lotion':9.99,'hand cream':7.49,'moisturizer':11.99,
-  'face cream':14.99,'lip balm':3.99,'chapstick':3.49,
-  'don julio 1942':179.99,'don julio':54.99,'kronenbourg':2.49,'kronenbourg 1664':2.49,'1664':2.49,
-  'hennessy':44.99,'grey goose':34.99,'jack daniels':27.99,'jameson':29.99,'crown royal':29.99,
-  'patron':44.99,'casamigos':49.99,'tequila':24.99,'whiskey':27.99,'bourbon':29.99,'rum':19.99,'gin':22.99,
-  'body wash':7.99,'conditioner':8.49,'hair gel':6.99,'razors':11.99,'razor blades':24.99,
+  // ── Baby & Kids ──
+  'baby formula':49.99,'formula':49.99,'enfamil':42.99,'similac':44.99,'gerber':8.99,
+  'diapers':28.99,'pampers diapers':29.99,'pampers':29.99,'huggies diapers':27.99,'huggies':27.99,'luvs':19.99,
+  'baby wipes':8.49,'wipes':8.49,'baby food':4.99,'baby bottle':9.99,'pacifier':6.99,'sippy cup':7.99,
+  'baby clothes':12.99,'baby blanket':14.99,'stroller':89.99,'car seat':129.99,
+  // ── Beverages ──
+  'coca cola':2.49,'coca-cola':2.49,'coke':2.49,'pepsi':2.49,'soda':2.49,'sprite':2.49,'fanta':2.49,
+  'dr pepper':2.49,'mountain dew':2.49,'7up':2.49,'ginger ale':2.49,
+  'red bull':3.49,'monster energy':3.49,'monster':3.49,'energy drink':3.99,'gatorade':2.49,'celsius':2.99,
+  'powerade':2.49,'body armor':3.49,'prime':2.99,'liquid iv':12.99,
+  'juice':4.49,'orange juice':5.99,'apple juice':4.49,'cranberry juice':5.49,
+  'milk':4.99,'almond milk':4.99,'oat milk':5.49,'chocolate milk':3.99,
+  'water':1.99,'fiji water':2.99,'smartwater':2.49,'evian':2.99,
+  'coffee':9.99,'iced coffee':4.99,'starbucks':5.49,'nespresso pods':12.99,'k cups':11.99,
+  'tea':5.99,'kombucha':4.49,
+  // ── Alcohol ──
+  'beer':9.99,'craft beer':12.99,'bud light':9.99,'budweiser':9.99,'miller lite':9.99,'coors light':9.99,
+  'heineken':11.99,'corona':12.99,'modelo':12.99,'stella artois':12.99,'ipa':11.99,
+  'white claw':14.99,'truly':14.99,'hard seltzer':14.99,'twisted tea':11.99,
+  'wine':12.99,'red wine':14.99,'white wine':12.99,'rose':13.99,'champagne':19.99,'prosecco':14.99,
+  'vodka':19.99,'tequila':24.99,'whiskey':27.99,'bourbon':29.99,'rum':19.99,'gin':22.99,'brandy':19.99,
+  'don julio 1942':179.99,'don julio':54.99,'don julio blanco':44.99,
+  'kronenbourg':2.49,'kronenbourg 1664':2.49,'1664':2.49,
+  'hennessy':44.99,'hennessy vs':44.99,'hennessy vsop':69.99,'hennessy xo':219.99,
+  'grey goose':34.99,'absolut':22.99,'smirnoff':14.99,'titos':22.99,'ketel one':27.99,
+  'jack daniels':27.99,'jack daniel\'s':27.99,'jameson':29.99,'crown royal':29.99,'makers mark':32.99,
+  'johnny walker':34.99,'johnnie walker':34.99,'johnnie walker black':39.99,
+  'patron':44.99,'patron silver':44.99,'casamigos':49.99,'clase azul':149.99,
+  'bacardi':14.99,'captain morgan':19.99,'malibu':17.99,
+  'fireball':15.99,'jagermeister':24.99,'baileys':27.99,'kahlua':24.99,
+  // ── Food & Grocery ──
+  'cereal':5.49,'oatmeal':4.99,'bread':4.29,'bagels':4.99,'muffins':5.99,
+  'eggs':5.99,'butter':5.49,'cheese':5.99,'cream cheese':4.49,'yogurt':5.99,
+  'chips':4.99,'doritos':5.49,'lays':4.99,'pringles':3.99,'popcorn':4.49,
+  'cookies':4.49,'oreos':4.99,'crackers':4.49,'pretzels':3.99,
+  'candy':2.99,'chocolate':4.99,'gummy bears':3.49,'skittles':2.49,'m&ms':4.49,
+  'snacks':6.99,'granola bars':5.99,'protein bars':3.49,'trail mix':7.99,'nuts':8.99,
+  'pasta':2.99,'rice':4.99,'ramen':4.99,'soup':3.49,'canned food':2.99,
+  'peanut butter':5.49,'jelly':4.49,'nutella':6.99,'honey':8.99,'maple syrup':9.99,
+  'olive oil':8.99,'cooking oil':5.99,'vinegar':3.99,'ketchup':4.49,'mustard':3.49,
+  'hot sauce':4.99,'salsa':4.99,'soy sauce':3.99,'mayo':5.49,
+  'ice cream':6.99,'ben and jerrys':5.99,'haagen dazs':5.99,'frozen pizza':7.99,'frozen dinner':4.99,
+  'chicken':9.99,'steak':14.99,'ground beef':7.99,'bacon':7.99,'sausage':5.99,'ham':8.99,
+  'salmon':12.99,'shrimp':11.99,'fish':9.99,'tuna':2.99,
+  'fruit':4.99,'apples':4.99,'bananas':1.99,'strawberries':5.99,'blueberries':5.49,'avocado':2.49,
+  'vegetables':3.99,'tomatoes':3.99,'lettuce':2.99,'onions':2.49,'potatoes':4.99,
+  // ── Clothing & Accessories ──
+  'jacket':67.00,'jackets':67.00,'winter jacket':89.99,'north face':149.99,
+  'hoodie':45.00,'sweatshirt':39.99,'sweater':34.99,
+  'shirt':24.99,'t-shirt':19.99,'polo shirt':29.99,'dress shirt':34.99,
+  'jeans':39.99,'levis':49.99,'pants':34.99,'shorts':24.99,'sweatpants':29.99,
+  'dress':39.99,'skirt':29.99,'blouse':29.99,
+  'shoes':64.99,'sneakers':74.99,'nike':89.99,'adidas':79.99,'jordan':119.99,'jordans':119.99,
+  'new balance':84.99,'puma':69.99,'converse':59.99,'vans':54.99,
+  'boots':79.99,'sandals':34.99,'slippers':19.99,
+  'belt':24.99,'tie':19.99,'scarf':24.99,'gloves':14.99,'hat':19.99,'beanie':14.99,'cap':19.99,
+  'socks':9.99,'underwear':12.99,'bra':24.99,'boxers':14.99,
+  'coat':89.99,'parka':99.99,'raincoat':49.99,'vest':39.99,
+  'sunglasses':24.99,'ray ban':149.99,'oakley':119.99,
+  'watch':49.99,'jewelry':29.99,'necklace':24.99,'bracelet':19.99,'earrings':14.99,'ring':19.99,
+  'backpack':39.99,'purse':49.99,'handbag':59.99,'wallet':24.99,'clutch':29.99,
+  // ── Personal Care & Beauty ──
+  'cologne':44.00,'perfume':55.00,'fragrance':39.99,
+  'shampoo':8.99,'conditioner':8.49,'body wash':7.99,'soap':4.99,'bar soap':3.99,
+  'deodorant':7.99,'old spice':7.99,'dove':6.99,'axe':6.99,
+  'toothpaste':5.49,'toothbrush':4.99,'electric toothbrush':49.99,'mouthwash':6.99,'floss':3.99,
+  'hair gel':6.99,'hair spray':7.99,'hair dye':11.99,'dry shampoo':8.99,
+  'razors':11.99,'razor blades':24.99,'gillette':24.99,'shaving cream':5.99,
   'makeup':12.99,'mascara':9.99,'lipstick':8.99,'foundation':14.99,'concealer':10.99,
-  'melatonin':9.99,'benadryl':8.99,'nyquil':11.99,'dayquil':11.99,'tums':7.99,'pepto bismol':8.99,
-  'protein powder':29.99,'creatine':24.99,
+  'eyeliner':8.99,'eyeshadow':11.99,'blush':10.99,'primer':12.99,'setting spray':12.99,
+  'nail polish':7.99,'nail polish remover':4.99,
+  'lotion':8.49,'body lotion':9.99,'hand cream':7.49,'moisturizer':11.99,
+  'face cream':14.99,'face wash':9.99,'face moisturizer':14.99,'face mask':4.99,
+  'lip balm':3.99,'chapstick':3.49,'vaseline':4.99,
+  'sunscreen':10.99,'spf':10.99,'tanning lotion':9.99,
+  'mosquito spray':8.99,'off spray':8.99,'bug spray':7.99,'insect repellent':9.49,
+  'parasidose':9.99,'mosquito repellent':8.99,
+  'cotton balls':3.49,'cotton swabs':3.99,'q tips':3.99,'band aid':5.99,'bandages':5.99,
+  // ── Health & OTC Medicine ──
+  'tylenol':9.99,'advil':10.99,'ibuprofen':8.99,'aspirin':7.99,'aleve':10.99,
+  'benadryl':8.99,'claritin':14.99,'zyrtec':16.99,'allegra':15.99,
+  'nyquil':11.99,'dayquil':11.99,'mucinex':14.99,'robitussin':9.99,'cough syrup':8.99,
+  'tums':7.99,'pepto bismol':8.99,'prilosec':16.99,'antacid':6.99,
+  'melatonin':9.99,'vitamins':14.99,'vitamin c':9.99,'vitamin d':9.99,'multivitamin':12.99,
+  'protein powder':29.99,'creatine':24.99,'pre workout':29.99,
+  'first aid kit':12.99,'thermometer':9.99,'heating pad':14.99,'ice pack':7.99,
+  // ── Electronics ──
+  'earbuds':29.99,'wireless earbuds':34.99,'headphones':34.99,
+  'airpods':129.99,'airpods pro':199.99,'beats':149.99,
+  'phone case':19.99,'phone charger':14.99,'lightning cable':14.99,'usb c cable':12.99,
+  'portable charger':24.99,'power bank':24.99,'battery pack':19.99,
+  'bluetooth speaker':29.99,'jbl':49.99,'speaker':29.99,
+  'memory card':14.99,'sd card':14.99,'usb drive':12.99,'flash drive':12.99,
+  'hdmi cable':11.99,'extension cord':9.99,'surge protector':14.99,
+  'batteries':9.99,'aaa batteries':7.99,'aa batteries':8.99,
+  'calculator':12.99,'flashlight':9.99,
+  'ipad':329.99,'tablet':129.99,'kindle':89.99,
+  'apple watch':249.99,'fitbit':99.99,'smart watch':99.99,
+  'nintendo switch':299.99,'video game':59.99,'controller':49.99,'gaming headset':39.99,
+  // ── Household ──
+  'laundry detergent':12.99,'tide':13.99,'tide pods':14.99,'downy':8.99,'dryer sheets':6.99,
+  'dish soap':4.99,'dawn':4.99,'dishwasher pods':12.99,
+  'paper towels':9.99,'toilet paper':11.99,'tissues':3.99,'kleenex':3.99,
+  'trash bags':9.99,'ziploc bags':4.99,'aluminum foil':5.99,'plastic wrap':4.99,
+  'cleaning spray':4.99,'windex':4.99,'lysol':5.99,'clorox':6.99,'bleach':4.99,
+  'sponge':3.99,'mop':14.99,'broom':12.99,'dustpan':6.99,
+  'air freshener':5.99,'febreze':5.99,'candle':12.99,'candles':12.99,
+  'light bulbs':7.99,'batteries':9.99,
+  'spray paint':5.99,'duct tape':5.99,'super glue':4.99,'gorilla glue':6.99,
+  'cigarettes':13.99,'cigars':9.99,'vape':24.99,'vape pen':19.99,'juul':14.99,'vape juice':16.99,
+  'lighter':2.99,'lighters':2.99,'matches':1.99,
+  // ── Tools & Hardware ──
+  'screwdriver':7.99,'hammer':12.99,'wrench':9.99,'pliers':9.99,
+  'drill':49.99,'saw':29.99,'tape measure':7.99,'level':9.99,
+  'lock':9.99,'padlock':12.99,'key':3.99,
+  // ── Pet ──
+  'dog food':24.99,'cat food':19.99,'pet food':19.99,'cat litter':14.99,
+  'dog treats':8.99,'cat treats':5.99,'pet toy':7.99,'leash':12.99,'collar':9.99,
+  // ── Office & School ──
+  'pens':4.99,'pencils':3.99,'markers':6.99,'highlighters':5.99,
+  'notebook':5.99,'binder':7.99,'folders':4.99,'paper':6.99,'printer paper':8.99,
+  'stapler':9.99,'tape':3.99,'scissors':6.99,'ruler':2.99,
+  'calculator':12.99,'planner':12.99,'calendar':9.99,
 };
 
 function getFallbackPrice(query) {
@@ -2264,207 +2246,7 @@ function acceptFormattedNotes() {
 }
 
 // ══════════════════════════════════════════
-// ITEM PHOTO CAPTURE & PRICE LOOKUP
-// ══════════════════════════════════════════
-let _photoItems = []; // Track items identified from photos
-
-function openItemCamera() {
-  // Try the input on the current screen
-  const input = document.getElementById('item-photo-input') || document.getElementById('item-photo-input-notes');
-  if (input) input.click();
-}
-
-async function handleItemPhoto(input) {
-  if (!input.files || !input.files[0]) return;
-  const file = input.files[0];
-
-  // Show the photo immediately
-  const gallery = document.getElementById('item-photo-gallery');
-  const resultsDiv = document.getElementById('item-photo-results') || document.getElementById('item-photo-results-notes');
-
-  // Read file as data URL for display
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    const imgData = e.target.result;
-
-    // Add to gallery
-    if (gallery) {
-      const thumb = document.createElement('div');
-      thumb.style.cssText = 'width:72px;height:72px;border-radius:10px;overflow:hidden;position:relative;';
-      thumb.innerHTML = `<img src="${imgData}" style="width:100%;height:100%;object-fit:cover;">`;
-      gallery.appendChild(thumb);
-    }
-
-    // Show identification prompt
-    if (resultsDiv) {
-      resultsDiv.style.display = 'block';
-      resultsDiv.innerHTML = `
-        <div style="background:var(--g1);border-radius:12px;padding:14px 16px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-            <div style="width:16px;height:16px;border:2px solid var(--blue);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;"></div>
-            <span style="font-size:13px;font-weight:600;color:var(--navy);">Analyzing photo...</span>
-          </div>
-        </div>`;
-    }
-
-    // Try to send to backend for identification, or prompt user
-    let identifiedItem = null;
-    if (authToken && API_BASE) {
-      try {
-        const r = await fetch(API_BASE + '/api/identify-item', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-          body: JSON.stringify({ image: imgData })
-        });
-        if (r.ok) {
-          const d = await r.json();
-          if (d.items && d.items.length > 0) identifiedItem = d.items[0];
-        }
-      } catch(e) { console.warn('Item identification failed:', e); }
-    }
-
-    // Show input for user to confirm/enter item name
-    if (resultsDiv) {
-      resultsDiv.innerHTML = `
-        <div style="background:var(--g1);border-radius:12px;padding:14px 16px;">
-          <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">What is this item?</div>
-          <div style="display:flex;gap:8px;">
-            <input type="text" id="photo-item-name" class="form-input" placeholder="e.g. Kronenbourg 1664 beer, Don Julio 1942..."
-                   value="${identifiedItem ? identifiedItem.name : ''}"
-                   style="flex:1;font-size:14px;padding:10px 14px;">
-            <button onclick="searchPhotoItem()" style="padding:10px 16px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">
-              Search Price
-            </button>
-          </div>
-          <div id="photo-price-result" style="margin-top:10px;"></div>
-          ${_photoItems.length > 0 ? renderPhotoItemsList() : ''}
-        </div>`;
-    }
-  };
-  reader.readAsDataURL(file);
-  // Reset input so same file can be selected again
-  input.value = '';
-}
-
-function renderPhotoItemsList() {
-  if (_photoItems.length === 0) return '';
-  let total = _photoItems.reduce((sum, i) => sum + i.price, 0);
-  return `
-    <div style="margin-top:12px;border-top:1px solid rgba(0,0,60,.08);padding-top:10px;">
-      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">Items Identified:</div>
-      ${_photoItems.map((item, idx) => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,0,60,.04);">
-          <div>
-            <div style="font-size:13px;font-weight:600;color:var(--navy);">${item.name}</div>
-            <div style="font-size:10px;color:var(--g4);">${item.source}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:13px;font-weight:700;color:var(--navy);">$${item.price.toFixed(2)}</span>
-            <button onclick="_photoItems.splice(${idx},1);refreshPhotoItems();" style="width:20px;height:20px;border-radius:50%;border:1px solid #ccc;background:none;cursor:pointer;font-size:10px;color:var(--g4);">×</button>
-          </div>
-        </div>
-      `).join('')}
-      <div style="display:flex;justify-content:space-between;padding:8px 0 0;margin-top:4px;border-top:2px solid var(--navy);">
-        <span style="font-size:13px;font-weight:800;color:var(--navy);">Photo Items Total</span>
-        <span style="font-size:16px;font-weight:800;color:var(--blue);">$${total.toFixed(2)}</span>
-      </div>
-    </div>`;
-}
-
-function refreshPhotoItems() {
-  const resultsDiv = document.getElementById('photo-price-result');
-  // Re-render the items list after deletion
-  const container = resultsDiv ? resultsDiv.parentElement : null;
-  if (container) {
-    const existingList = container.querySelector('[style*="border-top:1px solid"]');
-    if (existingList) existingList.outerHTML = renderPhotoItemsList();
-  }
-  // Update the _lastPriceResults with photo items
-  mergePhotoItemsIntoPriceResults();
-}
-
-async function searchPhotoItem() {
-  const nameInput = document.getElementById('photo-item-name');
-  const resultDiv = document.getElementById('photo-price-result');
-  if (!nameInput || !nameInput.value.trim()) return;
-
-  const itemName = nameInput.value.trim();
-  const locInput = document.getElementById('loc-address');
-  const jurisdiction = locInput ? locInput.value : 'Revere, MA';
-
-  // Show searching state
-  if (resultDiv) {
-    resultDiv.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="width:14px;height:14px;border:2px solid var(--blue);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;"></div>
-        <span style="font-size:12px;color:var(--g4);">Searching "${itemName}" prices near ${jurisdiction}...</span>
-      </div>`;
-  }
-
-  // Search via backend
-  const searchResult = await searchSingleItemPrice(itemName, jurisdiction);
-  let price, source;
-  if (searchResult && searchResult.price) {
-    price = searchResult.price;
-    source = searchResult.source;
-  } else {
-    price = getFallbackPrice(itemName);
-    source = price ? 'Avg. retail estimate' : null;
-    if (!price) { price = 9.99; source = 'Default estimate'; }
-  }
-
-  // Add to photo items list
-  _photoItems.push({ name: itemName, price: price, source: source });
-
-  // Show result and updated list
-  if (resultDiv) {
-    resultDiv.innerHTML = `
-      <div style="display:flex;align-items:center;gap:6px;padding:6px 0;">
-        <span style="color:#059669;font-size:14px;">✓</span>
-        <span style="font-size:13px;font-weight:600;color:var(--navy);">${itemName}</span>
-        <span style="margin-left:auto;font-size:14px;font-weight:700;color:var(--blue);">$${price.toFixed(2)}</span>
-        <span style="font-size:10px;color:var(--g4);">${source}</span>
-      </div>`;
-  }
-
-  // Update the parent container with full items list
-  const parentContainer = resultDiv ? resultDiv.parentElement : null;
-  if (parentContainer) {
-    // Remove old list if exists
-    const existingList = parentContainer.querySelector('[style*="Items Identified"]');
-    if (existingList) existingList.parentElement.remove();
-    // Add updated list
-    parentContainer.insertAdjacentHTML('beforeend', renderPhotoItemsList());
-  }
-
-  // Clear input for next item
-  nameInput.value = '';
-  nameInput.placeholder = 'Add another item...';
-
-  // Merge into price results for citation submission
-  mergePhotoItemsIntoPriceResults();
-}
-
-function mergePhotoItemsIntoPriceResults() {
-  // Merge photo-identified items into _lastPriceResults so they get included in the citation
-  for (const pi of _photoItems) {
-    const existing = _lastPriceResults.found.find(f => f.item.toLowerCase() === pi.name.toLowerCase());
-    if (!existing) {
-      _lastPriceResults.found.push({
-        item: pi.name,
-        qty: 1,
-        unitPrice: pi.price,
-        total: pi.price,
-        source: pi.source + ' (photo)',
-        searched: true
-      });
-      _lastPriceResults.total += pi.price;
-    }
-  }
-}
-
-// ══════════════════════════════════════════
-// ITEMS STOLEN SCREEN — Photo, Voice, Type
+// ITEMS STOLEN — Photo, Voice, Type + Correction
 // ══════════════════════════════════════════
 let _stolenItems = []; // {name, qty, unitPrice, total, source, photoData}
 let _itemVoiceRecognition = null;
@@ -2680,31 +2462,16 @@ async function addItemAndSearchPrice(name, qty, photoData) {
   }
 
   const itemTotal = price * qty;
-  const idx = _stolenItems.length;
-  _stolenItems.push({ name: displayName, qty, unitPrice: price, total: itemTotal, source, photoData: photoData || null });
 
-  // Replace searching row with result — green checkmark animation
-  const tempRow = document.getElementById(tempId);
-  if (tempRow) {
-    tempRow.outerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,0,60,.04);">
-        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-          ${photoData ? '<div style="width:32px;height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;border:1.5px solid var(--green);"><img src="'+photoData+'" style="width:100%;height:100%;object-fit:cover;"></div>' : '<div style="width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>'}
-          <div style="min-width:0;">
-            <div style="font-size:14px;font-weight:600;color:var(--navy);">${displayName}${qty>1?' <span style="color:var(--g4);font-weight:400;">x '+qty+'</span>':''}</div>
-            <div style="font-size:10px;color:var(--g4);margin-top:1px;">${searched ? '🔍 ' : ''}${source}${qty>1?' · $'+price.toFixed(2)+' each':''}</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:14px;font-weight:700;color:var(--navy);">$${itemTotal.toFixed(2)}</span>
-          <button onclick="removeItem(${idx})" style="width:22px;height:22px;border-radius:50%;border:1px solid #ddd;background:none;cursor:pointer;font-size:11px;color:var(--g4);display:flex;align-items:center;justify-content:center;">x</button>
-        </div>
-      </div>`;
-  }
+  // Replace searching row with result — use full re-render for correction support
+  _stolenItems.push({ name: displayName, qty, unitPrice: price, total: itemTotal, source, photoData: photoData || null });
+  rerenderItemsList();
+
+  // Voice feedback: speak the item and price
+  speakPrompt(displayName + ', $' + itemTotal.toFixed(2) + '. Tap to correct if wrong.');
 
   // Scroll the item into view
   container.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  updateItemsTotal();
 }
 
 function removeItem(idx) {
@@ -2718,9 +2485,12 @@ function rerenderItemsList() {
   _stolenItems.forEach((item, idx) => {
     rows.insertAdjacentHTML('beforeend', `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,0,60,.04);">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;color:var(--navy);">${item.name}${item.qty>1?' <span style="color:var(--g4);font-weight:400;">x '+item.qty+'</span>':''}</div>
-          <div style="font-size:10px;color:var(--g4);margin-top:1px;">${item.source}${item.qty>1?' · $'+item.unitPrice.toFixed(2)+' each':''}</div>
+        <div onclick="editItem(${idx})" style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;" title="Tap to correct">
+          ${item.photoData ? '<div style="width:32px;height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;border:1.5px solid var(--green);"><img src="'+item.photoData+'" style="width:100%;height:100%;object-fit:cover;"></div>' : '<div style="width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>'}
+          <div style="min-width:0;">
+            <div style="font-size:14px;font-weight:600;color:var(--navy);">${item.name}${item.qty>1?' <span style="color:var(--g4);font-weight:400;">x '+item.qty+'</span>':''}</div>
+            <div style="font-size:10px;color:var(--g4);margin-top:1px;">${item.source}${item.qty>1?' · $'+item.unitPrice.toFixed(2)+' each':''} · <span style="color:var(--blue);">tap to correct</span></div>
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:14px;font-weight:700;color:var(--navy);">$${item.total.toFixed(2)}</span>
@@ -2729,6 +2499,38 @@ function rerenderItemsList() {
       </div>`);
   });
   updateItemsTotal();
+}
+
+// ── CORRECTION FLOW — "That's wrong, try again" ──
+function editItem(idx) {
+  const item = _stolenItems[idx];
+  if (!item) return;
+  const newName = prompt('Correct item name (or leave blank to keep "' + item.name + '"):', item.name);
+  if (newName === null) return; // cancelled
+  const correctedName = newName.trim() || item.name;
+  if (correctedName.toLowerCase() !== item.name.toLowerCase()) {
+    // Re-search price with corrected name
+    item.name = correctedName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const locInput = document.getElementById('loc-address');
+    const jurisdiction = locInput ? locInput.value : 'Revere, MA';
+    searchSingleItemPrice(correctedName, jurisdiction).then(result => {
+      if (result && result.price) {
+        item.unitPrice = result.price;
+        item.source = result.source === 'fallback_database' ? 'Retail Price Database' : (result.source || 'Retail Price Database');
+      } else {
+        const fb = getFallbackPrice(correctedName);
+        if (fb) { item.unitPrice = fb; item.source = 'Retail Price Database'; }
+        else { item.unitPrice = 9.99; item.source = 'Est. retail value'; }
+      }
+      item.total = item.unitPrice * item.qty;
+      rerenderItemsList();
+      showToast('Updated: ' + item.name + ' — $' + item.total.toFixed(2));
+      speakPrompt(item.name + ', updated to $' + item.total.toFixed(2));
+    });
+  } else {
+    // Just re-price check same name
+    showToast('Item unchanged');
+  }
 }
 
 function updateItemsTotal() {
@@ -2749,14 +2551,19 @@ function updateItemsTotal() {
   if (voiceTranscriptText) generateFormattedReport(voiceTranscriptText, _lastPriceResults);
 }
 
-function finishItemsScreen() {
-  // Navigate to notes
-  nav('notes');
+// ══════════════════════════════════════════
+// TEXT-TO-SPEECH READBACK & PROMPTS
+// ══════════════════════════════════════════
+
+// Speak a short prompt to the officer (non-blocking)
+function speakPrompt(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.0; u.pitch = 1; u.lang = 'en-US';
+  window.speechSynthesis.speak(u);
 }
 
-// ══════════════════════════════════════════
-// TEXT-TO-SPEECH READBACK
-// ══════════════════════════════════════════
 let _ttsUtterance = null;
 
 function buildReviewSummary() {
@@ -2794,21 +2601,37 @@ function buildReviewSummary() {
 }
 
 function populateReviewScreen() {
-  // Populate items section
+  // Populate items section with photos
   const itemsSection = document.getElementById('review-items-section');
   const itemsList = document.getElementById('review-items-list');
   if (_stolenItems.length > 0) {
     itemsSection.style.display = 'block';
     itemsList.innerHTML = _stolenItems.map(item => `
-      <div class="review-row">
-        <span class="review-label">${item.name}${item.qty > 1 ? ' x' + item.qty : ''}</span>
-        <span class="review-value">$${item.total.toFixed(2)} <span style="font-size:10px;color:var(--g4);font-weight:400;">${item.source}</span></span>
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(0,0,60,.04);">
+        ${item.photoData ? '<div style="width:36px;height:36px;border-radius:6px;overflow:hidden;flex-shrink:0;"><img src="'+item.photoData+'" style="width:100%;height:100%;object-fit:cover;"></div>' : ''}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;color:var(--navy);">${item.name}${item.qty > 1 ? ' x' + item.qty : ''}</div>
+          <div style="font-size:10px;color:var(--g4);">${item.source}</div>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:var(--navy);">$${item.total.toFixed(2)}</span>
       </div>`).join('');
     const total = _stolenItems.reduce((s, i) => s + i.total, 0);
     document.getElementById('review-total-amount').textContent = '$' + total.toFixed(2);
   } else {
     itemsSection.style.display = 'none';
   }
+
+  // Populate evidence photos from actual photos taken
+  const evidenceRow = document.getElementById('review-evidence-photos');
+  const photosWithData = _stolenItems.filter(i => i.photoData);
+  if (photosWithData.length > 0) {
+    evidenceRow.innerHTML = photosWithData.map(item =>
+      '<div class="evidence-thumb"><img src="' + item.photoData + '" style="width:100%;height:100%;object-fit:cover;"></div>'
+    ).join('');
+  } else {
+    evidenceRow.innerHTML = '<div style="font-size:12px;color:var(--g4);font-style:italic;">No photos submitted</div>';
+  }
+
   // Populate written summary
   document.getElementById('review-written-summary').textContent = buildReviewSummary();
 }

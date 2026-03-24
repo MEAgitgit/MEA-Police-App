@@ -37,6 +37,8 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 .s.back{animation:sBack .28s cubic-bezier(.4,0,.2,1) forwards;}
 @keyframes sIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
 @keyframes sBack{from{transform:translateX(-24%)}to{transform:translateX(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 .scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .scroll::-webkit-scrollbar{display:none;}
@@ -442,7 +444,114 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     </div>
   </div>
   <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
-    <button class="btn" onclick="nav('notes')">Continue</button>
+    <button class="btn" onclick="nav('items')">Continue</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 5b: ITEMS STOLEN ████ -->
+<div id="s-items" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Items Taken</h2>
+  </div>
+  <div class="scroll" style="padding:0 20px;">
+    <p style="font-size:14px;color:var(--g4);margin-bottom:16px;line-height:1.5;">Document each stolen item. Snap a photo, say the name, or type it — we'll estimate the retail value instantly.</p>
+
+    <!-- ── THREE ACTION BUTTONS ── -->
+    <div style="display:flex;gap:10px;margin-bottom:18px;">
+      <!-- Snap Photo -->
+      <button onclick="document.getElementById('item-camera-input').click()" style="flex:1;padding:14px 8px;border-radius:14px;border:1.5px solid var(--blue);background:linear-gradient(160deg,rgba(20,75,216,.08),rgba(20,75,216,.02));color:var(--blue);font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Snap Photo
+      </button>
+      <input type="file" id="item-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="handleItemCamera(this)">
+      <!-- Voice -->
+      <button onclick="startItemVoice()" id="item-mic-btn" style="flex:1;padding:14px 8px;border-radius:14px;border:1.5px solid var(--navy);background:linear-gradient(160deg,rgba(0,0,60,.06),rgba(0,0,60,.02));color:var(--navy);font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="2"/></svg>
+        Say Items
+      </button>
+      <!-- Type -->
+      <button onclick="document.getElementById('item-manual-input').focus();document.getElementById('item-type-section').style.display='block';" style="flex:1;padding:14px 8px;border-radius:14px;border:1.5px solid var(--g3);background:var(--g1);color:var(--g4);font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        Type Item
+      </button>
+    </div>
+
+    <!-- ── VOICE LISTENING STATE (hidden until mic tapped) ── -->
+    <div id="item-voice-status" style="display:none;background:linear-gradient(135deg,#FEF2F2,#FFF);border:1.5px solid #FECACA;border-radius:14px;padding:16px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+        <div style="width:12px;height:12px;border-radius:50%;background:#E8444F;animation:pulse 1s infinite;"></div>
+        <span style="font-size:14px;font-weight:700;color:var(--navy);">Listening — say each item...</span>
+      </div>
+      <div id="item-voice-live" style="font-size:13px;color:var(--g4);margin-top:8px;font-style:italic;min-height:24px;text-align:center;line-height:1.5;"></div>
+      <button onclick="stopItemVoice()" style="display:block;margin:10px auto 0;padding:10px 28px;border-radius:24px;border:none;background:var(--red);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Done Listening</button>
+    </div>
+
+    <!-- ── TYPE INPUT (hidden until type button tapped) ── -->
+    <div id="item-type-section" style="display:none;margin-bottom:14px;">
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="item-manual-input" class="form-input" placeholder='e.g. "Don Julio 1942" or "24 pack Pampers"' style="flex:1;font-size:14px;" onkeydown="if(event.key==='Enter'){addManualItem();}">
+        <button onclick="addManualItem()" style="padding:10px 16px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Add</button>
+      </div>
+    </div>
+
+    <!-- ── PHOTO IDENTIFY PANEL (appears after snapping a photo) ── -->
+    <div id="item-photo-panel" style="display:none;background:var(--g1);border-radius:14px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div id="item-photo-preview" style="width:80px;height:80px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#ddd;">
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px;">What is this item?</div>
+          <div style="display:flex;gap:6px;margin-bottom:6px;">
+            <input type="text" id="photo-item-name-input" class="form-input" placeholder="e.g. Don Julio 1942 tequila" style="flex:1;font-size:13px;padding:8px 12px;" onkeydown="if(event.key==='Enter'){confirmPhotoItem();}">
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button onclick="startPhotoVoiceId()" id="photo-voice-btn" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--blue);background:rgba(20,75,216,.06);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/></svg>
+              Say it
+            </button>
+            <button onclick="confirmPhotoItem()" style="flex:1;padding:8px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">
+              Look Up Price
+            </button>
+          </div>
+          <div id="photo-voice-listening" style="display:none;margin-top:6px;text-align:center;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:#E8444F;animation:pulse 1s infinite;"></div>
+              <span style="font-size:11px;color:var(--navy);font-weight:600;">Listening...</span>
+            </div>
+            <div id="photo-voice-live-text" style="font-size:12px;color:var(--g4);margin-top:4px;font-style:italic;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ITEMS LIST WITH PRICES ── -->
+    <div id="items-list-container" style="display:none;background:var(--g1);border-radius:14px;padding:14px 16px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:16px;">🏷</span>
+        <span style="font-size:13px;font-weight:700;color:var(--navy);">Items & Estimated Values</span>
+        <span id="items-jurisdiction-badge" style="margin-left:auto;font-size:10px;color:var(--g4);background:#fff;padding:2px 8px;border-radius:10px;"></span>
+      </div>
+      <div id="items-list-rows"></div>
+      <div id="items-list-total" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:4px;border-top:2px solid var(--navy);">
+        <span style="font-size:14px;font-weight:800;color:var(--navy);">Estimated Total</span>
+        <span id="items-total-amount" style="font-size:18px;font-weight:800;color:var(--blue);">$0.00</span>
+      </div>
+    </div>
+
+    <!-- ── PHOTO EVIDENCE THUMBNAILS ── -->
+    <div id="item-photo-thumbs" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
+
+    <!-- Add Another prompt -->
+    <div id="add-another-prompt" style="display:none;text-align:center;margin-bottom:14px;">
+      <button onclick="document.getElementById('item-camera-input').click()" style="padding:10px 20px;border-radius:20px;border:1.5px solid var(--blue);background:rgba(20,75,216,.04);color:var(--blue);font-size:13px;font-weight:700;cursor:pointer;">+ Add Another Item</button>
+    </div>
+
+    <div style="height:20px;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" onclick="finishItemsScreen()">Continue</button>
   </div>
 </div>
 
@@ -476,6 +585,17 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
         <div class="evidence-add" onclick="showToast('Camera / photo library opened')">+</div>
       </div>
     </div>
+    <div style="margin-top:16px;">
+      <label class="form-label">Photograph Stolen Items</label>
+      <p style="font-size:12px;color:var(--g4);margin-bottom:8px;">Take photos of items to auto-search retail prices</p>
+      <button onclick="openItemCamera()" style="width:100%;padding:12px;border:2px dashed var(--blue);border-radius:12px;background:rgba(20,75,216,.04);color:var(--blue);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Photograph Items for Price Lookup
+      </button>
+      <input type="file" id="item-photo-input-notes" accept="image/*" capture="environment" style="display:none;" onchange="handleItemPhoto(this)">
+      <div id="item-photo-gallery" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
+      <div id="item-photo-results-notes" style="display:none;margin-top:12px;"></div>
+    </div>
     <div style="height:40px;"></div>
   </div>
   <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
@@ -506,42 +626,132 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
   </div>
 </div>
 
-<!-- ████ SCREEN 6c: VOICE FORMATTED RESULT ████ -->
+<!-- ████ SCREEN 6c: VOICE RESULT + ITEMS + READBACK ████ -->
 <div id="s-voice-result" class="s" style="background:#fff;">
   <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
   <div class="light-nav">
     <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <h2>Formatted Notes</h2>
+    <h2>Incident Summary</h2>
   </div>
   <div class="scroll" style="padding:0 20px;">
-    <div style="background:#ECFDF5;border:1.5px solid #A7F3D0;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
-      <span style="font-size:20px;">✓</span>
+
+    <!-- STEP 1: Transcription complete -->
+    <div style="background:#ECFDF5;border:1.5px solid #A7F3D0;border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;">✓</span>
       <div>
-        <div style="font-size:14px;font-weight:700;color:#065F46;">Voice transcription formatted</div>
-        <div style="font-size:12px;color:#059669;margin-top:2px;">AI converted your dictation into formal incident report language</div>
+        <div style="font-size:13px;font-weight:700;color:#065F46;">Voice transcription complete</div>
+        <div style="font-size:11px;color:#059669;margin-top:2px;">Your dictation has been transcribed and formatted</div>
       </div>
     </div>
-    <div style="margin-bottom:12px;">
-      <label class="form-label" style="color:var(--g4);">🎤 What you said:</label>
-      <div id="voice-what-you-said" style="background:var(--g1);border-radius:10px;padding:14px;font-size:13px;color:var(--g4);line-height:1.6;font-style:italic;">
-        "So I was on Broadway near the CVS around like 10:35 tonight and I saw this guy, his name is Orazio Rispo, he was walking out of the store and the manager flagged me down and said he just pocketed some items, like baby formula and some diapers, didn't pay for them, total was about ninety bucks. I detained him, he was cooperative, no warrants, first time I've dealt with him."
+
+    <!-- What you said (collapsible) -->
+    <div style="margin-bottom:14px;">
+      <button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('span:last-child').textContent=this.nextElementSibling.style.display==='none'?'▶':'▼'" style="width:100%;padding:8px 0;border:none;background:none;display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <span style="font-size:12px;font-weight:700;color:var(--g4);">🎤 What you said</span>
+        <span style="font-size:10px;color:var(--g4);">▼</span>
+      </button>
+      <div id="voice-what-you-said" style="background:var(--g1);border-radius:10px;padding:12px;font-size:12px;color:var(--g4);line-height:1.5;font-style:italic;max-height:80px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- STEP 2: Photograph the items -->
+    <div style="background:linear-gradient(135deg,#EFF6FF,#F8F9FF);border:1.5px solid var(--blue);border-radius:14px;padding:16px;margin-bottom:14px;">
+      <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px;">📸 Now photograph the stolen items</div>
+      <div style="font-size:12px;color:var(--g4);margin-bottom:12px;line-height:1.4;">Snap a photo of each item. We'll estimate the retail value automatically.</div>
+
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button onclick="document.getElementById('vr-camera-input').click()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Take Photo
+        </button>
+        <button onclick="startItemVoice()" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid var(--navy);background:rgba(0,0,60,.04);color:var(--navy);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/></svg>
+          Say Items
+        </button>
+      </div>
+      <input type="file" id="vr-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="handleItemCamera(this)">
+
+      <!-- Voice listening state -->
+      <div id="item-voice-status" style="display:none;background:rgba(232,68,79,.06);border:1px solid #FECACA;border-radius:10px;padding:12px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:#E8444F;animation:pulse 1s infinite;"></div>
+          <span style="font-size:13px;font-weight:600;color:var(--navy);">Listening — say each item...</span>
+        </div>
+        <div id="item-voice-live" style="font-size:12px;color:var(--g4);margin-top:6px;font-style:italic;text-align:center;min-height:20px;"></div>
+        <button onclick="stopItemVoice()" style="display:block;margin:8px auto 0;padding:8px 24px;border-radius:20px;border:none;background:var(--red);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Done</button>
+      </div>
+
+      <!-- Photo identify panel -->
+      <div id="item-photo-panel" style="display:none;background:#fff;border-radius:10px;padding:12px;margin-bottom:8px;">
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div id="item-photo-preview" style="width:70px;height:70px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#eee;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px;">What is this item?</div>
+            <input type="text" id="photo-item-name-input" class="form-input" placeholder="e.g. Don Julio 1942" style="font-size:13px;padding:8px 10px;margin-bottom:6px;" onkeydown="if(event.key==='Enter'){confirmPhotoItem();}">
+            <div style="display:flex;gap:6px;">
+              <button onclick="startPhotoVoiceId()" id="photo-voice-btn" style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--blue);background:rgba(20,75,216,.06);color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/></svg>
+                Say it
+              </button>
+              <button onclick="confirmPhotoItem()" style="flex:1;padding:7px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Look Up Price</button>
+            </div>
+            <div id="photo-voice-listening" style="display:none;margin-top:4px;text-align:center;">
+              <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
+                <div style="width:8px;height:8px;border-radius:50%;background:#E8444F;animation:pulse 1s infinite;"></div>
+                <span style="font-size:10px;color:var(--navy);font-weight:600;">Listening...</span>
+              </div>
+              <div id="photo-voice-live-text" style="font-size:11px;color:var(--g4);margin-top:3px;font-style:italic;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Type items -->
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="item-manual-input" class="form-input" placeholder="Or type: Pampers 24-pack, cologne..." style="flex:1;font-size:12px;padding:8px 10px;" onkeydown="if(event.key==='Enter'){addManualItem();}">
+        <button onclick="addManualItem()" style="padding:8px 12px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">+ Add</button>
+      </div>
+
+      <!-- Photo thumbnails -->
+      <div id="item-photo-thumbs" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+    </div>
+
+    <!-- ITEMS LIST WITH PRICES -->
+    <div id="items-list-container" style="display:none;background:var(--g1);border-radius:14px;padding:14px 16px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:16px;">🏷</span>
+        <span style="font-size:13px;font-weight:700;color:var(--navy);">Items & Estimated Values</span>
+        <span id="items-jurisdiction-badge" style="margin-left:auto;font-size:10px;color:var(--g4);background:#fff;padding:2px 8px;border-radius:10px;"></span>
+      </div>
+      <div id="items-list-rows"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:4px;border-top:2px solid var(--navy);">
+        <span style="font-size:14px;font-weight:800;color:var(--navy);">Estimated Total</span>
+        <span id="items-total-amount" style="font-size:18px;font-weight:800;color:var(--blue);">$0.00</span>
       </div>
     </div>
-    <div>
-      <label class="form-label" style="color:var(--navy);">📋 Formatted Incident Notes:</label>
-      <div id="formatted-notes" style="background:#fff;border:1.5px solid var(--blue);border-radius:10px;padding:14px;font-size:13.5px;color:var(--navy);line-height:1.7;" contenteditable="true">
-        <strong>Incident Report — Officer M. Dercolo, Badge #4187</strong><br><br>
-        On March 19, 2026, at approximately 2235 hours, the reporting officer was on routine patrol in the vicinity of 375 Broadway, Revere, MA 02151, near a CVS Pharmacy location.<br><br>
-        The store manager approached the officer and reported that a male individual, later identified as <strong>Orazio Rispo</strong>, had exited the premises without tendering payment for merchandise.<br><br>
-        <strong>Items taken:</strong> Baby formula (1 unit), diapers (1 package). Estimated total retail value: <strong>$89.97</strong>.<br><br>
-        The officer detained the subject without incident. Subject was cooperative throughout the encounter. A records check returned <strong>no active warrants</strong> and <strong>no prior criminal history</strong> on file.<br><br>
-        Based on the nature of the offense (Shoplifting under $250, G.L. c. 266, §30A), the absence of prior offenses, and the subject's cooperative demeanor, this incident qualifies for <strong>pre-arrest diversion</strong> under the SWIFT program.<br><br>
-        <em>— End of narrative</em>
+
+    <!-- Price lookup results from transcript parsing (populated dynamically) -->
+    <div id="price-lookup-results" style="display:none;background:var(--g1);border-radius:12px;padding:14px 16px;margin-bottom:14px;"></div>
+
+    <!-- FORMATTED INCIDENT REPORT -->
+    <div style="margin-bottom:14px;">
+      <label class="form-label" style="color:var(--navy);">📋 Formatted Incident Report:</label>
+      <div id="formatted-notes" style="background:#fff;border:1.5px solid var(--blue);border-radius:10px;padding:14px;font-size:13px;color:var(--navy);line-height:1.7;max-height:200px;overflow-y:auto;" contenteditable="true"></div>
+    </div>
+
+    <!-- VOICE READBACK -->
+    <div style="background:linear-gradient(135deg,#F0F2FA,#EFF6FF);border:1.5px solid var(--g2);border-radius:14px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">🔊 Confirm — hear it read back</div>
+      <div id="readback-summary-text" style="font-size:12px;color:var(--g4);line-height:1.5;margin-bottom:10px;max-height:60px;overflow-y:auto;"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="readBackFullSummary()" id="vr-readback-btn" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--blue);background:rgba(20,75,216,.06);color:var(--blue);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Read it Back to Me
+        </button>
+        <button onclick="stopReadBack()" id="vr-stop-btn" style="display:none;padding:10px 14px;border-radius:12px;border:1.5px solid var(--red);background:rgba(232,68,79,.06);color:var(--red);font-size:13px;font-weight:700;cursor:pointer;">Stop</button>
       </div>
     </div>
-    <!-- Price lookup results (populated dynamically) -->
-    <div id="price-lookup-results" style="display:none;background:var(--g1);border-radius:12px;padding:14px 16px;margin-top:16px;"></div>
-    <div style="height:30px;"></div>
+
+    <div style="height:20px;"></div>
   </div>
   <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
     <button class="btn" onclick="acceptFormattedNotes()">Accept & Continue</button>
@@ -774,12 +984,35 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
         <div class="evidence-thumb" style="filter:grayscale(1);"><img src="https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=100&h=100&fit=crop"></div>
       </div>
     </div>
+    <!-- Items & Values -->
+    <div class="review-section" id="review-items-section" style="display:none;">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Items & Estimated Values</div>
+      <div id="review-items-list"></div>
+      <div id="review-items-total" style="display:flex;justify-content:space-between;padding:8px 0 0;margin-top:4px;border-top:2px solid var(--navy);">
+        <span style="font-size:13px;font-weight:800;color:var(--navy);">Total</span>
+        <span id="review-total-amount" style="font-size:15px;font-weight:800;color:var(--blue);">$0.00</span>
+      </div>
+    </div>
     <!-- Eligibility answers -->
     <div class="review-section">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Eligibility Check</div>
       <div class="review-row"><span class="review-label">First time offense</span><span class="review-value" style="color:var(--green);">✓ Yes</span></div>
       <div class="review-row"><span class="review-label">Prior in 24 months</span><span class="review-value" style="color:var(--green);">✓ No</span></div>
       <div class="review-row"><span class="review-label">Has smartphone</span><span class="review-value" style="color:var(--green);">✓ Yes</span></div>
+    </div>
+    <!-- Read Back Section -->
+    <div class="review-section" style="background:linear-gradient(135deg,#EFF6FF,#F0F2FA);border:1.5px solid var(--blue);border-radius:14px;padding:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px;">Review Summary</div>
+      <div id="review-written-summary" style="font-size:13px;color:var(--navy);line-height:1.7;margin-bottom:12px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="readBackSummary()" id="readback-btn" style="flex:1;padding:11px;border-radius:12px;border:1.5px solid var(--blue);background:rgba(20,75,216,.06);color:var(--blue);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Read it Back to Me
+        </button>
+        <button onclick="stopReadBack()" id="stop-readback-btn" style="display:none;padding:11px 16px;border-radius:12px;border:1.5px solid var(--red);background:rgba(232,68,79,.06);color:var(--red);font-size:13px;font-weight:700;cursor:pointer;">
+          Stop
+        </button>
+      </div>
     </div>
     <div style="height:20px;"></div>
   </div>
@@ -986,7 +1219,7 @@ let voiceTranscriptText = '';
 let formattedNotesText = '';
 let _lastPriceResults = { found: [], total: 0 };
 let _parsedPersonName = '';
-const ORDER = ['pin','dashboard','offense','location','time','notes','voice','voice-result','code','scan-id','scanning','verify','q1','q2','q3','review','confirm','case-summary'];
+const ORDER = ['pin','dashboard','offense','location','time','items','notes','voice','voice-result','code','scan-id','scanning','verify','q1','q2','q3','review','confirm','case-summary'];
 
 // ── CITATIONS DATA ──
 const CITATIONS = [
@@ -1072,6 +1305,7 @@ function nav(id) {
   if (id === 'location') setTimeout(initLocMap, 300);
   if (id === 'scanning') setTimeout(() => nav('verify'), 2200);
   if (id === 'dashboard') buildCitationsList();
+  if (id === 'review') populateReviewScreen();
 }
 
 function goBack() {
@@ -1637,117 +1871,306 @@ function finishVoice() {
   if (voiceTranscriptText) {
     document.getElementById('voice-what-you-said').textContent = '"' + voiceTranscriptText + '"';
   }
-  // Look up item prices and generate formatted report from real transcript
-  const priceResults = lookupItemPrices(voiceTranscriptText);
-  generateFormattedReport(voiceTranscriptText, priceResults);
+  // Look up item prices from transcript, then generate report
+  searchItemPricesRealTime(voiceTranscriptText).then(priceResults => {
+    generateFormattedReport(voiceTranscriptText, priceResults);
+    // Merge transcript-extracted items into _stolenItems
+    if (priceResults && priceResults.found) {
+      for (const f of priceResults.found) {
+        const exists = _stolenItems.find(s => s.name.toLowerCase() === f.item.toLowerCase());
+        if (!exists) {
+          _stolenItems.push({ name: f.item, qty: f.qty, unitPrice: f.unitPrice, total: f.total, source: f.source });
+        }
+      }
+      updateItemsTotal();
+      rerenderItemsList();
+    }
+    updateReadbackText();
+  });
   nav('voice-result');
+  // Populate initial readback
+  setTimeout(updateReadbackText, 500);
 }
 
-// ── ITEM PRICE LOOKUP ──
-// Parses transcript for mentioned items and estimates retail value
-const PRICE_DB = {
-  // Baby / childcare
-  'baby formula':49.99,'formula':49.99,'enfamil':42.99,'similac':44.99,
-  'diapers':28.99,'pampers':29.99,'huggies':27.99,'pull-ups':26.99,'luvs':21.99,
-  'baby wipes':8.49,'wipes':8.49,'baby food':4.99,'baby bottle':9.99,
-  // Groceries
-  'groceries':45.00,'juice':4.49,'orange juice':5.99,'apple juice':4.49,
-  'granola bars':5.99,'granola':5.99,'cereal':5.49,'milk':4.99,
-  'bread':4.29,'eggs':5.99,'butter':5.49,'cheese':6.99,
-  'chicken':9.99,'ground beef':7.99,'beef':7.99,'steak':14.99,
-  'rice':3.99,'pasta':2.49,'canned goods':2.99,'soup':3.49,
-  'chips':4.99,'cookies':4.49,'crackers':4.49,'candy':2.99,
-  'frozen pizza':7.99,'pizza':7.99,'ice cream':6.99,
-  'coffee':10.99,'tea':5.99,'water':4.99,'soda':2.49,
-  // Drinks
-  'energy drinks':3.99,'energy drink':3.99,'red bull':3.49,'monster':3.49,
-  'beer':9.99,'wine':12.99,'vodka':19.99,'liquor':24.99,
-  // Snacks
-  'snacks':6.99,'protein bar':3.49,'protein bars':3.49,
-  // Personal care / pharmacy
-  'cologne':44.00,'perfume':55.00,'deodorant':7.99,'shampoo':8.99,
-  'conditioner':8.99,'body wash':7.49,'soap':4.99,'toothpaste':5.49,
-  'toothbrush':5.99,'razors':12.99,'razor':12.99,'lotion':9.99,
-  'sunscreen':11.99,'makeup':18.99,'lipstick':9.99,'mascara':11.99,
-  'skincare':38.00,'skincare set':38.00,'face wash':9.99,
-  'vitamins':14.99,'tylenol':9.99,'advil':10.99,'medicine':12.99,
-  'bandaids':6.99,'first aid':12.99,
-  // Electronics
-  'earbuds':29.99,'headphones':34.99,'airpods':129.99,
-  'phone case':19.99,'phone charger':14.99,'charger':14.99,
-  'usb cable':9.99,'batteries':8.99,'bluetooth speaker':29.99,
-  // Clothing
-  'jacket':67.00,'jackets':67.00,'coat':75.00,'hoodie':45.00,
-  'shirt':24.99,'t-shirt':19.99,'jeans':39.99,'pants':34.99,
-  'shoes':64.99,'sneakers':74.99,'socks':9.99,'underwear':14.99,
-  'hat':19.99,'cap':19.99,'sunglasses':24.99,'gloves':14.99,
-  'backpack':39.99,'bag':29.99,'purse':34.99,
-  // Household
-  'laundry detergent':12.99,'detergent':12.99,'tide':13.99,
-  'paper towels':9.99,'toilet paper':11.99,'trash bags':9.99,
-  'cleaning supplies':8.99,'bleach':4.99,'dish soap':3.99,
-  // Tools / misc
-  'tools':24.99,'flashlight':14.99,'spray paint':5.99,
-  'lighter':2.99,'cigarettes':13.99,'tobacco':11.99,
-};
+// ══════════════════════════════════════════
+// REAL-TIME ITEM PRICE SEARCH
+// Extracts item phrases from transcript, searches real prices,
+// shows results with source attribution
+// ══════════════════════════════════════════
 
-function lookupItemPrices(transcript) {
+// Step 1: Extract item phrases from natural speech
+function extractItemPhrases(transcript) {
   const text = transcript.toLowerCase();
-  const found = [];
-  let total = 0;
+  const items = [];
 
-  // Sort keys longest-first so "baby formula" matches before "formula"
-  const keys = Object.keys(PRICE_DB).sort((a,b) => b.length - a.length);
+  // Match patterns like "a 24 pack of pampers diapers", "6 pack of coca cola", "bottle of wine", "two jackets"
+  const patterns = [
+    // "a/the [N] pack/box/case/bottle of [ITEM]"
+    /(?:a|the|some)?\s*(\d+)\s*[-\s]?pack(?:s)?\s+(?:of\s+)?([a-z][a-z\s'&]+?)(?=[,.]|\s+and\s|\s+(?:he|she|they|was|were|total|worth|about|around|valued|from|at|near))/gi,
+    // "a/the [WORD-NUMBER] pack of [ITEM]" — e.g. "twenty-four pack"
+    /(?:a|the|some)?\s*(six|twelve|twenty.?four|twenty|thirty|forty|eight|ten)\s*[-\s]?pack(?:s)?\s+(?:of\s+)?([a-z][a-z\s'&]+?)(?=[,.]|\s+and\s|\s+(?:he|she|they|was|were|total|worth|about|around))/gi,
+    // "N [ITEM]" — "2 jackets", "3 bottles of vodka"
+    /(\d+)\s+(?:bottles?\s+of\s+|cans?\s+of\s+|packs?\s+of\s+|boxes?\s+of\s+|bags?\s+of\s+|pairs?\s+of\s+|cases?\s+of\s+)?([a-z][a-z\s'&]+?)(?=[,.]|\s+and\s|\s+(?:he|she|they|was|were|total|worth|about|around|valued|from|at|near))/gi,
+    // "[WORD-QTY] [ITEM]" — "two jackets", "three bottles"
+    /\b(two|three|four|five|six|seven|eight|nine|ten|a\s+couple(?:\s+of)?|a\s+few|some|several)\s+(?:bottles?\s+of\s+|cans?\s+of\s+|packs?\s+of\s+|boxes?\s+of\s+|bags?\s+of\s+|pairs?\s+of\s+)?([a-z][a-z\s'&]+?)(?=[,.]|\s+and\s|\s+(?:he|she|they|was|were|total|worth|about|around|valued|from|at|near))/gi,
+    // "a/the bottle/pack/box of [ITEM]"
+    /(?:a|the|some)\s+(?:bottle|can|pack|box|bag|case|pair|carton|jar|tube)\s+of\s+([a-z][a-z\s'&]+?)(?=[,.]|\s+and\s|\s+(?:he|she|they|was|were|total|worth|about|around))/gi,
+    // Brand/product names standalone — "pampers", "coca cola", "red bull"
+    /\b(pampers\s*(?:diapers|wipes)?|huggies\s*(?:diapers|wipes)?|coca[\s-]?cola|pepsi|red\s+bull|monster\s+energy|tide\s+(?:pods|detergent)|enfamil|similac|advil|tylenol|airpods|gatorade|celsius|dr[\.\s]?pepper)\b/gi,
+    // Generic items after "like" or "including" or "items were" — "like baby formula and diapers"
+    /(?:like|including|items?\s+(?:were|was|included|are)|(?:had|took|stole|grabbed|pocketed|concealed)\s+(?:some|a|the)?)\s+([a-z][a-z\s,'&]+?)(?=[.]|\s+(?:he|she|they|was|were|total|worth|about|didn|from|at|near|the\s+(?:total|store|manager)))/gi,
+  ];
 
-  for (const item of keys) {
-    if (text.includes(item)) {
-      // Check we haven't already matched a longer version
-      const alreadyMatched = found.some(f => f.item.includes(item) || item.includes(f.item));
-      if (!alreadyMatched) {
-        // Try to find quantity (e.g., "2 jackets", "three bottles")
-        const qtyWords = {'two':2,'three':3,'four':4,'five':5,'six':6,'a couple':2,'a few':3};
-        let qty = 1;
-        const numMatch = text.match(new RegExp('(\\d+)\\s+(?:' + item.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')'));
-        if (numMatch) qty = parseInt(numMatch[1]);
-        else {
-          for (const [word, n] of Object.entries(qtyWords)) {
-            if (text.includes(word + ' ' + item)) { qty = n; break; }
-          }
-        }
-        const price = PRICE_DB[item];
-        found.push({ item: item.charAt(0).toUpperCase() + item.slice(1), qty, unitPrice: price, total: qty * price });
-        total += qty * price;
+  const wordToNum = {'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,'eight':8,'nine':9,'ten':10,
+    'twelve':12,'twenty':20,'twenty-four':24,'twentyfour':24,'a couple':2,'a couple of':2,'a few':3,'some':2,'several':3};
+
+  const seen = new Set();
+
+  for (const pat of patterns) {
+    pat.lastIndex = 0;
+    let m;
+    while ((m = pat.exec(text)) !== null) {
+      let qty = 1, itemText = '';
+      if (m.length === 3) {
+        // Groups: qty, item
+        const qRaw = m[1].trim().toLowerCase();
+        qty = parseInt(qRaw) || wordToNum[qRaw] || 1;
+        itemText = m[2].trim();
+      } else if (m.length === 2) {
+        itemText = m[1].trim();
+      }
+      // Clean up
+      itemText = itemText.replace(/\s+/g,' ').replace(/^(and|the|a|some|of)\s+/i,'').replace(/\s+(and|the|he|she|they|was|were|i|from)$/i,'').trim();
+      if (itemText.length < 3 || itemText.length > 60) continue;
+      // Skip non-items (names, locations, etc.)
+      if (/^(he|she|they|i|we|it|the|this|that|my|his|her|their|our|not|no|yes|just|also|about|like|around|near|from|with|into|out|over|very|really|pretty|kind|sort|said|told|saw|went|got|came|walked|ran|left|inside|outside|store|shop|manager|officer|person|guy|man|woman|subject|individual)$/i.test(itemText)) continue;
+
+      const key = itemText.toLowerCase().replace(/s$/, '');
+      if (!seen.has(key)) {
+        seen.add(key);
+        items.push({ searchQuery: itemText, qty });
       }
     }
   }
 
-  // Show results in the voice-result screen
+  // Also do a simple keyword scan for common items not caught by patterns
+  const quickItems = [
+    {re:/\bbaby\s+formula\b/i, name:'baby formula'},
+    {re:/\bdiapers?\b/i, name:'diapers'},
+    {re:/\bpampers?\b/i, name:'pampers diapers'},
+    {re:/\bhuggies?\b/i, name:'huggies diapers'},
+    {re:/\bwipes?\b/i, name:'baby wipes'},
+    {re:/\bearbuds?\b/i, name:'earbuds'},
+    {re:/\bheadphones?\b/i, name:'headphones'},
+    {re:/\bairpods?\b/i, name:'airpods'},
+    {re:/\bsneakers?\b/i, name:'sneakers'},
+    {re:/\bcigarettes?\b/i, name:'cigarettes'},
+    {re:/\bcologne\b/i, name:'cologne'},
+    {re:/\bperfume\b/i, name:'perfume'},
+    {re:/\bbackpack\b/i, name:'backpack'},
+    {re:/\bsunglasses\b/i, name:'sunglasses'},
+    {re:/\bphone\s*case\b/i, name:'phone case'},
+    {re:/\bphone\s*charger\b/i, name:'phone charger'},
+    {re:/\blaundry\s*detergent\b/i, name:'laundry detergent'},
+    {re:/\bspray\s*paint\b/i, name:'spray paint'},
+    {re:/\bice\s*cream\b/i, name:'ice cream'},
+    {re:/\benergy\s*drinks?\b/i, name:'energy drink'},
+    {re:/\bred\s*bull\b/i, name:'red bull'},
+    {re:/\bcocoa?\s*cola\b/i, name:'coca cola'},
+    {re:/\bgatorade\b/i, name:'gatorade'},
+    {re:/\bcelsius\b/i, name:'celsius'},
+  ];
+  for (const qi of quickItems) {
+    if (qi.re.test(text)) {
+      const key = qi.name.toLowerCase().replace(/s$/,'');
+      if (!seen.has(key)) {
+        seen.add(key);
+        // Try to find qty before it
+        const qm = text.match(new RegExp('(\\d+)\\s*(?:pack|box|case|can|bottle)?\\s*(?:of\\s+)?' + qi.re.source, 'i'));
+        const qty = qm ? parseInt(qm[1]) : 1;
+        items.push({ searchQuery: qi.name, qty });
+      }
+    }
+  }
+
+  return items;
+}
+
+// Step 2: Search real prices via multiple methods
+async function searchSingleItemPrice(query, jurisdiction) {
+  const searchTerm = query + ' price ' + (jurisdiction || 'CVS Target Walmart');
+
+  // Method 1: Try SerpAPI / Google Shopping proxy via our backend
+  if (authToken && API_BASE) {
+    try {
+      const r = await fetch(API_BASE + '/api/price-search?q=' + encodeURIComponent(query) + '&loc=' + encodeURIComponent(jurisdiction || 'Revere MA'), {
+        headers: {'Authorization': 'Bearer ' + authToken}
+      });
+      if (r.ok) {
+        const d = await r.json();
+        if (d.price) return { price: d.price, source: d.source || 'MEA Price API', searched: true };
+      }
+    } catch(e) {}
+  }
+
+  // Method 2: Use Google Shopping search via CORS proxy
+  try {
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.google.com/search?q=' + encodeURIComponent(searchTerm) + '&tbm=shop');
+    const r = await fetch(proxyUrl, { signal: AbortSignal.timeout(4000) });
+    if (r.ok) {
+      const html = await r.text();
+      // Extract prices from Google Shopping results — look for dollar amounts
+      const priceMatches = html.match(/\$(\d{1,4}(?:\.\d{2})?)/g);
+      if (priceMatches && priceMatches.length > 0) {
+        // Get the median price (filters outliers)
+        const prices = priceMatches.map(p => parseFloat(p.replace('$',''))).filter(p => p > 0.5 && p < 500).sort((a,b) => a - b);
+        if (prices.length > 0) {
+          const median = prices[Math.floor(prices.length / 2)];
+          return { price: median, source: 'Google Shopping', searched: true };
+        }
+      }
+    }
+  } catch(e) {}
+
+  // Method 3: Try another search proxy
+  try {
+    const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://www.google.com/search?q=' + encodeURIComponent(query + ' price USD')), { signal: AbortSignal.timeout(4000) });
+    if (r2.ok) {
+      const html = await r2.text();
+      const pm = html.match(/\$(\d{1,4}(?:\.\d{2})?)/g);
+      if (pm && pm.length > 0) {
+        const prices = pm.map(p => parseFloat(p.replace('$',''))).filter(p => p > 0.5 && p < 500).sort((a,b) => a - b);
+        if (prices.length > 0) return { price: prices[Math.floor(prices.length/2)], source: 'Web Search', searched: true };
+      }
+    }
+  } catch(e) {}
+
+  // Fallback: static estimates
+  return null;
+}
+
+// Fallback price DB for when search fails
+const FALLBACK_PRICES = {
+  'baby formula':49.99,'formula':49.99,'enfamil':42.99,'similac':44.99,
+  'diapers':28.99,'pampers diapers':29.99,'pampers':29.99,'huggies diapers':27.99,'huggies':27.99,
+  'baby wipes':8.49,'wipes':8.49,
+  'coca cola':2.49,'coca-cola':2.49,'pepsi':2.49,'soda':2.49,
+  'red bull':3.49,'monster energy':3.49,'energy drink':3.99,'gatorade':2.49,'celsius':2.99,
+  'juice':4.49,'milk':4.99,'water':1.99,'beer':9.99,'wine':12.99,'vodka':19.99,
+  'cereal':5.49,'bread':4.29,'eggs':5.99,'chips':4.99,'cookies':4.49,'candy':2.99,
+  'snacks':6.99,'granola bars':5.99,'protein bars':3.49,
+  'jacket':67.00,'jackets':67.00,'hoodie':45.00,'shirt':24.99,'jeans':39.99,'shoes':64.99,'sneakers':74.99,
+  'cologne':44.00,'perfume':55.00,'shampoo':8.99,'deodorant':7.99,'toothpaste':5.49,
+  'earbuds':29.99,'headphones':34.99,'airpods':129.99,'phone case':19.99,'phone charger':14.99,
+  'backpack':39.99,'sunglasses':24.99,'cigarettes':13.99,'spray paint':5.99,
+  'laundry detergent':12.99,'tide':13.99,'paper towels':9.99,'toilet paper':11.99,
+  'ice cream':6.99,'frozen pizza':7.99,'chicken':9.99,'steak':14.99,
+  'tylenol':9.99,'advil':10.99,'vitamins':14.99,
+  'mosquito spray':8.99,'off spray':8.99,'bug spray':7.99,'insect repellent':9.49,
+  'sunscreen':10.99,'lotion':8.49,'body lotion':9.99,'hand cream':7.49,'moisturizer':11.99,
+  'face cream':14.99,'lip balm':3.99,'chapstick':3.49,
+  'don julio 1942':179.99,'don julio':54.99,'kronenbourg':2.49,'kronenbourg 1664':2.49,'1664':2.49,
+  'hennessy':44.99,'grey goose':34.99,'jack daniels':27.99,'jameson':29.99,'crown royal':29.99,
+  'patron':44.99,'casamigos':49.99,'tequila':24.99,'whiskey':27.99,'bourbon':29.99,'rum':19.99,'gin':22.99,
+  'body wash':7.99,'conditioner':8.49,'hair gel':6.99,'razors':11.99,'razor blades':24.99,
+  'makeup':12.99,'mascara':9.99,'lipstick':8.99,'foundation':14.99,'concealer':10.99,
+  'melatonin':9.99,'benadryl':8.99,'nyquil':11.99,'dayquil':11.99,'tums':7.99,'pepto bismol':8.99,
+  'protein powder':29.99,'creatine':24.99,
+};
+
+function getFallbackPrice(query) {
+  const q = query.toLowerCase();
+  // Direct match
+  if (FALLBACK_PRICES[q]) return FALLBACK_PRICES[q];
+  // Partial match
+  for (const [k,v] of Object.entries(FALLBACK_PRICES)) {
+    if (q.includes(k) || k.includes(q)) return v;
+  }
+  return null;
+}
+
+// Step 3: Main function — extract items, search all in parallel, render results
+async function searchItemPricesRealTime(transcript) {
+  const items = extractItemPhrases(transcript);
   const container = document.getElementById('price-lookup-results');
+
+  if (items.length === 0) {
+    if (container) container.style.display = 'none';
+    return { found: [], total: 0 };
+  }
+
+  // Show loading state immediately
+  if (container) {
+    container.style.display = 'block';
+    container.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:16px;height:16px;border:2px solid var(--blue);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;"></div>
+        <span style="font-size:13px;font-weight:600;color:var(--navy);">Searching real-time prices for ${items.length} item${items.length>1?'s':''}...</span>
+      </div>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
+  }
+
+  // Get jurisdiction from location input
+  const locInput = document.getElementById('loc-address');
+  const jurisdiction = locInput ? locInput.value : 'Revere, MA';
+
+  // Search all items in parallel
+  const found = [];
+  let total = 0;
+
+  const results = await Promise.all(items.map(async (item) => {
+    const searchResult = await searchSingleItemPrice(item.searchQuery, jurisdiction);
+    let price, source;
+    if (searchResult) {
+      price = searchResult.price;
+      source = searchResult.source;
+    } else {
+      // Use fallback
+      price = getFallbackPrice(item.searchQuery);
+      source = price ? 'Avg. retail estimate' : null;
+      if (!price) { price = 9.99; source = 'Default estimate'; }
+    }
+    const itemTotal = price * item.qty;
+    return {
+      item: item.searchQuery.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+      qty: item.qty,
+      unitPrice: price,
+      total: itemTotal,
+      source: source,
+      searched: searchResult ? searchResult.searched : false
+    };
+  }));
+
+  for (const r of results) {
+    found.push(r);
+    total += r.total;
+  }
+
+  // Render final results
   if (container && found.length > 0) {
     container.style.display = 'block';
     container.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <span style="font-size:16px;">🏷️</span>
         <span style="font-size:13px;font-weight:700;color:var(--navy);">Estimated Item Values</span>
-        <span style="margin-left:auto;font-size:11px;color:var(--g4);">avg. retail prices</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--g4);background:var(--g1);padding:2px 8px;border-radius:10px;">${jurisdiction}</span>
       </div>
       ${found.map(f => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--g1);">
-          <div>
-            <span style="font-size:14px;font-weight:600;color:var(--navy);">${f.item}</span>
-            ${f.qty > 1 ? `<span style="font-size:12px;color:var(--g4);"> × ${f.qty}</span>` : ''}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,0,60,.04);">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;color:var(--navy);">${f.item}${f.qty > 1 ? ' <span style="color:var(--g4);font-weight:400;">× '+f.qty+'</span>' : ''}</div>
+            <div style="font-size:10px;color:var(--g4);margin-top:1px;">${f.searched ? '🔍 ' : ''}${f.source}${f.qty > 1 ? ' · $'+f.unitPrice.toFixed(2)+' each' : ''}</div>
           </div>
-          <span style="font-size:14px;font-weight:700;color:var(--navy);">$${f.total.toFixed(2)}</span>
+          <span style="font-size:14px;font-weight:700;color:var(--navy);white-space:nowrap;margin-left:12px;">$${f.total.toFixed(2)}</span>
         </div>
       `).join('')}
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:4px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:4px;border-top:2px solid var(--navy);">
         <span style="font-size:14px;font-weight:800;color:var(--navy);">Estimated Total</span>
         <span style="font-size:18px;font-weight:800;color:var(--blue);">$${total.toFixed(2)}</span>
       </div>
     `;
-  } else if (container) {
-    container.style.display = 'none';
   }
+
   return { found, total };
 }
 
@@ -1863,6 +2286,667 @@ function acceptFormattedNotes() {
   // Reset history to skip voice screens
   navHistory = navHistory.filter(h => h !== 'voice' && h !== 'voice-result');
   nav('code');
+}
+
+// ══════════════════════════════════════════
+// ITEM PHOTO CAPTURE & PRICE LOOKUP
+// ══════════════════════════════════════════
+let _photoItems = []; // Track items identified from photos
+
+function openItemCamera() {
+  // Try the input on the current screen
+  const input = document.getElementById('item-photo-input') || document.getElementById('item-photo-input-notes');
+  if (input) input.click();
+}
+
+async function handleItemPhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+
+  // Show the photo immediately
+  const gallery = document.getElementById('item-photo-gallery');
+  const resultsDiv = document.getElementById('item-photo-results') || document.getElementById('item-photo-results-notes');
+
+  // Read file as data URL for display
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const imgData = e.target.result;
+
+    // Add to gallery
+    if (gallery) {
+      const thumb = document.createElement('div');
+      thumb.style.cssText = 'width:72px;height:72px;border-radius:10px;overflow:hidden;position:relative;';
+      thumb.innerHTML = `<img src="${imgData}" style="width:100%;height:100%;object-fit:cover;">`;
+      gallery.appendChild(thumb);
+    }
+
+    // Show identification prompt
+    if (resultsDiv) {
+      resultsDiv.style.display = 'block';
+      resultsDiv.innerHTML = `
+        <div style="background:var(--g1);border-radius:12px;padding:14px 16px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="width:16px;height:16px;border:2px solid var(--blue);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;"></div>
+            <span style="font-size:13px;font-weight:600;color:var(--navy);">Analyzing photo...</span>
+          </div>
+        </div>`;
+    }
+
+    // Try to send to backend for identification, or prompt user
+    let identifiedItem = null;
+    if (authToken && API_BASE) {
+      try {
+        const r = await fetch(API_BASE + '/api/identify-item', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+          body: JSON.stringify({ image: imgData })
+        });
+        if (r.ok) {
+          const d = await r.json();
+          if (d.items && d.items.length > 0) identifiedItem = d.items[0];
+        }
+      } catch(e) { console.warn('Item identification failed:', e); }
+    }
+
+    // Show input for user to confirm/enter item name
+    if (resultsDiv) {
+      resultsDiv.innerHTML = `
+        <div style="background:var(--g1);border-radius:12px;padding:14px 16px;">
+          <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">What is this item?</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="photo-item-name" class="form-input" placeholder="e.g. Kronenbourg 1664 beer, Don Julio 1942..."
+                   value="${identifiedItem ? identifiedItem.name : ''}"
+                   style="flex:1;font-size:14px;padding:10px 14px;">
+            <button onclick="searchPhotoItem()" style="padding:10px 16px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">
+              Search Price
+            </button>
+          </div>
+          <div id="photo-price-result" style="margin-top:10px;"></div>
+          ${_photoItems.length > 0 ? renderPhotoItemsList() : ''}
+        </div>`;
+    }
+  };
+  reader.readAsDataURL(file);
+  // Reset input so same file can be selected again
+  input.value = '';
+}
+
+function renderPhotoItemsList() {
+  if (_photoItems.length === 0) return '';
+  let total = _photoItems.reduce((sum, i) => sum + i.price, 0);
+  return `
+    <div style="margin-top:12px;border-top:1px solid rgba(0,0,60,.08);padding-top:10px;">
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">Items Identified:</div>
+      ${_photoItems.map((item, idx) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,0,60,.04);">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--navy);">${item.name}</div>
+            <div style="font-size:10px;color:var(--g4);">${item.source}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:13px;font-weight:700;color:var(--navy);">$${item.price.toFixed(2)}</span>
+            <button onclick="_photoItems.splice(${idx},1);refreshPhotoItems();" style="width:20px;height:20px;border-radius:50%;border:1px solid #ccc;background:none;cursor:pointer;font-size:10px;color:var(--g4);">×</button>
+          </div>
+        </div>
+      `).join('')}
+      <div style="display:flex;justify-content:space-between;padding:8px 0 0;margin-top:4px;border-top:2px solid var(--navy);">
+        <span style="font-size:13px;font-weight:800;color:var(--navy);">Photo Items Total</span>
+        <span style="font-size:16px;font-weight:800;color:var(--blue);">$${total.toFixed(2)}</span>
+      </div>
+    </div>`;
+}
+
+function refreshPhotoItems() {
+  const resultsDiv = document.getElementById('photo-price-result');
+  // Re-render the items list after deletion
+  const container = resultsDiv ? resultsDiv.parentElement : null;
+  if (container) {
+    const existingList = container.querySelector('[style*="border-top:1px solid"]');
+    if (existingList) existingList.outerHTML = renderPhotoItemsList();
+  }
+  // Update the _lastPriceResults with photo items
+  mergePhotoItemsIntoPriceResults();
+}
+
+async function searchPhotoItem() {
+  const nameInput = document.getElementById('photo-item-name');
+  const resultDiv = document.getElementById('photo-price-result');
+  if (!nameInput || !nameInput.value.trim()) return;
+
+  const itemName = nameInput.value.trim();
+  const locInput = document.getElementById('loc-address');
+  const jurisdiction = locInput ? locInput.value : 'Revere, MA';
+
+  // Show searching state
+  if (resultDiv) {
+    resultDiv.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:14px;height:14px;border:2px solid var(--blue);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;"></div>
+        <span style="font-size:12px;color:var(--g4);">Searching "${itemName}" prices near ${jurisdiction}...</span>
+      </div>`;
+  }
+
+  // Search via backend
+  const searchResult = await searchSingleItemPrice(itemName, jurisdiction);
+  let price, source;
+  if (searchResult && searchResult.price) {
+    price = searchResult.price;
+    source = searchResult.source;
+  } else {
+    price = getFallbackPrice(itemName);
+    source = price ? 'Avg. retail estimate' : null;
+    if (!price) { price = 9.99; source = 'Default estimate'; }
+  }
+
+  // Add to photo items list
+  _photoItems.push({ name: itemName, price: price, source: source });
+
+  // Show result and updated list
+  if (resultDiv) {
+    resultDiv.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 0;">
+        <span style="color:#059669;font-size:14px;">✓</span>
+        <span style="font-size:13px;font-weight:600;color:var(--navy);">${itemName}</span>
+        <span style="margin-left:auto;font-size:14px;font-weight:700;color:var(--blue);">$${price.toFixed(2)}</span>
+        <span style="font-size:10px;color:var(--g4);">${source}</span>
+      </div>`;
+  }
+
+  // Update the parent container with full items list
+  const parentContainer = resultDiv ? resultDiv.parentElement : null;
+  if (parentContainer) {
+    // Remove old list if exists
+    const existingList = parentContainer.querySelector('[style*="Items Identified"]');
+    if (existingList) existingList.parentElement.remove();
+    // Add updated list
+    parentContainer.insertAdjacentHTML('beforeend', renderPhotoItemsList());
+  }
+
+  // Clear input for next item
+  nameInput.value = '';
+  nameInput.placeholder = 'Add another item...';
+
+  // Merge into price results for citation submission
+  mergePhotoItemsIntoPriceResults();
+}
+
+function mergePhotoItemsIntoPriceResults() {
+  // Merge photo-identified items into _lastPriceResults so they get included in the citation
+  for (const pi of _photoItems) {
+    const existing = _lastPriceResults.found.find(f => f.item.toLowerCase() === pi.name.toLowerCase());
+    if (!existing) {
+      _lastPriceResults.found.push({
+        item: pi.name,
+        qty: 1,
+        unitPrice: pi.price,
+        total: pi.price,
+        source: pi.source + ' (photo)',
+        searched: true
+      });
+      _lastPriceResults.total += pi.price;
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+// ITEMS STOLEN SCREEN — Photo, Voice, Type
+// ══════════════════════════════════════════
+let _stolenItems = []; // {name, qty, unitPrice, total, source, photoData}
+let _itemVoiceRecognition = null;
+let _itemVoiceActive = false;
+let _photoVoiceRecognition = null;
+let _currentPhotoData = null;
+
+// ── SNAP PHOTO FLOW ──
+function handleItemCamera(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    _currentPhotoData = e.target.result;
+    // Show the photo panel with the image
+    const panel = document.getElementById('item-photo-panel');
+    const preview = document.getElementById('item-photo-preview');
+    preview.innerHTML = '<img src="' + _currentPhotoData + '" style="width:100%;height:100%;object-fit:cover;">';
+    panel.style.display = 'block';
+    document.getElementById('photo-item-name-input').value = '';
+    document.getElementById('photo-item-name-input').focus();
+    // Scroll to show the panel
+    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+// Voice identify after photo
+function startPhotoVoiceId() {
+  const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechAPI) {
+    showToast('Speech not supported — type the item name');
+    document.getElementById('photo-item-name-input').focus();
+    return;
+  }
+  _photoVoiceRecognition = new SpeechAPI();
+  _photoVoiceRecognition.continuous = false;
+  _photoVoiceRecognition.interimResults = true;
+  _photoVoiceRecognition.lang = 'en-US';
+
+  _photoVoiceRecognition.onresult = function(e) {
+    let text = '';
+    for (let i = 0; i < e.results.length; i++) {
+      text += e.results[i][0].transcript;
+    }
+    document.getElementById('photo-voice-live-text').textContent = '"' + text + '"';
+    document.getElementById('photo-item-name-input').value = text.trim();
+    if (e.results[0].isFinal) {
+      // Auto-confirm after final result
+      setTimeout(() => {
+        document.getElementById('photo-voice-listening').style.display = 'none';
+        document.getElementById('photo-voice-btn').style.display = 'flex';
+        confirmPhotoItem();
+      }, 400);
+    }
+  };
+  _photoVoiceRecognition.onerror = function() {
+    document.getElementById('photo-voice-listening').style.display = 'none';
+    document.getElementById('photo-voice-btn').style.display = 'flex';
+  };
+  _photoVoiceRecognition.onend = function() {
+    document.getElementById('photo-voice-listening').style.display = 'none';
+    document.getElementById('photo-voice-btn').style.display = 'flex';
+  };
+
+  document.getElementById('photo-voice-btn').style.display = 'none';
+  document.getElementById('photo-voice-listening').style.display = 'block';
+  document.getElementById('photo-voice-live-text').textContent = '';
+  _photoVoiceRecognition.start();
+}
+
+async function confirmPhotoItem() {
+  const nameInput = document.getElementById('photo-item-name-input');
+  const name = nameInput.value.trim();
+  if (!name) { showToast('Say or type the item name'); return; }
+
+  // Add photo thumbnail to evidence row
+  if (_currentPhotoData) {
+    const thumbs = document.getElementById('item-photo-thumbs');
+    const thumb = document.createElement('div');
+    thumb.style.cssText = 'width:56px;height:56px;border-radius:8px;overflow:hidden;border:2px solid var(--blue);';
+    thumb.innerHTML = '<img src="' + _currentPhotoData + '" style="width:100%;height:100%;object-fit:cover;">';
+    thumbs.appendChild(thumb);
+  }
+
+  // Hide photo panel
+  document.getElementById('item-photo-panel').style.display = 'none';
+
+  // Parse qty
+  let qty = 1, itemName = name;
+  const qm = name.match(/^(\d+)\s*(?:x\s*|pack\s+(?:of\s+)?|bottles?\s+(?:of\s+)?|cans?\s+(?:of\s+)?)?(.+)/i);
+  if (qm && parseInt(qm[1]) > 1) { qty = parseInt(qm[1]); itemName = qm[2].trim(); }
+
+  await addItemAndSearchPrice(itemName, qty, _currentPhotoData);
+  _currentPhotoData = null;
+
+  // Show "Add Another" prompt
+  document.getElementById('add-another-prompt').style.display = 'block';
+}
+
+// ── VOICE DICTATE MULTIPLE ITEMS ──
+function startItemVoice() {
+  const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechAPI) {
+    showToast('Speech not supported — please type items');
+    document.getElementById('item-type-section').style.display = 'block';
+    document.getElementById('item-manual-input').focus();
+    return;
+  }
+  _itemVoiceRecognition = new SpeechAPI();
+  _itemVoiceRecognition.continuous = true;
+  _itemVoiceRecognition.interimResults = true;
+  _itemVoiceRecognition.lang = 'en-US';
+
+  let finalText = '';
+  _itemVoiceRecognition.onresult = function(e) {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalText += e.results[i][0].transcript + ' ';
+      else interim = e.results[i][0].transcript;
+    }
+    document.getElementById('item-voice-live').textContent = '"' + (finalText + interim).trim() + '"';
+  };
+  _itemVoiceRecognition.onerror = function() { stopItemVoice(); };
+  _itemVoiceRecognition.onend = function() {
+    if (_itemVoiceActive) processItemVoiceInput(finalText.trim());
+  };
+  _itemVoiceRecognition.start();
+  _itemVoiceActive = true;
+  document.getElementById('item-voice-status').style.display = 'block';
+}
+
+function stopItemVoice() {
+  _itemVoiceActive = false;
+  if (_itemVoiceRecognition) { _itemVoiceRecognition.stop(); _itemVoiceRecognition = null; }
+  const liveText = (document.getElementById('item-voice-live').textContent || '').replace(/^"|"$/g, '').trim();
+  document.getElementById('item-voice-status').style.display = 'none';
+  if (liveText) processItemVoiceInput(liveText);
+}
+
+async function processItemVoiceInput(text) {
+  if (!text) return;
+  const extracted = extractItemPhrases(text);
+  if (extracted.length === 0) {
+    // Split by "and" / commas and treat each as an item
+    const parts = text.split(/,|\band\b/i).map(s => s.trim()).filter(s => s.length > 2);
+    for (const p of parts) {
+      let qty = 1, name = p;
+      const qm = p.match(/^(\d+)\s*(?:x\s*|pack\s+(?:of\s+)?|bottles?\s+(?:of\s+)?)?(.+)/i);
+      if (qm && parseInt(qm[1]) > 1) { qty = parseInt(qm[1]); name = qm[2].trim(); }
+      await addItemAndSearchPrice(name.replace(/^(a |the |some )/i, ''), qty);
+    }
+  } else {
+    for (const item of extracted) {
+      await addItemAndSearchPrice(item.searchQuery, item.qty);
+    }
+  }
+  document.getElementById('add-another-prompt').style.display = 'block';
+}
+
+// ── TYPE ITEM ──
+async function addManualItem() {
+  const input = document.getElementById('item-manual-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  let qty = 1, name = text;
+  const qm = text.match(/^(\d+)\s*(?:x\s*|[-\s]?pack\s*(?:of\s+)?|bottles?\s+(?:of\s+)?|cans?\s+(?:of\s+)?)?(.+)/i);
+  if (qm && parseInt(qm[1]) > 1) { qty = parseInt(qm[1]); name = qm[2].trim(); }
+  await addItemAndSearchPrice(name, qty);
+  document.getElementById('add-another-prompt').style.display = 'block';
+  input.focus();
+}
+
+async function addItemAndSearchPrice(name, qty, photoData) {
+  const locInput = document.getElementById('loc-address');
+  const jurisdiction = locInput ? locInput.value : 'Revere, MA';
+
+  // Show searching state in list
+  const container = document.getElementById('items-list-container');
+  container.style.display = 'block';
+  document.getElementById('items-jurisdiction-badge').textContent = jurisdiction;
+
+  const rows = document.getElementById('items-list-rows');
+  const tempId = 'item-searching-' + Date.now();
+  const displayName = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  rows.insertAdjacentHTML('beforeend', `
+    <div id="${tempId}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,0,60,.04);">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;">
+        ${photoData ? '<div style="width:32px;height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;"><img src="'+photoData+'" style="width:100%;height:100%;object-fit:cover;"></div>' : ''}
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--navy);">${displayName}${qty>1?' <span style="color:var(--g4);font-weight:400;">x '+qty+'</span>':''}</div>
+          <div style="font-size:10px;color:var(--g4);display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;border:1.5px solid var(--blue);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;"></div> Searching price...</div>
+        </div>
+      </div>
+      <span style="font-size:13px;color:var(--g4);">...</span>
+    </div>`);
+
+  // Search price via backend API first, then local fallback
+  let price, source, searched = false;
+  const searchResult = await searchSingleItemPrice(name, jurisdiction);
+  if (searchResult && searchResult.price) {
+    price = searchResult.price;
+    source = searchResult.source || 'Retail Price Database';
+    searched = searchResult.searched;
+    // Clean up source name for display
+    if (source === 'fallback_database') source = 'Retail Price Database';
+  } else {
+    price = getFallbackPrice(name);
+    source = price ? 'Retail Price Database' : null;
+    if (!price) { price = 9.99; source = 'Est. retail value'; }
+  }
+
+  const itemTotal = price * qty;
+  const idx = _stolenItems.length;
+  _stolenItems.push({ name: displayName, qty, unitPrice: price, total: itemTotal, source, photoData: photoData || null });
+
+  // Replace searching row with result — green checkmark animation
+  const tempRow = document.getElementById(tempId);
+  if (tempRow) {
+    tempRow.outerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,0,60,.04);">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+          ${photoData ? '<div style="width:32px;height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;border:1.5px solid var(--green);"><img src="'+photoData+'" style="width:100%;height:100%;object-fit:cover;"></div>' : '<div style="width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>'}
+          <div style="min-width:0;">
+            <div style="font-size:14px;font-weight:600;color:var(--navy);">${displayName}${qty>1?' <span style="color:var(--g4);font-weight:400;">x '+qty+'</span>':''}</div>
+            <div style="font-size:10px;color:var(--g4);margin-top:1px;">${searched ? '🔍 ' : ''}${source}${qty>1?' · $'+price.toFixed(2)+' each':''}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:14px;font-weight:700;color:var(--navy);">$${itemTotal.toFixed(2)}</span>
+          <button onclick="removeItem(${idx})" style="width:22px;height:22px;border-radius:50%;border:1px solid #ddd;background:none;cursor:pointer;font-size:11px;color:var(--g4);display:flex;align-items:center;justify-content:center;">x</button>
+        </div>
+      </div>`;
+  }
+
+  // Scroll the item into view
+  container.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  updateItemsTotal();
+}
+
+function removeItem(idx) {
+  _stolenItems.splice(idx, 1);
+  rerenderItemsList();
+}
+
+function rerenderItemsList() {
+  const rows = document.getElementById('items-list-rows');
+  rows.innerHTML = '';
+  _stolenItems.forEach((item, idx) => {
+    rows.insertAdjacentHTML('beforeend', `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,0,60,.04);">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;color:var(--navy);">${item.name}${item.qty>1?' <span style="color:var(--g4);font-weight:400;">x '+item.qty+'</span>':''}</div>
+          <div style="font-size:10px;color:var(--g4);margin-top:1px;">${item.source}${item.qty>1?' · $'+item.unitPrice.toFixed(2)+' each':''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:14px;font-weight:700;color:var(--navy);">$${item.total.toFixed(2)}</span>
+          <button onclick="removeItem(${idx})" style="width:22px;height:22px;border-radius:50%;border:1px solid #ddd;background:none;cursor:pointer;font-size:11px;color:var(--g4);display:flex;align-items:center;justify-content:center;">x</button>
+        </div>
+      </div>`);
+  });
+  updateItemsTotal();
+}
+
+function updateItemsTotal() {
+  const total = _stolenItems.reduce((s, i) => s + i.total, 0);
+  document.getElementById('items-total-amount').textContent = '$' + total.toFixed(2);
+  if (_stolenItems.length === 0) {
+    document.getElementById('items-list-container').style.display = 'none';
+  }
+  // Sync to _lastPriceResults for later use in report and submission
+  _lastPriceResults = {
+    found: _stolenItems.map(i => ({
+      item: i.name, qty: i.qty, unitPrice: i.unitPrice, total: i.total, source: i.source, searched: true
+    })),
+    total: total
+  };
+  // Update readback text and re-generate formatted report
+  updateReadbackText();
+  if (voiceTranscriptText) generateFormattedReport(voiceTranscriptText, _lastPriceResults);
+}
+
+function finishItemsScreen() {
+  // Navigate to notes
+  nav('notes');
+}
+
+// ══════════════════════════════════════════
+// TEXT-TO-SPEECH READBACK
+// ══════════════════════════════════════════
+let _ttsUtterance = null;
+
+function buildReviewSummary() {
+  // Build a human-readable summary
+  const offense = selectedOffense || 'Shoplifting';
+  const statute = _offenseStatutes[offense] || '';
+  const locInput = document.getElementById('loc-address');
+  const location = locInput ? locInput.value : '375 Broadway, Revere';
+  const verifyInputs = document.querySelectorAll('#s-verify .form-input');
+  let name = 'the subject';
+  if (verifyInputs.length >= 2) {
+    name = ((verifyInputs[0].value || '') + ' ' + (verifyInputs[1].value || '')).trim() || name;
+  }
+  if (_parsedPersonName && _parsedPersonName !== 'the subject') name = _parsedPersonName;
+
+  let summary = `Offense: ${offense}. `;
+  if (statute) summary += `Statute: ${statute}. `;
+  summary += `Location: ${location}. `;
+  summary += `Subject: ${name}. `;
+
+  if (_stolenItems.length > 0) {
+    summary += `Items stolen: `;
+    _stolenItems.forEach((item, i) => {
+      summary += `${item.name}`;
+      if (item.qty > 1) summary += ` times ${item.qty}`;
+      summary += `, estimated at $${item.total.toFixed(2)}`;
+      if (i < _stolenItems.length - 1) summary += '; ';
+    });
+    const total = _stolenItems.reduce((s, i) => s + i.total, 0);
+    summary += `. Total estimated value: $${total.toFixed(2)}. `;
+  }
+
+  summary += `This individual has been determined eligible for pre-arrest diversion under the SWIFT program.`;
+  return summary;
+}
+
+function populateReviewScreen() {
+  // Populate items section
+  const itemsSection = document.getElementById('review-items-section');
+  const itemsList = document.getElementById('review-items-list');
+  if (_stolenItems.length > 0) {
+    itemsSection.style.display = 'block';
+    itemsList.innerHTML = _stolenItems.map(item => `
+      <div class="review-row">
+        <span class="review-label">${item.name}${item.qty > 1 ? ' x' + item.qty : ''}</span>
+        <span class="review-value">$${item.total.toFixed(2)} <span style="font-size:10px;color:var(--g4);font-weight:400;">${item.source}</span></span>
+      </div>`).join('');
+    const total = _stolenItems.reduce((s, i) => s + i.total, 0);
+    document.getElementById('review-total-amount').textContent = '$' + total.toFixed(2);
+  } else {
+    itemsSection.style.display = 'none';
+  }
+  // Populate written summary
+  document.getElementById('review-written-summary').textContent = buildReviewSummary();
+}
+
+function readBackSummary() {
+  const summary = buildReviewSummary();
+  if (!window.speechSynthesis) {
+    showToast('Text-to-speech not supported');
+    return;
+  }
+  // Stop any existing speech
+  window.speechSynthesis.cancel();
+
+  _ttsUtterance = new SpeechSynthesisUtterance(summary);
+  _ttsUtterance.rate = 0.95;
+  _ttsUtterance.pitch = 1;
+  _ttsUtterance.lang = 'en-US';
+
+  // UI feedback
+  const btn = document.getElementById('readback-btn');
+  const stopBtn = document.getElementById('stop-readback-btn');
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Playing...';
+  btn.style.background = 'rgba(20,75,216,.15)';
+  stopBtn.style.display = 'block';
+
+  _ttsUtterance.onend = function() {
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Read it Back to Me';
+    btn.style.background = 'rgba(20,75,216,.06)';
+    stopBtn.style.display = 'none';
+  };
+
+  window.speechSynthesis.speak(_ttsUtterance);
+}
+
+function stopReadBack() {
+  window.speechSynthesis.cancel();
+  // Reset both possible button sets (review screen and voice-result screen)
+  const btns = [
+    ['readback-btn', 'stop-readback-btn'],
+    ['vr-readback-btn', 'vr-stop-btn']
+  ];
+  for (const [btnId, stopId] of btns) {
+    const btn = document.getElementById(btnId);
+    const stopBtn = document.getElementById(stopId);
+    if (btn) {
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Read it Back to Me';
+      btn.style.background = 'rgba(20,75,216,.06)';
+    }
+    if (stopBtn) stopBtn.style.display = 'none';
+  }
+}
+
+// Voice readback from the voice-result screen (items + incident)
+function readBackFullSummary() {
+  const text = buildFullReadback();
+  if (!window.speechSynthesis) { showToast('Text-to-speech not available'); return; }
+  window.speechSynthesis.cancel();
+
+  _ttsUtterance = new SpeechSynthesisUtterance(text);
+  _ttsUtterance.rate = 0.92;
+  _ttsUtterance.pitch = 1;
+  _ttsUtterance.lang = 'en-US';
+
+  const btn = document.getElementById('vr-readback-btn');
+  const stopBtn = document.getElementById('vr-stop-btn');
+  if (btn) {
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Playing...';
+    btn.style.background = 'rgba(20,75,216,.15)';
+  }
+  if (stopBtn) stopBtn.style.display = 'block';
+
+  _ttsUtterance.onend = function() {
+    if (btn) {
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Read it Back to Me';
+      btn.style.background = 'rgba(20,75,216,.06)';
+    }
+    if (stopBtn) stopBtn.style.display = 'none';
+  };
+  window.speechSynthesis.speak(_ttsUtterance);
+}
+
+function buildFullReadback() {
+  const offense = selectedOffense || 'Shoplifting';
+  const locInput = document.getElementById('loc-address');
+  const location = locInput ? locInput.value : '375 Broadway, Revere';
+
+  let text = `Incident summary. Offense: ${offense}. Location: ${location}. `;
+
+  // Items with prices
+  if (_stolenItems.length > 0) {
+    text += `${_stolenItems.length} item${_stolenItems.length > 1 ? 's' : ''} recovered. `;
+    _stolenItems.forEach((item, i) => {
+      text += `Item ${i + 1}: ${item.name}`;
+      if (item.qty > 1) text += `, quantity ${item.qty}`;
+      text += `, estimated value $${item.total.toFixed(2)}. `;
+    });
+    const total = _stolenItems.reduce((s, i) => s + i.total, 0);
+    text += `Total estimated retail value: $${total.toFixed(2)}. `;
+  }
+
+  // Incident narrative from transcript
+  if (voiceTranscriptText) {
+    text += `Officer narrative: ${voiceTranscriptText}. `;
+  }
+
+  text += `This incident qualifies for pre-arrest diversion under the SWIFT program.`;
+  return text;
+}
+
+function updateReadbackText() {
+  // Update the written readback summary on the voice-result screen
+  const el = document.getElementById('readback-summary-text');
+  if (el) el.textContent = buildFullReadback();
 }
 
 // ── SUBMIT ──

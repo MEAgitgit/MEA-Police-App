@@ -686,37 +686,37 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <h2>Participant ID</h2>
   </div>
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;">
-    <div style="width:200px;height:200px;border:3px dashed var(--g3);border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;margin-bottom:24px;">
-      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--g3)" stroke-width="1"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M2 8h2M20 8h2"/></svg>
-      <div style="font-size:13px;color:var(--g4);text-align:center;">Position the ID card<br>within the frame</div>
+    <div style="width:200px;height:130px;border:3px dashed var(--blue);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;margin-bottom:20px;background:rgba(20,75,216,.03);">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="12" r="2"/><path d="M14 10h4M14 14h4"/></svg>
     </div>
-    <h2 style="font-size:22px;font-weight:800;color:var(--navy);text-align:center;margin-bottom:8px;">Scan Participant ID to<br>verify identity</h2>
-    <p style="font-size:14px;color:var(--g4);text-align:center;line-height:1.5;margin-bottom:28px;">Hold the participant's driver's license or state ID up to the camera. We'll extract their information automatically.</p>
-    <button class="btn" style="max-width:280px;" onclick="nav('scanning')">Scan ID</button>
-    <div style="margin-top:16px;font-size:14px;color:var(--blue);font-weight:600;cursor:pointer;" onclick="nav('verify')">Enter Manually</div>
+    <h2 style="font-size:22px;font-weight:800;color:var(--navy);text-align:center;margin-bottom:8px;">Photograph the<br>participant's ID</h2>
+    <p style="font-size:14px;color:var(--g4);text-align:center;line-height:1.5;margin-bottom:24px;">Take a photo of their driver's license or state ID. AI will read and extract all information automatically.</p>
+    <input type="file" id="id-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="handleIdPhoto(this)">
+    <button class="btn" style="max-width:280px;" onclick="document.getElementById('id-camera-input').click()">
+      <span style="display:flex;align-items:center;justify-content:center;gap:8px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Photograph ID
+      </span>
+    </button>
+    <div style="margin-top:16px;font-size:14px;color:var(--blue);font-weight:600;cursor:pointer;" onclick="nav('verify')">Enter Manually Instead</div>
   </div>
 </div>
 
-<!-- ████ SCREEN 9: SCANNING CAMERA ████ -->
+<!-- ████ SCREEN 9: SCANNING / PROCESSING ████ -->
 <div id="s-scanning" class="s" style="background:#111;">
   <div class="sb-dark"><span>9:41</span><div class="sb-icons">●●●</div></div>
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;position:relative;">
-    <div style="position:absolute;inset:60px 20px;border:2px solid rgba(255,255,255,.3);border-radius:20px;"></div>
-    <div style="width:90%;max-width:360px;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5);transform:rotate(-3deg);">
-      <img src="assets/images/scan-id-card.png" style="width:100%;height:auto;object-fit:contain;display:block;">
+    <div id="scan-id-preview" style="width:90%;max-width:360px;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5);">
+      <img id="scan-id-img" src="assets/images/scan-id-card.png" style="width:100%;height:auto;object-fit:contain;display:block;">
     </div>
     <div style="position:absolute;bottom:100px;left:0;right:0;text-align:center;">
       <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(0,0,0,.6);border-radius:20px;padding:8px 16px;backdrop-filter:blur(10px);">
         <div style="width:8px;height:8px;border-radius:50%;background:#00B67A;animation:blink 1s infinite;"></div>
-        <span style="font-size:13px;color:#fff;font-weight:600;">Scanning ID...</span>
+        <span style="font-size:13px;color:#fff;font-weight:600;" id="scan-status-text">AI reading ID...</span>
       </div>
     </div>
   </div>
   <style>@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}</style>
-  <script>
-    // Auto-advance after 2 seconds
-    document.getElementById('s-scanning').addEventListener('transitionend', function(){});
-  </script>
 </div>
 
 <!-- ████ SCREEN 10: VERIFY CITIZEN IDENTITY ████ -->
@@ -1225,7 +1225,8 @@ function nav(id) {
   setTimeout(() => next.classList.remove('in', 'back'), 300);
   cur = id;
   if (id === 'location') setTimeout(initLocMap, 300);
-  if (id === 'scanning') setTimeout(() => nav('verify'), 2200);
+  // scanning auto-advance only if NOT doing AI scan (AI handler navigates itself)
+  if (id === 'scanning' && !authToken) setTimeout(() => nav('verify'), 2200);
   if (id === 'dashboard') buildCitationsList();
   if (id === 'review') populateReviewScreen();
   if (id === 'case-summary') populateCaseSummary();
@@ -2754,6 +2755,69 @@ function handleItemRephoto(input) {
       thumbs.appendChild(thumb);
       showToast('Photo added for ' + _stolenItems[idx].name);
       speakPrompt('Photo verified for ' + _stolenItems[idx].name);
+    }
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+// ── ID PHOTO → AI OCR ──
+function handleIdPhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const photoData = e.target.result;
+    // Show the scanning screen with the actual photo
+    document.getElementById('scan-id-img').src = photoData;
+    document.getElementById('scan-status-text').textContent = 'AI reading ID...';
+    nav('scanning');
+
+    if (authToken) {
+      // Send to AI for OCR
+      fetch(API_BASE + '/api/ai/scan-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+        body: JSON.stringify({ image: photoData })
+      }).then(r => r.json()).then(ai => {
+        if (ai.fallback) {
+          // AI unavailable — go to manual entry
+          document.getElementById('scan-status-text').textContent = 'AI unavailable — entering manually';
+          setTimeout(() => nav('verify'), 1500);
+          return;
+        }
+        // Populate verify screen with AI-extracted data
+        const verifyInputs = document.querySelectorAll('#s-verify .form-input');
+        if (verifyInputs.length >= 6) {
+          if (ai.firstName) verifyInputs[0].value = ai.firstName;
+          if (ai.lastName) verifyInputs[1].value = ai.lastName;
+          if (ai.dateOfBirth) verifyInputs[2].value = ai.dateOfBirth;
+          if (ai.address) {
+            let fullAddr = ai.address;
+            if (ai.city) fullAddr += ', ' + ai.city;
+            if (ai.state) fullAddr += ', ' + ai.state;
+            if (ai.zip) fullAddr += ' ' + ai.zip;
+            verifyInputs[3].value = fullAddr;
+          }
+        }
+        // Also set parsed name for report
+        if (ai.firstName || ai.lastName) {
+          _parsedPersonName = ((ai.firstName || '') + ' ' + (ai.lastName || '')).trim();
+        }
+        // Update verify screen header name
+        const nameDisplay = document.querySelector('#s-verify .form-input');
+
+        document.getElementById('scan-status-text').textContent = 'ID scanned successfully';
+        speakPrompt('ID scanned. ' + (ai.firstName || '') + ' ' + (ai.lastName || '') + '. Please verify the information.');
+        showToast('AI extracted: ' + (ai.firstName || '') + ' ' + (ai.lastName || ''));
+        setTimeout(() => nav('verify'), 1800);
+      }).catch(() => {
+        document.getElementById('scan-status-text').textContent = 'Scan failed — entering manually';
+        setTimeout(() => nav('verify'), 1500);
+      });
+    } else {
+      // No backend — simulate scan then manual entry
+      setTimeout(() => nav('verify'), 2200);
     }
   };
   reader.readAsDataURL(file);

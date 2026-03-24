@@ -390,20 +390,20 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <div id="loc-map"></div>
     <div style="margin-top:14px;">
       <label class="form-label">Address</label>
-      <input type="text" class="form-input" id="loc-address" value="375 Broadway, Revere, MA 02151" style="font-weight:600;">
+      <input type="text" class="form-input" id="loc-address" value="" placeholder="Enter incident address" style="font-weight:600;">
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;">
       <div style="flex:1;">
         <label class="form-label">City</label>
-        <input type="text" class="form-input" value="Revere">
+        <input type="text" class="form-input" id="loc-city" value="" placeholder="City">
       </div>
       <div style="width:80px;">
         <label class="form-label">State</label>
-        <input type="text" class="form-input" value="MA">
+        <input type="text" class="form-input" id="loc-state" value="" placeholder="ST">
       </div>
       <div style="width:100px;">
         <label class="form-label">Zip</label>
-        <input type="text" class="form-input" value="02151">
+        <input type="text" class="form-input" id="loc-zip" value="" placeholder="Zip">
       </div>
     </div>
     <div style="height:40px;"></div>
@@ -743,7 +743,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     </div>
     <div style="margin-bottom:14px;">
       <label class="form-label">Address</label>
-      <input type="text" class="form-input" value="45 Revere Beach Blvd, Revere, MA 02151">
+      <input type="text" class="form-input" value="" placeholder="Address from ID scan">
     </div>
     <div style="border-top:1px solid var(--g2);padding-top:16px;margin-top:8px;margin-bottom:14px;">
       <label class="form-label" style="font-size:13px;color:var(--navy);margin-bottom:12px;">Contacts</label>
@@ -852,17 +852,17 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <!-- Participant info -->
     <div class="review-section">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Participant Information</div>
-      <div class="review-row"><span class="review-label">Name</span><span class="review-value">Orazio Rispo</span></div>
-      <div class="review-row"><span class="review-label">DOB</span><span class="review-value">04/15/1992</span></div>
-      <div class="review-row"><span class="review-label">Phone</span><span class="review-value">(617) 555-4716</span></div>
-      <div class="review-row"><span class="review-label">Address</span><span class="review-value" style="font-size:12px;">45 Revere Beach Blvd</span></div>
+      <div class="review-row"><span class="review-label">Name</span><span class="review-value" id="review-name">—</span></div>
+      <div class="review-row"><span class="review-label">DOB</span><span class="review-value" id="review-dob">—</span></div>
+      <div class="review-row"><span class="review-label">Phone</span><span class="review-value" id="review-phone">—</span></div>
+      <div class="review-row"><span class="review-label">Address</span><span class="review-value" id="review-address" style="font-size:12px;">—</span></div>
     </div>
     <!-- Incident details -->
     <div class="review-section">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Incident Details</div>
-      <div class="review-row"><span class="review-label">Location</span><span class="review-value" style="font-size:12px;">375 Broadway, Revere</span></div>
-      <div class="review-row"><span class="review-label">Date / Time</span><span class="review-value">03/19/2026 · 10:35 PM</span></div>
-      <div class="review-row"><span class="review-label">Citation Code</span><span class="review-value">MA2048</span></div>
+      <div class="review-row"><span class="review-label">Location</span><span class="review-value" id="review-location" style="font-size:12px;">—</span></div>
+      <div class="review-row"><span class="review-label">Date / Time</span><span class="review-value" id="review-datetime">—</span></div>
+      <div class="review-row"><span class="review-label">Citation Code</span><span class="review-value" id="review-citation-code">—</span></div>
     </div>
     <!-- Evidence (dynamically populated from photos taken) -->
     <div class="review-section" id="review-evidence-section">
@@ -970,8 +970,8 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       <div style="width:56px;height:56px;border-radius:50%;background:var(--g1);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       </div>
-      <h2 style="font-size:24px;font-weight:800;color:var(--navy);">Shoplifting</h2>
-      <div style="font-size:13px;color:var(--g4);margin-top:4px;">Citation MA2048 · Filed 03/19/2026</div>
+      <h2 style="font-size:24px;font-weight:800;color:var(--navy);" id="cs-offense">—</h2>
+      <div style="font-size:13px;color:var(--g4);margin-top:4px;" id="cs-citation-filed">—</div>
     </div>
     <!-- Eligibility checklist -->
     <div style="background:var(--g1);border-radius:14px;padding:16px 18px;margin-bottom:16px;">
@@ -1000,9 +1000,9 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <!-- Participant details -->
     <div class="review-section">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Participant</div>
-      <div class="review-row"><span class="review-label">Name</span><span class="review-value">Orazio Rispo</span></div>
-      <div class="review-row"><span class="review-label">DOB</span><span class="review-value">04/15/1992</span></div>
-      <div class="review-row"><span class="review-label">Address</span><span class="review-value" style="font-size:12px;">45 Revere Beach Blvd</span></div>
+      <div class="review-row"><span class="review-label">Name</span><span class="review-value" id="cs-name">—</span></div>
+      <div class="review-row"><span class="review-label">DOB</span><span class="review-value" id="cs-dob">—</span></div>
+      <div class="review-row"><span class="review-label">Address</span><span class="review-value" id="cs-address" style="font-size:12px;">—</span></div>
     </div>
     <!-- Program assignment -->
     <div class="review-section" style="background:#EFF6FF;border:1px solid #BFDBFE;">
@@ -1010,18 +1010,18 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       <div class="review-row"><span class="review-label">Program</span><span class="review-value" style="color:var(--blue);">SWIFT Diversion</span></div>
       <div class="review-row"><span class="review-label">Duration</span><span class="review-value">90 days</span></div>
       <div class="review-row"><span class="review-label">Enrollment</span><span class="review-value" style="color:var(--green);">SMS Sent</span></div>
-      <div class="review-row"><span class="review-label">Issuing Officer</span><span class="review-value">M. Dercolo #4187</span></div>
+      <div class="review-row"><span class="review-label">Issuing Officer</span><span class="review-value" id="cs-officer">M. Dercolo #4187</span></div>
     </div>
     <!-- Timeline -->
     <div style="margin-bottom:16px;">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;">Timeline</div>
       <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;">
         <div style="width:10px;height:10px;border-radius:50%;background:var(--green);margin-top:4px;flex-shrink:0;"></div>
-        <div><div style="font-size:14px;font-weight:600;color:var(--navy);">Citation Issued</div><div style="font-size:12px;color:var(--g4);margin-top:2px;">03/19/2026 · 10:35 PM</div></div>
+        <div><div style="font-size:14px;font-weight:600;color:var(--navy);">Citation Issued</div><div style="font-size:12px;color:var(--g4);margin-top:2px;" id="cs-timeline-issued">—</div></div>
       </div>
       <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;">
         <div style="width:10px;height:10px;border-radius:50%;background:var(--blue);margin-top:4px;flex-shrink:0;"></div>
-        <div><div style="font-size:14px;font-weight:600;color:var(--navy);">SMS Enrollment Link Sent</div><div style="font-size:12px;color:var(--g4);margin-top:2px;">03/19/2026 · 10:36 PM</div></div>
+        <div><div style="font-size:14px;font-weight:600;color:var(--navy);">SMS Enrollment Link Sent</div><div style="font-size:12px;color:var(--g4);margin-top:2px;" id="cs-timeline-sms">—</div></div>
       </div>
       <div style="display:flex;gap:12px;align-items:flex-start;">
         <div style="width:10px;height:10px;border-radius:50%;border:2px solid var(--g3);margin-top:4px;flex-shrink:0;"></div>
@@ -1211,6 +1211,7 @@ function nav(id) {
   if (id === 'scanning') setTimeout(() => nav('verify'), 2200);
   if (id === 'dashboard') buildCitationsList();
   if (id === 'review') populateReviewScreen();
+  if (id === 'case-summary') populateCaseSummary();
 }
 
 function goBack() {
@@ -1760,6 +1761,8 @@ function stopVoice() {
   clearInterval(voiceTimer);
   if (recognition) { recognition.stop(); recognition = null; }
 }
+let _aiParsedData = null; // Store AI-parsed transcript data
+
 function finishVoice() {
   clearInterval(voiceTimer);
   if (recognition) { recognition.stop(); recognition = null; }
@@ -1785,7 +1788,55 @@ function finishVoice() {
   setTimeout(() => {
     speakPrompt('Transcription complete. Now send me photos of each stolen item, one at a time.');
   }, 800);
+
+  // ── AI-POWERED TRANSCRIPT PARSING ──
+  // Send transcript to Claude API via backend for intelligent extraction
+  if (authToken && voiceTranscriptText) {
+    const locInput = document.getElementById('loc-address');
+    const locValue = locInput ? locInput.value : '';
+    fetch(API_BASE + '/api/ai/parse-transcript', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ transcript: voiceTranscriptText, location: locValue })
+    }).then(r => r.json()).then(ai => {
+      if (ai.fallback) { console.log('[MEA] AI unavailable, using local parsing'); return; }
+      _aiParsedData = ai;
+      console.log('[MEA] AI parsed transcript:', ai);
+
+      // Auto-fill person name if AI found one
+      if (ai.personName) {
+        _parsedPersonName = ai.personName;
+        // Also pre-fill verify screen name fields
+        const verifyInputs = document.querySelectorAll('#s-verify .form-input');
+        if (verifyInputs.length >= 2) {
+          const parts = ai.personName.split(' ');
+          if (!verifyInputs[0].value) verifyInputs[0].value = parts[0] || '';
+          if (!verifyInputs[1].value) verifyInputs[1].value = parts.slice(1).join(' ') || '';
+        }
+      }
+
+      // Auto-fill location if AI found a store address and location fields are empty
+      if (ai.storeAddress && locInput && !locInput.value) {
+        locInput.value = ai.storeAddress;
+      }
+      // If AI found a store name, note it for the report
+      if (ai.storeName) {
+        _aiStoreName = ai.storeName;
+      }
+
+      // Re-generate the formatted report with AI data
+      generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
+      updateReadbackText();
+
+      // Show a toast confirming AI processed the transcript
+      showToast('AI analyzed transcript' + (ai.personName ? ' — found: ' + ai.personName : ''));
+    }).catch(err => {
+      console.warn('[MEA] AI parse failed, using local parsing:', err);
+    });
+  }
 }
+
+let _aiStoreName = ''; // AI-detected store name
 
 // ══════════════════════════════════════════
 // REAL-TIME ITEM PRICE SEARCH
@@ -1844,7 +1895,7 @@ function extractItemPhrases(transcript) {
       // Skip addresses, streets, locations, times
       if (/\b(street|st|avenue|ave|road|rd|boulevard|blvd|drive|dr|lane|ln|plaza|broadway|highway|hwy|main|north|south|east|west|tonight|today|yesterday|morning|evening|afternoon|o'?clock|pm|am)\b/i.test(itemText)) continue;
       // Skip place names and non-product words
-      if (/\b(revere|boston|chelsea|suffolk|massachusetts|pharmacy|police|station|department|parking|lot|building|apartment|block|corner|intersection)\b/i.test(itemText)) continue;
+      if (/\b(pharmacy|police|station|department|parking|lot|building|apartment|block|corner|intersection)\b/i.test(itemText)) continue;
 
       const key = itemText.toLowerCase().replace(/s$/, '');
       if (!seen.has(key)) {
@@ -1902,7 +1953,7 @@ async function searchSingleItemPrice(query, jurisdiction) {
   // Method 1: Try backend price search API (fast, 350+ items)
   if (authToken && API_BASE) {
     try {
-      const r = await fetch(API_BASE + '/api/price-search?q=' + encodeURIComponent(query) + '&loc=' + encodeURIComponent(jurisdiction || 'Revere MA'), {
+      const r = await fetch(API_BASE + '/api/price-search?q=' + encodeURIComponent(query) + '&loc=' + encodeURIComponent(jurisdiction || ''), {
         headers: {'Authorization': 'Bearer ' + authToken},
         signal: AbortSignal.timeout(3000)
       });
@@ -2086,7 +2137,7 @@ async function searchItemPricesRealTime(transcript) {
 
   // Get jurisdiction from location input
   const locInput = document.getElementById('loc-address');
-  const jurisdiction = locInput ? locInput.value : 'Revere, MA';
+  const jurisdiction = locInput ? locInput.value : '';
 
   // Search all items in parallel
   const found = [];
@@ -2175,21 +2226,24 @@ function generateFormattedReport(transcript, priceResults) {
     }
   }
   if (!personName) personName = 'the subject';
+  // Use AI-parsed name if available
+  if (_aiParsedData && _aiParsedData.personName) personName = _aiParsedData.personName;
   _parsedPersonName = personName;
   _lastPriceResults = priceResults || { found: [], total: 0 };
 
   // Extract location from selected offense screen or transcript
-  let location = '375 Broadway, Revere, MA 02151';
   const locInput = document.getElementById('loc-address');
-  if (locInput && locInput.value) location = locInput.value;
-  // Also try to find store name in transcript
-  let storeName = '';
+  let location = (locInput && locInput.value) ? locInput.value : 'the incident location';
+  // Use AI store name if available, otherwise try regex
+  let storeName = _aiStoreName || '';
+  if (!storeName) {
   const storePatterns = [/(?:at|near|outside|from|leaving)\s+(?:the\s+)?([A-Z][A-Za-z'\s]+(?:Pharmacy|Market|Store|Target|Walmart|CVS|Walgreens|Stop\s*&?\s*Shop|Star\s+Market|7-Eleven|Dunkin|Starbucks))/i,
     /(?:CVS|Walgreens|Target|Walmart|Stop\s*&?\s*Shop|Star\s+Market|Market\s+Basket|7-Eleven|Dunkin|Starbucks|Home\s+Depot|Costco|TJ\s*Maxx|Dollar\s+Tree|Rite\s+Aid)/i];
   for (const sp of storePatterns) {
     const sm = transcript.match(sp);
     if (sm) { storeName = sm[0].trim(); break; }
   }
+  } // end if (!storeName)
 
   // Build items list from price results
   let itemsLine = '';
@@ -2206,9 +2260,9 @@ function generateFormattedReport(transcript, priceResults) {
   const statute = _offenseStatutes[offense] || 'G.L. c. 266, §30A';
   const thresholdLabel = totalValue > 250 ? 'over $250' : 'under $250';
 
-  // Check for cooperation mentions
-  const cooperative = /cooperat|compliant|without incident|calm|no resist/i.test(text);
-  const noWarrants = /no warrant|no prior|first time|no record|no history|clean record/i.test(text);
+  // Check for cooperation mentions — use AI data if available, fall back to regex
+  const cooperative = (_aiParsedData && _aiParsedData.cooperative !== null) ? _aiParsedData.cooperative : /cooperat|compliant|without incident|calm|no resist/i.test(text);
+  const noWarrants = (_aiParsedData && _aiParsedData.priorOffenses !== null) ? !_aiParsedData.priorOffenses : /no warrant|no prior|first time|no record|no history|clean record/i.test(text);
 
   // Generate the formal report
   const report = `<strong>Incident Report — Officer M. Dercolo, Badge #4187</strong><br><br>` +
@@ -2442,7 +2496,7 @@ async function addManualItem() {
 
 async function addItemAndSearchPrice(name, qty, photoData) {
   const locInput = document.getElementById('loc-address');
-  const jurisdiction = locInput ? locInput.value : 'Revere, MA';
+  const jurisdiction = locInput ? locInput.value : '';
 
   // Show searching state in list
   const container = document.getElementById('items-list-container');
@@ -2530,7 +2584,7 @@ function editItem(idx) {
     // Re-search price with corrected name
     item.name = correctedName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     const locInput = document.getElementById('loc-address');
-    const jurisdiction = locInput ? locInput.value : 'Revere, MA';
+    const jurisdiction = locInput ? locInput.value : '';
     searchSingleItemPrice(correctedName, jurisdiction).then(result => {
       if (result && result.price) {
         item.unitPrice = result.price;
@@ -2589,7 +2643,7 @@ function buildReviewSummary() {
   const offense = selectedOffense || 'Shoplifting';
   const statute = _offenseStatutes[offense] || '';
   const locInput = document.getElementById('loc-address');
-  const location = locInput ? locInput.value : '375 Broadway, Revere';
+  const location = locInput ? locInput.value : '';
   const verifyInputs = document.querySelectorAll('#s-verify .form-input');
   let name = 'the subject';
   if (verifyInputs.length >= 2) {
@@ -2619,7 +2673,48 @@ function buildReviewSummary() {
 }
 
 function populateReviewScreen() {
-  // Populate items section with photos
+  // ── Participant info from verify screen ──
+  const verifyInputs = document.querySelectorAll('#s-verify .form-input');
+  if (verifyInputs.length >= 6) {
+    const fn = verifyInputs[0].value || '', ln = verifyInputs[1].value || '';
+    document.getElementById('review-name').textContent = (fn + ' ' + ln).trim() || '—';
+    document.getElementById('review-dob').textContent = verifyInputs[2].value || '—';
+    document.getElementById('review-phone').textContent = verifyInputs[5].value || '—';
+    document.getElementById('review-address').textContent = verifyInputs[3].value || '—';
+  } else if (_parsedPersonName && _parsedPersonName !== 'the subject') {
+    document.getElementById('review-name').textContent = _parsedPersonName;
+  }
+
+  // ── Incident details ──
+  const locInput = document.getElementById('loc-address');
+  document.getElementById('review-location').textContent = locInput && locInput.value ? locInput.value : '—';
+
+  // Date/Time from time screen
+  const timeHour = document.getElementById('time-hour');
+  const timeMin = document.getElementById('time-min');
+  const amBtn = document.getElementById('am-btn');
+  const dateInput = document.querySelector('#s-time input[type="date"]');
+  let dateTimeStr = '';
+  if (dateInput && dateInput.value) {
+    const d = new Date(dateInput.value + 'T12:00:00');
+    dateTimeStr = d.toLocaleDateString('en-US', {month:'2-digit', day:'2-digit', year:'numeric'});
+  } else {
+    dateTimeStr = new Date().toLocaleDateString('en-US', {month:'2-digit', day:'2-digit', year:'numeric'});
+  }
+  if (timeHour && timeMin) {
+    const ampm = amBtn && amBtn.classList.contains('active-yes') ? 'AM' : 'PM';
+    dateTimeStr += ' · ' + timeHour.value + ':' + timeMin.value + ' ' + ampm;
+  }
+  document.getElementById('review-datetime').textContent = dateTimeStr;
+
+  // Citation code
+  const codeBoxes = document.querySelectorAll('#code-row .otp-box');
+  let citCode = '';
+  if (codeBoxes.length) citCode = Array.from(codeBoxes).map(b => b.textContent).join('').trim();
+  if (!citCode || citCode.length < 4) citCode = 'MA' + Math.floor(1000 + Math.random() * 9000);
+  document.getElementById('review-citation-code').textContent = citCode;
+
+  // ── Items section with photos ──
   const itemsSection = document.getElementById('review-items-section');
   const itemsList = document.getElementById('review-items-list');
   if (_stolenItems.length > 0) {
@@ -2639,7 +2734,7 @@ function populateReviewScreen() {
     itemsSection.style.display = 'none';
   }
 
-  // Populate evidence photos from actual photos taken
+  // ── Evidence photos ──
   const evidenceRow = document.getElementById('review-evidence-photos');
   const photosWithData = _stolenItems.filter(i => i.photoData);
   if (photosWithData.length > 0) {
@@ -2650,8 +2745,36 @@ function populateReviewScreen() {
     evidenceRow.innerHTML = '<div style="font-size:12px;color:var(--g4);font-style:italic;">No photos submitted</div>';
   }
 
-  // Populate written summary
+  // ── Written summary ──
   document.getElementById('review-written-summary').textContent = buildReviewSummary();
+}
+
+function populateCaseSummary() {
+  const offense = selectedOffense || 'Shoplifting';
+  document.getElementById('cs-offense').textContent = offense;
+
+  // Citation code + date
+  const citCode = document.getElementById('confirm-citation-code').textContent || document.getElementById('review-citation-code').textContent || '—';
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', {month:'2-digit', day:'2-digit', year:'numeric'});
+  document.getElementById('cs-citation-filed').textContent = 'Citation ' + citCode + ' · Filed ' + dateStr;
+
+  // Participant from verify screen
+  const verifyInputs = document.querySelectorAll('#s-verify .form-input');
+  if (verifyInputs.length >= 6) {
+    const fn = verifyInputs[0].value || '', ln = verifyInputs[1].value || '';
+    document.getElementById('cs-name').textContent = (fn + ' ' + ln).trim() || '—';
+    document.getElementById('cs-dob').textContent = verifyInputs[2].value || '—';
+    document.getElementById('cs-address').textContent = verifyInputs[3].value || '—';
+  } else if (_parsedPersonName && _parsedPersonName !== 'the subject') {
+    document.getElementById('cs-name').textContent = _parsedPersonName;
+  }
+
+  // Timeline
+  const timeStr = now.toLocaleDateString('en-US', {month:'2-digit', day:'2-digit', year:'numeric'}) + ' · ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('cs-timeline-issued').textContent = timeStr;
+  const smsTime = new Date(now.getTime() + 60000);
+  document.getElementById('cs-timeline-sms').textContent = smsTime.toLocaleDateString('en-US', {month:'2-digit', day:'2-digit', year:'numeric'}) + ' · ' + smsTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 }
 
 function readBackSummary() {
@@ -2734,7 +2857,7 @@ function readBackFullSummary() {
 function buildFullReadback() {
   const offense = selectedOffense || 'Shoplifting';
   const locInput = document.getElementById('loc-address');
-  const location = locInput ? locInput.value : '375 Broadway, Revere';
+  const location = locInput ? locInput.value : '';
 
   let text = `Incident summary. Offense: ${offense}. Location: ${location}. `;
 
@@ -2768,7 +2891,7 @@ function updateReadbackText() {
 // ── SUBMIT ──
 function submitCitation() {
   // Read identity from verify screen inputs
-  let firstName = 'Orazio', lastName = 'Rispo', dob = '1992-04-15', address = '45 Revere Beach Blvd, Revere, MA 02151', email = 'orazio@email.com', phone = '(617) 555-4716';
+  let firstName = '', lastName = '', dob = '', address = '', email = '', phone = '';
   const verifyInputs = document.querySelectorAll('#s-verify .form-input');
   if (verifyInputs.length >= 6) {
     firstName = verifyInputs[0].value || firstName;
@@ -2797,7 +2920,7 @@ function submitCitation() {
     offense: selectedOffense || 'Shoplifting',
     offense_statute: _offenseStatutes[selectedOffense] || '',
     offense_category: (selectedOffense || 'shoplifting').toLowerCase().replace(/\s+/g, '-'),
-    location: document.getElementById('loc-address') ? document.getElementById('loc-address').value : '375 Broadway, Revere, MA 02151',
+    location: document.getElementById('loc-address') ? document.getElementById('loc-address').value : '',
     incident_date: new Date().toISOString().split('T')[0],
     incident_time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}),
     officer_notes: document.getElementById('notes-textarea') ? document.getElementById('notes-textarea').value : '',
@@ -2809,8 +2932,8 @@ function submitCitation() {
     first_offense: 1,
     citation_code: citCode,
   };
-  // Use parsed name from voice if available and form fields are defaults
-  if (_parsedPersonName && _parsedPersonName !== 'the subject' && citationData.participant_name === 'Orazio Rispo') {
+  // Use parsed name from voice if available and form fields are empty
+  if (_parsedPersonName && _parsedPersonName !== 'the subject' && (!citationData.participant_name || citationData.participant_name.trim() === '')) {
     citationData.participant_name = _parsedPersonName;
   }
 
@@ -2851,10 +2974,44 @@ function initLocMap() {
   if (locMap) return;
   const el = document.getElementById('loc-map');
   if (!el) return;
-  locMap = L.map(el, { zoomControl: false, attributionControl: false }).setView([42.4085, -71.0120], 15);
+  // Default center (will be updated by GPS)
+  let lat = 40.7128, lng = -74.0060; // NYC default
+  locMap = L.map(el, { zoomControl: false, attributionControl: false }).setView([lat, lng], 15);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(locMap);
-  L.marker([42.4085, -71.0120]).addTo(locMap);
+  let marker = L.marker([lat, lng]).addTo(locMap);
   setTimeout(() => locMap.invalidateSize(), 100);
+
+  // Auto-detect GPS location
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+      locMap.setView([lat, lng], 16);
+      marker.setLatLng([lat, lng]);
+      // Reverse geocode to fill address fields
+      fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lng + '&format=json&addressdetails=1')
+        .then(r => r.json()).then(data => {
+          if (data && data.display_name) {
+            const a = data.address || {};
+            const addrInput = document.getElementById('loc-address');
+            const cityInput = document.getElementById('loc-city');
+            const stateInput = document.getElementById('loc-state');
+            const zipInput = document.getElementById('loc-zip');
+            // Only auto-fill if fields are still empty
+            if (addrInput && !addrInput.value) {
+              const houseNum = a.house_number || '';
+              const road = a.road || '';
+              addrInput.value = ((houseNum ? houseNum + ' ' : '') + road).trim() || data.display_name.split(',')[0];
+            }
+            if (cityInput && !cityInput.value) cityInput.value = a.city || a.town || a.village || a.suburb || '';
+            if (stateInput && !stateInput.value) stateInput.value = a.state ? a.state.replace(/^(.{2}).*/, '$1').toUpperCase() : '';
+            if (zipInput && !zipInput.value) zipInput.value = a.postcode || '';
+          }
+        }).catch(() => {});
+    }, function() {
+      // GPS denied — leave fields empty for manual entry
+    }, { enableHighAccuracy: true, timeout: 5000 });
+  }
 }
 
 // ── TOAST ──

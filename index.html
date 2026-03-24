@@ -531,8 +531,8 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 
     <!-- STEP 2: Photograph the items -->
     <div style="background:linear-gradient(135deg,#EFF6FF,#F8F9FF);border:1.5px solid var(--blue);border-radius:14px;padding:16px;margin-bottom:14px;">
-      <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px;">📸 Now photograph the stolen items</div>
-      <div style="font-size:12px;color:var(--g4);margin-bottom:12px;line-height:1.4;">Snap a photo of each item. We'll estimate the retail value automatically.</div>
+      <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px;">📸 Verify & photograph stolen items</div>
+      <div style="font-size:12px;color:var(--g4);margin-bottom:12px;line-height:1.4;" id="photo-section-hint">Items detected from your report are shown below. Tap to correct, or snap photos to verify and add more.</div>
 
       <div style="display:flex;gap:8px;margin-bottom:10px;">
         <button onclick="document.getElementById('vr-camera-input').click()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
@@ -545,6 +545,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
         </button>
       </div>
       <input type="file" id="vr-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="handleItemCamera(this)">
+      <input type="file" id="item-rephoto-input" accept="image/*" capture="environment" style="display:none;" onchange="handleItemRephoto(this)">
 
       <!-- Voice listening state -->
       <div id="item-voice-status" style="display:none;background:rgba(232,68,79,.06);border:1px solid #FECACA;border-radius:10px;padding:12px;margin-bottom:8px;">
@@ -1786,7 +1787,11 @@ function finishVoice() {
   setTimeout(updateReadbackText, 500);
   // Speak the prompt to the officer after a short delay
   setTimeout(() => {
-    speakPrompt('Transcription complete. Now send me photos of each stolen item, one at a time.');
+    if (authToken) {
+      speakPrompt('Transcription complete. Analyzing your report now.');
+    } else {
+      speakPrompt('Transcription complete. Now send me photos of each stolen item, one at a time.');
+    }
   }, 800);
 
   // ── AI-POWERED TRANSCRIPT PARSING ──
@@ -1824,12 +1829,29 @@ function finishVoice() {
         _aiStoreName = ai.storeName;
       }
 
-      // Re-generate the formatted report with AI data
-      generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
-      updateReadbackText();
-
-      // Show a toast confirming AI processed the transcript
-      showToast('AI analyzed transcript' + (ai.personName ? ' — found: ' + ai.personName : ''));
+      // ── AUTO-POPULATE ITEMS from AI extraction ──
+      if (ai.items && ai.items.length > 0) {
+        showToast('AI found ' + ai.items.length + ' item' + (ai.items.length > 1 ? 's' : '') + ' — searching prices...');
+        speakPrompt('I found ' + ai.items.length + ' item' + (ai.items.length > 1 ? 's' : '') + ' from your description. Searching prices now. You can correct or add photos for each one.');
+        // Add items sequentially with price lookups
+        (async function() {
+          for (const aiItem of ai.items) {
+            await addItemAndSearchPrice(aiItem.name, aiItem.qty || 1);
+          }
+          // After all items added, re-generate report with prices
+          generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
+          updateReadbackText();
+          // Show the add-another prompt so officer can add photos or more items
+          const prompt = document.getElementById('add-another-prompt');
+          if (prompt) prompt.style.display = 'block';
+          speakPrompt('Items pre-filled from your description. Tap any item to correct it, or take photos to verify.');
+        })();
+      } else {
+        // No items found — re-generate report and prompt for photos
+        generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
+        updateReadbackText();
+        showToast('AI analyzed transcript' + (ai.personName ? ' — found: ' + ai.personName : ''));
+      }
     }).catch(err => {
       console.warn('[MEA] AI parse failed, using local parsing:', err);
     });
@@ -2555,22 +2577,60 @@ function rerenderItemsList() {
   const rows = document.getElementById('items-list-rows');
   rows.innerHTML = '';
   _stolenItems.forEach((item, idx) => {
+    const hasPhoto = !!item.photoData;
+    const statusIcon = hasPhoto
+      ? '<div style="width:32px;height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;border:1.5px solid var(--green);"><img src="'+item.photoData+'" style="width:100%;height:100%;object-fit:cover;"></div>'
+      : '<div style="width:32px;height:32px;border-radius:6px;background:rgba(20,75,216,.08);border:1.5px dashed var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;" onclick="triggerItemPhoto('+idx+')" title="Add photo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></div>';
+    const verifyLabel = hasPhoto
+      ? '<span style="color:var(--green);">✓ photo verified</span>'
+      : '<span style="color:var(--blue);">📷 tap photo to verify · tap name to correct</span>';
     rows.insertAdjacentHTML('beforeend', `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,0,60,.04);">
-        <div onclick="editItem(${idx})" style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;" title="Tap to correct">
-          ${item.photoData ? '<div style="width:32px;height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;border:1.5px solid var(--green);"><img src="'+item.photoData+'" style="width:100%;height:100%;object-fit:cover;"></div>' : '<div style="width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>'}
-          <div style="min-width:0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,0,60,.04);">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+          ${statusIcon}
+          <div onclick="editItem(${idx})" style="min-width:0;cursor:pointer;" title="Tap to correct">
             <div style="font-size:14px;font-weight:600;color:var(--navy);">${item.name}${item.qty>1?' <span style="color:var(--g4);font-weight:400;">x '+item.qty+'</span>':''}</div>
-            <div style="font-size:10px;color:var(--g4);margin-top:1px;">${item.source}${item.qty>1?' · $'+item.unitPrice.toFixed(2)+' each':''} · <span style="color:var(--blue);">tap to correct</span></div>
+            <div style="font-size:10px;color:var(--g4);margin-top:2px;">${item.source}${item.qty>1?' · $'+item.unitPrice.toFixed(2)+' each':''}</div>
+            <div style="font-size:9px;margin-top:1px;">${verifyLabel}</div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:14px;font-weight:700;color:var(--navy);">$${item.total.toFixed(2)}</span>
-          <button onclick="removeItem(${idx})" style="width:22px;height:22px;border-radius:50%;border:1px solid #ddd;background:none;cursor:pointer;font-size:11px;color:var(--g4);display:flex;align-items:center;justify-content:center;">x</button>
+          <button onclick="removeItem(${idx})" style="width:22px;height:22px;border-radius:50%;border:1px solid #ddd;background:none;cursor:pointer;font-size:11px;color:var(--g4);display:flex;align-items:center;justify-content:center;">✕</button>
         </div>
       </div>`);
   });
   updateItemsTotal();
+}
+
+// Trigger photo capture for a specific item (to add/replace photo)
+let _photoTargetIdx = null;
+function triggerItemPhoto(idx) {
+  _photoTargetIdx = idx;
+  document.getElementById('item-rephoto-input').click();
+}
+function handleItemRephoto(input) {
+  if (!input.files || !input.files[0] || _photoTargetIdx === null) return;
+  const idx = _photoTargetIdx;
+  _photoTargetIdx = null;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    if (_stolenItems[idx]) {
+      _stolenItems[idx].photoData = e.target.result;
+      rerenderItemsList();
+      // Also add to evidence thumbnails
+      const thumbs = document.getElementById('item-photo-thumbs');
+      const thumb = document.createElement('div');
+      thumb.style.cssText = 'width:56px;height:56px;border-radius:8px;overflow:hidden;border:2px solid var(--green);';
+      thumb.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
+      thumbs.appendChild(thumb);
+      showToast('Photo added for ' + _stolenItems[idx].name);
+      speakPrompt('Photo verified for ' + _stolenItems[idx].name);
+    }
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
 }
 
 // ── CORRECTION FLOW — "That's wrong, try again" ──

@@ -732,21 +732,21 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
         <img src="assets/images/selfie-confirmation.png" style="width:100%;height:100%;object-fit:cover;">
       </div>
       <div>
-        <div style="font-size:16px;font-weight:700;color:var(--navy);">Orazio Rispo</div>
-        <div style="font-size:12px;color:var(--green);font-weight:600;margin-top:2px;">✓ ID Scanned Successfully</div>
+        <div style="font-size:16px;font-weight:700;color:var(--navy);" id="verify-header-name">Participant</div>
+        <div style="font-size:12px;color:var(--green);font-weight:600;margin-top:2px;" id="verify-scan-status">Enter participant details</div>
       </div>
     </div>
     <div style="margin-bottom:14px;">
       <label class="form-label">First Name</label>
-      <input type="text" class="form-input" value="Orazio">
+      <input type="text" class="form-input" value="" placeholder="First name">
     </div>
     <div style="margin-bottom:14px;">
       <label class="form-label">Last Name</label>
-      <input type="text" class="form-input" value="Rispo">
+      <input type="text" class="form-input" value="" placeholder="Last name">
     </div>
     <div style="margin-bottom:14px;">
       <label class="form-label">Date of Birth</label>
-      <input type="text" class="form-input" value="04/15/1992">
+      <input type="text" class="form-input" value="" placeholder="MM/DD/YYYY">
     </div>
     <div style="margin-bottom:14px;">
       <label class="form-label">Address</label>
@@ -1742,13 +1742,38 @@ function startRealSpeech() {
     }
   };
   recognition.onerror = (e) => {
-    if (e.error === 'not-allowed' || e.error === 'service-not-available') {
-      document.getElementById('voice-status').textContent = 'Mic not available — using demo mode';
+    console.log('Speech recognition error:', e.error);
+    if (e.error === 'not-allowed') {
+      document.getElementById('voice-status').textContent = 'Microphone access denied — tap to allow in Settings, or type below';
+      recognition = null;
       simulateTranscription();
+    } else if (e.error === 'service-not-available' || e.error === 'network') {
+      document.getElementById('voice-status').textContent = 'Speech service unavailable — type your notes below';
+      recognition = null;
+      simulateTranscription();
+    } else if (e.error === 'no-speech') {
+      // No speech detected — keep listening
+      document.getElementById('voice-status').textContent = 'No speech detected — speak now...';
+    } else if (e.error === 'aborted') {
+      // User cancelled — do nothing
     }
   };
   recognition.onend = () => {
-    if (liveTranscript.trim().length > 0) {
+    // iOS Safari stops recognition after silence — auto-restart to keep listening
+    if (recognition && cur === 'voice') {
+      try {
+        recognition.start();
+        document.getElementById('voice-status').textContent = 'Listening...';
+      } catch(e) {
+        // If restart fails, show what we have
+        if (liveTranscript.trim().length > 0) {
+          document.getElementById('voice-status').textContent = 'Transcription complete';
+          document.getElementById('voice-ring').classList.remove('recording');
+          document.getElementById('voice-done-btn').disabled = false;
+          document.getElementById('voice-done-btn').style.opacity = '1';
+        }
+      }
+    } else if (liveTranscript.trim().length > 0) {
       document.getElementById('voice-status').textContent = 'Transcription complete';
       document.getElementById('voice-ring').classList.remove('recording');
       document.getElementById('voice-done-btn').disabled = false;
@@ -1765,26 +1790,30 @@ function updateVoiceTimer() {
   document.getElementById('voice-timer').textContent = m + ':' + (s < 10 ? '0' : '') + s;
 }
 function simulateTranscription() {
-  const words = "So I was on Broadway near the CVS around like 10:35 tonight and I saw this guy, his name is Orazio Rispo, he was walking out of the store and the manager flagged me down and said he just pocketed some items, like baby formula and some diapers, didn't pay for them, total was about ninety bucks. I detained him, he was cooperative, no warrants, first time I've dealt with him.".split(' ');
-  let i = 0;
+  // No real mic available — show manual text input instead of hardcoded demo text
+  document.getElementById('voice-status').textContent = 'Microphone unavailable — type your notes below';
+  document.getElementById('voice-ring').classList.remove('recording');
   const el = document.getElementById('voice-transcript');
-  const interval = setInterval(() => {
-    if (i >= words.length) {
-      clearInterval(interval);
-      document.getElementById('voice-status').textContent = 'Transcription complete';
-      document.getElementById('voice-ring').classList.remove('recording');
-      document.getElementById('voice-done-btn').disabled = false;
-      document.getElementById('voice-done-btn').style.opacity = '1';
-      return;
-    }
-    el.textContent += (i > 0 ? ' ' : '"') + words[i];
-    if (i === words.length - 1) el.textContent += '"';
-    i++;
-  }, 120);
+  el.textContent = '';
+  // Replace the transcript display with a textarea for manual input
+  el.contentEditable = 'true';
+  el.style.cssText += 'border:1.5px solid rgba(255,255,255,.2);border-radius:12px;padding:14px;min-height:120px;font-size:15px;text-align:left;outline:none;background:rgba(255,255,255,.05);cursor:text;';
+  el.setAttribute('placeholder', 'Type incident details here...');
+  el.focus();
+  document.getElementById('voice-done-btn').disabled = false;
+  document.getElementById('voice-done-btn').style.opacity = '1';
 }
 function cancelVoice() {
   clearInterval(voiceTimer);
   if (recognition) { recognition.abort(); recognition = null; }
+  // Clean up contentEditable if it was set
+  const transcriptEl = document.getElementById('voice-transcript');
+  transcriptEl.contentEditable = 'false';
+  transcriptEl.style.border = 'none';
+  transcriptEl.style.padding = '';
+  transcriptEl.style.minHeight = '';
+  transcriptEl.style.background = '';
+  transcriptEl.style.cursor = '';
   goBack();
 }
 function stopVoice() {
@@ -1797,13 +1826,22 @@ function finishVoice() {
   clearInterval(voiceTimer);
   if (recognition) { recognition.stop(); recognition = null; }
   usedVoice = true;
-  // If we have a live transcript, update the voice-result screen with it
+  // If we have a live transcript from speech recognition, use it
   if (liveTranscript.trim()) {
     voiceTranscriptText = liveTranscript.trim();
     document.getElementById('voice-transcript').textContent = '"' + liveTranscript.trim() + '"';
   } else {
-    // Grab the simulated transcript text
-    voiceTranscriptText = (document.getElementById('voice-transcript').textContent || '').replace(/^"|"$/g, '').trim();
+    // Grab manually typed text (contentEditable fallback) or displayed text
+    const transcriptEl = document.getElementById('voice-transcript');
+    const rawText = (transcriptEl.innerText || transcriptEl.textContent || '').replace(/^"|"$/g, '').trim();
+    voiceTranscriptText = rawText;
+    // Reset contentEditable if it was set
+    transcriptEl.contentEditable = 'false';
+    transcriptEl.style.border = 'none';
+    transcriptEl.style.padding = '';
+    transcriptEl.style.minHeight = '';
+    transcriptEl.style.background = '';
+    transcriptEl.style.cursor = '';
   }
   // Update the "what you said" section with real transcript
   if (voiceTranscriptText) {
@@ -2803,9 +2841,10 @@ function handleIdPhoto(input) {
         // Also set parsed name for report
         if (ai.firstName || ai.lastName) {
           _parsedPersonName = ((ai.firstName || '') + ' ' + (ai.lastName || '')).trim();
+          document.getElementById('verify-header-name').textContent = _parsedPersonName;
+          document.getElementById('verify-scan-status').textContent = '✓ ID Scanned Successfully';
+          document.getElementById('verify-scan-status').style.color = 'var(--green)';
         }
-        // Update verify screen header name
-        const nameDisplay = document.querySelector('#s-verify .form-input');
 
         document.getElementById('scan-status-text').textContent = 'ID scanned successfully';
         speakPrompt('ID scanned. ' + (ai.firstName || '') + ' ' + (ai.lastName || '') + '. Please verify the information.');

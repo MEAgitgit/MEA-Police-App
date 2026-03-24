@@ -209,6 +209,8 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     if(inp.value==='4321'){
       gate.style.opacity='0';
       setTimeout(function(){gate.style.display='none';},350);
+      // Login to backend API after gate succeeds
+      if(typeof loginToBackend==='function') loginToBackend();
     }else{
       err.textContent='Incorrect password';
       inp.style.borderColor='#E8444F';
@@ -915,6 +917,58 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 </div><!-- end #app -->
 
 <script>
+// ── API CONFIG ──
+const API_BASE = 'http://localhost:3001';
+let authToken = null;
+let apiConnected = false;
+
+// Check backend connectivity and show indicator
+function checkBackendConnection() {
+  fetch(API_BASE + '/api/citations', {
+    headers: authToken ? {'Authorization': 'Bearer ' + authToken} : {}
+  }).then(r => {
+    apiConnected = r.ok;
+    updateConnectionIndicator();
+  }).catch(() => {
+    apiConnected = false;
+    updateConnectionIndicator();
+  });
+}
+
+function updateConnectionIndicator() {
+  let dot = document.getElementById('api-status-dot');
+  if (!dot) {
+    dot = document.createElement('div');
+    dot.id = 'api-status-dot';
+    dot.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:99998;display:flex;align-items:center;gap:5px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);padding:4px 10px 4px 8px;border-radius:20px;font-family:Inter,sans-serif;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);transition:opacity .3s;';
+    document.body.appendChild(dot);
+  }
+  if (apiConnected) {
+    dot.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#00B67A;display:inline-block;box-shadow:0 0 6px #00B67A;"></span> LIVE';
+    dot.style.opacity = '1';
+  } else {
+    dot.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#555;display:inline-block;"></span> DEMO';
+    dot.style.opacity = '0.5';
+  }
+}
+
+function loginToBackend() {
+  fetch(API_BASE + '/api/auth/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email: 'dercolo@revere.pd', password: '4321'})
+  }).then(r => r.json()).then(d => {
+    authToken = d.token;
+    apiConnected = true;
+    updateConnectionIndicator();
+    console.log('[MEA] Backend authenticated');
+  }).catch(() => {
+    apiConnected = false;
+    updateConnectionIndicator();
+    console.log('[MEA] Backend unavailable — demo mode');
+  });
+}
+
 // ── STATE ──
 let cur = 'pin';
 let navHistory = [];
@@ -922,6 +976,9 @@ let pinCode = '';
 let selectedOffense = '';
 let voiceTimer = null;
 let voiceSeconds = 0;
+let usedVoice = false;
+let voiceTranscriptText = '';
+let formattedNotesText = '';
 const ORDER = ['pin','dashboard','offense','location','time','notes','voice','voice-result','code','scan-id','scanning','verify','q1','q2','q3','review','confirm','case-summary'];
 
 // ── CITATIONS DATA ──
@@ -1028,6 +1085,8 @@ function pinTap(n) {
   pinCode += n;
   updatePinDots();
   if (pinCode.length === 4) {
+    // Login to backend when PIN is entered
+    if (!authToken) loginToBackend();
     setTimeout(() => { pinCode = ''; nav('dashboard'); }, 300);
   }
 }
@@ -1041,11 +1100,27 @@ function updatePinDots() {
 }
 
 // ── CITATIONS LIST ──
-function buildCitationsList() {
+// Icon/color mapping for offense types from API
+const OFFENSE_META = {
+  'Shoplifting':           {icon:'🛒', iconBg:'#EFF6FF', badge:'badge-active'},
+  'Trespassing':           {icon:'🚧', iconBg:'#FEF3C7', badge:'badge-active'},
+  'Disorderly Conduct':    {icon:'📢', iconBg:'#F3E8FF', badge:'badge-active'},
+  'Property Crime':        {icon:'🏠', iconBg:'#FEE2E2', badge:'badge-active'},
+  'Drug Possession':       {icon:'💊', iconBg:'#FFF7ED', badge:'badge-active'},
+  'Simple Drug Possession':{icon:'💊', iconBg:'#FFF7ED', badge:'badge-active'},
+  'Receiving Stolen Property':{icon:'📦', iconBg:'#FEF3C7', badge:'badge-active'},
+};
+function getOffenseMeta(offense, status) {
+  const meta = OFFENSE_META[offense] || {icon:'📋', iconBg:'#F3F4F6'};
+  const badgeClass = status === 'closed' ? 'badge-closed' : status === 'pending' ? 'badge-pending' : 'badge-active';
+  return {...meta, badge: badgeClass};
+}
+
+function renderCitationsList(citations) {
   const list = document.getElementById('citations-list');
   if (!list) return;
   list.innerHTML = '';
-  CITATIONS.forEach(c => {
+  citations.forEach(c => {
     list.innerHTML += `
       <div class="cite-card" onclick="openCiteDetail('${c.id}')">
         <div class="cite-card-top">
@@ -1063,10 +1138,81 @@ function buildCitationsList() {
   });
 }
 
+function buildCitationsList() {
+  // Always render hardcoded data first (instant)
+  renderCitationsList(CITATIONS);
+
+  // Then try to fetch from API and replace
+  if (!authToken) return;
+  fetch(API_BASE + '/api/citations', {
+    headers: {'Authorization': 'Bearer ' + authToken}
+  }).then(r => {
+    if (!r.ok) throw new Error('API error');
+    return r.json();
+  }).then(data => {
+    if (data.citations && data.citations.length > 0) {
+      apiConnected = true;
+      updateConnectionIndicator();
+      // Map API citations to display format
+      const apiCitations = data.citations.map(ac => {
+        const meta = getOffenseMeta(ac.offense_type, ac.status);
+        const name = ((ac.citizen_first_name || '') + ' ' + (ac.citizen_last_name || '')).trim() || 'Unknown';
+        const dateStr = ac.incident_date ? new Date(ac.incident_date).toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'numeric'}) : '';
+        return {
+          id: ac.id,
+          name: name,
+          offense: ac.offense_type || 'Unknown',
+          statute: ac.statute || '',
+          icon: meta.icon,
+          iconBg: meta.iconBg,
+          status: ac.status === 'closed' ? 'Closed' : ac.status === 'pending' ? 'Pending' : 'Active',
+          badge: meta.badge,
+          date: dateStr,
+          location: ac.incident_location || '',
+        };
+      });
+      // Merge: API citations first, then hardcoded ones that don't conflict
+      const apiIds = new Set(apiCitations.map(c => String(c.id)));
+      const merged = [...apiCitations, ...CITATIONS.filter(c => !apiIds.has(String(c.id)))];
+      renderCitationsList(merged);
+      console.log('[MEA] Loaded ' + data.citations.length + ' citations from API');
+    }
+  }).catch(() => {
+    // Silently fall back to hardcoded data (already rendered)
+  });
+}
+
 // ── CITATION DETAIL ──
 function openCiteDetail(id) {
   const c = CITATIONS.find(x => x.id === id);
-  if (!c) return;
+  // If not in hardcoded data, show a minimal detail from API
+  if (!c) {
+    // Try API for unknown citation IDs
+    if (authToken) {
+      fetch(API_BASE + '/api/citations/' + id, {
+        headers: {'Authorization': 'Bearer ' + authToken}
+      }).then(r => r.ok ? r.json() : Promise.reject()).then(data => {
+        renderApiCiteDetail(data);
+      }).catch(() => {
+        showToast('Citation not found');
+      });
+    } else {
+      showToast('Citation not found');
+    }
+    return;
+  }
+
+  // Try to enrich hardcoded data with API data (non-blocking)
+  if (authToken) {
+    fetch(API_BASE + '/api/citations/' + id, {
+      headers: {'Authorization': 'Bearer ' + authToken}
+    }).then(r => r.ok ? r.json() : Promise.reject()).then(data => {
+      // If API has richer data (program, services, timeline), re-render the detail
+      if (data.program || (data.services && data.services.length) || (data.timeline && data.timeline.length)) {
+        console.log('[MEA] Enriched citation detail from API for ' + id);
+      }
+    }).catch(() => { /* silent fallback */ });
+  }
   document.getElementById('cd-offense').textContent = c.offense;
   document.getElementById('cd-statute').textContent = c.statute;
   document.getElementById('cd-icon').textContent = c.icon;
@@ -1224,6 +1370,90 @@ function closeCiteDetail() {
   document.getElementById('cite-detail').classList.remove('on');
 }
 
+// Render citation detail from API data (for citations not in hardcoded list)
+function renderApiCiteDetail(data) {
+  const ac = data.citation || data;
+  const meta = getOffenseMeta(ac.offense_type, ac.status);
+  document.getElementById('cd-offense').textContent = ac.offense_type || 'Citation';
+  document.getElementById('cd-statute').textContent = ac.statute || '';
+  document.getElementById('cd-icon').textContent = meta.icon;
+  document.getElementById('cd-icon').style.background = meta.iconBg;
+
+  const name = ((ac.citizen_first_name || '') + ' ' + (ac.citizen_last_name || '')).trim() || 'Unknown';
+  const dateStr = ac.incident_date ? new Date(ac.incident_date).toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'numeric'}) : '';
+  const statusLabel = ac.status === 'closed' ? 'Closed' : ac.status === 'active' ? 'Active' : 'Pending';
+
+  const program = data.program;
+  const services = data.services || [];
+  const timeline = data.timeline || [];
+
+  const body = document.getElementById('cd-body');
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <span class="cite-badge ${meta.badge}" style="font-size:13px;padding:5px 14px;">${statusLabel}</span>
+      <span style="font-size:12px;color:var(--g4);">Citation #${ac.id}</span>
+    </div>
+
+    ${program ? `
+    <div style="background:linear-gradient(135deg,#0A1628,#13276A);border-radius:14px;padding:16px 18px;margin-bottom:14px;color:#fff;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:rgba(130,203,245,.7);">Program</div>
+          <div style="font-size:15px;font-weight:700;margin-top:2px;">${program.name || 'SWIFT Diversion'}</div>
+        </div>
+        <div style="background:var(--blue);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;">${program.status || 'Assigned'}</div>
+      </div>
+      ${program.duration_days ? `<div style="font-size:11px;color:rgba(255,255,255,.4);">Duration: ${program.duration_days} days</div>` : ''}
+    </div>` : ''}
+
+    ${services.length ? `
+    <div class="review-section" style="background:#EFF6FF;border:1px solid #BFDBFE;">
+      <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:10px;">Services & Support</div>
+      ${services.map(s => `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0;"></div>
+          <span style="font-size:13px;color:var(--navy);">${s.name || s}</span>
+        </div>`).join('')}
+    </div>` : ''}
+
+    <div class="review-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Participant</div>
+      <div class="review-row"><span class="review-label">Name</span><span class="review-value">${name}</span></div>
+      ${ac.citizen_dob ? `<div class="review-row"><span class="review-label">DOB</span><span class="review-value">${ac.citizen_dob}</span></div>` : ''}
+      ${ac.citizen_phone ? `<div class="review-row"><span class="review-label">Phone</span><span class="review-value">${ac.citizen_phone}</span></div>` : ''}
+    </div>
+
+    <div class="review-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Incident Details</div>
+      <div class="review-row"><span class="review-label">Date</span><span class="review-value">${dateStr}</span></div>
+      ${ac.incident_location ? `<div class="review-row"><span class="review-label">Location</span><span class="review-value" style="font-size:12px;">${ac.incident_location}</span></div>` : ''}
+      ${ac.officer_name ? `<div class="review-row"><span class="review-label">Officer</span><span class="review-value">${ac.officer_name}</span></div>` : ''}
+    </div>
+
+    ${ac.notes || ac.formatted_notes ? `
+    <div class="review-section">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Officer Notes</div>
+      <div style="font-size:13px;color:var(--navy);line-height:1.6;">${ac.formatted_notes || ac.notes}</div>
+    </div>` : ''}
+
+    ${timeline.length ? `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;">Activity Timeline</div>
+      ${timeline.map(e => `
+        <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;padding-left:2px;">
+          <div style="width:10px;height:10px;border-radius:50%;margin-top:4px;flex-shrink:0;${
+            e.status==='completed' || e.s==='done' ? 'background:var(--green);' : 'border:2px solid var(--g3);'
+          }"></div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--navy);">${e.event || e.t}</div>
+            <div style="font-size:11px;color:var(--g4);margin-top:1px;">${e.date || e.d || ''}</div>
+          </div>
+        </div>`).join('')}
+    </div>` : ''}
+  `;
+  document.getElementById('cite-detail').classList.add('on');
+}
+
 // ── OFFENSE SELECTION ──
 function selectOffense(el, name) {
   document.querySelectorAll('.off-row').forEach(o => o.classList.remove('selected'));
@@ -1370,15 +1600,21 @@ function stopVoice() {
 function finishVoice() {
   clearInterval(voiceTimer);
   if (recognition) { recognition.stop(); recognition = null; }
+  usedVoice = true;
   // If we have a live transcript, update the voice-result screen with it
   if (liveTranscript.trim()) {
+    voiceTranscriptText = liveTranscript.trim();
     document.getElementById('voice-transcript').textContent = '"' + liveTranscript.trim() + '"';
+  } else {
+    // Grab the simulated transcript text
+    voiceTranscriptText = (document.getElementById('voice-transcript').textContent || '').replace(/^"|"$/g, '').trim();
   }
   nav('voice-result');
 }
 function acceptFormattedNotes() {
   // Copy formatted text back to notes textarea
   const formatted = document.getElementById('formatted-notes').innerText;
+  formattedNotesText = formatted;
   document.getElementById('notes-textarea').value = formatted;
   // Navigate back to notes then forward to code
   // Reset history to skip voice screens
@@ -1388,6 +1624,68 @@ function acceptFormattedNotes() {
 
 // ── SUBMIT ──
 function submitCitation() {
+  // Collect form data from all screens
+  const citationData = {
+    // Offense
+    offense_type: selectedOffense || 'Shoplifting',
+    // Location
+    incident_location: document.getElementById('loc-address') ? document.getElementById('loc-address').value : '375 Broadway, Revere, MA 02151',
+    // Time
+    incident_date: new Date().toISOString(),
+    // Notes
+    notes: document.getElementById('notes-textarea') ? document.getElementById('notes-textarea').value : '',
+    formatted_notes: formattedNotesText || '',
+    // Voice
+    intake_source: usedVoice ? 'voice' : 'manual',
+    voice_transcript: usedVoice ? voiceTranscriptText : '',
+    // Citizen identity (read from verify screen inputs)
+    citizen_first_name: 'Orazio',
+    citizen_last_name: 'Rispo',
+    citizen_dob: '04/15/1992',
+    citizen_address: '45 Revere Beach Blvd, Revere, MA 02151',
+    citizen_email: 'orazio@email.com',
+    citizen_phone: '(617) 555-4716',
+    // Eligibility
+    first_time_offense: true,
+    prior_in_24_months: false,
+    has_smartphone: true,
+    // Citation code
+    citation_code: 'MA2048',
+  };
+
+  // Try to read actual values from verify screen inputs
+  const verifyInputs = document.querySelectorAll('#s-verify .form-input');
+  if (verifyInputs.length >= 6) {
+    citationData.citizen_first_name = verifyInputs[0].value || citationData.citizen_first_name;
+    citationData.citizen_last_name = verifyInputs[1].value || citationData.citizen_last_name;
+    citationData.citizen_dob = verifyInputs[2].value || citationData.citizen_dob;
+    citationData.citizen_address = verifyInputs[3].value || citationData.citizen_address;
+    citationData.citizen_email = verifyInputs[4].value || citationData.citizen_email;
+    citationData.citizen_phone = verifyInputs[5].value || citationData.citizen_phone;
+  }
+
+  // Read citation code from OTP boxes
+  const codeBoxes = document.querySelectorAll('#code-row .otp-box');
+  if (codeBoxes.length) {
+    citationData.citation_code = Array.from(codeBoxes).map(b => b.textContent).join('');
+  }
+
+  // Fire and forget POST to backend
+  if (authToken) {
+    fetch(API_BASE + '/api/citations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + authToken
+      },
+      body: JSON.stringify(citationData)
+    }).then(r => r.json()).then(d => {
+      console.log('[MEA] Citation submitted to backend:', d);
+    }).catch(err => {
+      console.warn('[MEA] Failed to submit citation to backend:', err);
+    });
+  }
+
   nav('confirm');
 }
 
@@ -1413,6 +1711,8 @@ function showToast(msg) {
 
 // ── INIT ──
 buildCitationsList();
+// Check backend connectivity on load
+checkBackendConnection();
 </script>
 </body>
 </html>

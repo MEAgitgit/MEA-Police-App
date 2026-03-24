@@ -918,7 +918,10 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 
 <script>
 // ── API CONFIG ──
-const API_BASE = 'http://localhost:3001';
+// Check localStorage for custom API URL (set via ?api=URL param or settings)
+const _urlParams = new URLSearchParams(window.location.search);
+if (_urlParams.get('api')) localStorage.setItem('mea_api_url', _urlParams.get('api'));
+const API_BASE = localStorage.getItem('mea_api_url') || 'http://localhost:3001';
 let authToken = null;
 let apiConnected = false;
 

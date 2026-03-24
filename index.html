@@ -1773,22 +1773,8 @@ function finishVoice() {
   if (voiceTranscriptText) {
     document.getElementById('voice-what-you-said').textContent = '"' + voiceTranscriptText + '"';
   }
-  // Look up item prices from transcript, then generate report
-  searchItemPricesRealTime(voiceTranscriptText).then(priceResults => {
-    generateFormattedReport(voiceTranscriptText, priceResults);
-    // Merge transcript-extracted items into _stolenItems
-    if (priceResults && priceResults.found) {
-      for (const f of priceResults.found) {
-        const exists = _stolenItems.find(s => s.name.toLowerCase() === f.item.toLowerCase());
-        if (!exists) {
-          _stolenItems.push({ name: f.item, qty: f.qty, unitPrice: f.unitPrice, total: f.total, source: f.source });
-        }
-      }
-      updateItemsTotal();
-      rerenderItemsList();
-    }
-    updateReadbackText();
-  });
+  // Generate formatted report from transcript (narrative only — items come from photo flow)
+  generateFormattedReport(voiceTranscriptText, { found: [], total: 0 });
   nav('voice-result');
   // Populate initial readback
   setTimeout(updateReadbackText, 500);

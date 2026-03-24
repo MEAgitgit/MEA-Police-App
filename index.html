@@ -984,6 +984,8 @@ let voiceSeconds = 0;
 let usedVoice = false;
 let voiceTranscriptText = '';
 let formattedNotesText = '';
+let _lastPriceResults = { found: [], total: 0 };
+let _parsedPersonName = '';
 const ORDER = ['pin','dashboard','offense','location','time','notes','voice','voice-result','code','scan-id','scanning','verify','q1','q2','q3','review','confirm','case-summary'];
 
 // ── CITATIONS DATA ──
@@ -1635,8 +1637,9 @@ function finishVoice() {
   if (voiceTranscriptText) {
     document.getElementById('voice-what-you-said').textContent = '"' + voiceTranscriptText + '"';
   }
-  // Look up item prices from the transcript
-  lookupItemPrices(voiceTranscriptText);
+  // Look up item prices and generate formatted report from real transcript
+  const priceResults = lookupItemPrices(voiceTranscriptText);
+  generateFormattedReport(voiceTranscriptText, priceResults);
   nav('voice-result');
 }
 
@@ -1745,6 +1748,111 @@ function lookupItemPrices(transcript) {
   } else if (container) {
     container.style.display = 'none';
   }
+  return { found, total };
+}
+
+// ── DYNAMIC FORMATTED REPORT GENERATOR ──
+function generateFormattedReport(transcript, priceResults) {
+  const text = transcript.toLowerCase();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+  const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}).replace(':','');
+
+  // Extract person name from transcript
+  // Look for patterns like "his name is X Y", "named X Y", "identified as X Y", "I stopped X Y", "detained X Y"
+  let personName = null;
+  const namePatterns = [
+    /(?:name is|named|identified as|stopped|detained|individual[,]?\s+)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/i,
+    /(?:this (?:guy|person|individual|man|woman|subject)[,]?\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/i,
+    /([A-Z][a-z]+\s+[A-Z][a-z]+)(?:\s*,?\s*(?:was|he|she|they|had|who))/,
+  ];
+  for (const pat of namePatterns) {
+    const m = transcript.match(pat);
+    if (m && m[1]) {
+      // Filter out common false positives
+      const skip = ['the store','the manager','the officer','i was','i saw','so i','and i','no warrants','first time','baby formula'];
+      if (!skip.some(s => m[1].toLowerCase().includes(s))) {
+        personName = m[1].trim();
+        break;
+      }
+    }
+  }
+  if (!personName) personName = 'the subject';
+  _parsedPersonName = personName;
+  _lastPriceResults = priceResults || { found: [], total: 0 };
+
+  // Extract location from selected offense screen or transcript
+  let location = '375 Broadway, Revere, MA 02151';
+  const locInput = document.getElementById('loc-address');
+  if (locInput && locInput.value) location = locInput.value;
+  // Also try to find store name in transcript
+  let storeName = '';
+  const storePatterns = [/(?:at|near|outside|from|leaving)\s+(?:the\s+)?([A-Z][A-Za-z'\s]+(?:Pharmacy|Market|Store|Target|Walmart|CVS|Walgreens|Stop\s*&?\s*Shop|Star\s+Market|7-Eleven|Dunkin|Starbucks))/i,
+    /(?:CVS|Walgreens|Target|Walmart|Stop\s*&?\s*Shop|Star\s+Market|Market\s+Basket|7-Eleven|Dunkin|Starbucks|Home\s+Depot|Costco|TJ\s*Maxx|Dollar\s+Tree|Rite\s+Aid)/i];
+  for (const sp of storePatterns) {
+    const sm = transcript.match(sp);
+    if (sm) { storeName = sm[0].trim(); break; }
+  }
+
+  // Build items list from price results
+  let itemsLine = '';
+  let totalValue = 0;
+  if (priceResults && priceResults.found.length > 0) {
+    itemsLine = priceResults.found.map(f =>
+      f.item + (f.qty > 1 ? ` (${f.qty} units)` : ' (1 unit)')
+    ).join(', ') + '.';
+    totalValue = priceResults.total;
+  }
+
+  // Determine offense and statute
+  const offense = selectedOffense || 'Shoplifting';
+  const statute = _offenseStatutes[offense] || 'G.L. c. 266, §30A';
+  const thresholdLabel = totalValue > 250 ? 'over $250' : 'under $250';
+
+  // Check for cooperation mentions
+  const cooperative = /cooperat|compliant|without incident|calm|no resist/i.test(text);
+  const noWarrants = /no warrant|no prior|first time|no record|no history|clean record/i.test(text);
+
+  // Generate the formal report
+  const report = `<strong>Incident Report — Officer M. Dercolo, Badge #4187</strong><br><br>` +
+
+    `On ${dateStr}, at approximately ${timeStr} hours, the reporting officer ` +
+    (storeName ? `responded to a report at ${storeName}, ${location}.` : `was on patrol in the vicinity of ${location}.`) +
+    `<br><br>` +
+
+    (offense === 'Shoplifting' || offense === 'Property Crime' ?
+      (storeName ?
+        `The store manager reported that an individual, later identified as <strong>${personName}</strong>, had exited the premises without tendering payment for merchandise.` :
+        `An individual, later identified as <strong>${personName}</strong>, was observed in possession of unpaid merchandise.`
+      ) :
+    offense === 'Trespassing' ?
+      `An individual, later identified as <strong>${personName}</strong>, was found on the premises in violation of posted no-trespass signage.` :
+    offense === 'Disorderly Conduct' ?
+      `An individual, later identified as <strong>${personName}</strong>, was involved in a disturbance at the above location.` :
+    offense === 'Drug Possession' || offense === 'Simple Drug Possession' ?
+      `An individual, later identified as <strong>${personName}</strong>, was found in possession of a controlled substance.` :
+      `An individual, later identified as <strong>${personName}</strong>, was involved in an incident at the above location.`
+    ) + `<br><br>` +
+
+    (itemsLine ? `<strong>Items:</strong> ${itemsLine} Estimated total retail value: <strong>$${totalValue.toFixed(2)}</strong>.<br><br>` : '') +
+
+    (cooperative ?
+      `The officer detained the subject without incident. Subject was cooperative throughout the encounter. ` :
+      `The subject was detained at the scene. `
+    ) +
+    (noWarrants ?
+      `A records check returned <strong>no active warrants</strong> and <strong>no prior criminal history</strong> on file.<br><br>` :
+      `A records check was conducted.<br><br>`
+    ) +
+
+    `Based on the nature of the offense (${offense} ${thresholdLabel}, ${statute}), ` +
+    (noWarrants ? 'the absence of prior offenses, and ' : '') +
+    (cooperative ? `the subject's cooperative demeanor, ` : '') +
+    `this incident qualifies for <strong>pre-arrest diversion</strong> under the SWIFT program.<br><br>` +
+
+    `<em>— End of narrative</em>`;
+
+  document.getElementById('formatted-notes').innerHTML = report;
 }
 function acceptFormattedNotes() {
   // Copy formatted text back to notes textarea
@@ -1795,10 +1903,16 @@ function submitCitation() {
     officer_notes: document.getElementById('notes-textarea') ? document.getElementById('notes-textarea').value : '',
     formatted_notes: formattedNotesText || '',
     voice_transcript: usedVoice ? voiceTranscriptText : '',
+    items_description: _lastPriceResults.found.map(f => f.item + (f.qty > 1 ? ' x'+f.qty : '')).join(', ') || '',
+    estimated_value: _lastPriceResults.total || 0,
     intake_source: usedVoice ? 'voice' : 'manual',
     first_offense: 1,
     citation_code: citCode,
   };
+  // Use parsed name from voice if available and form fields are defaults
+  if (_parsedPersonName && _parsedPersonName !== 'the subject' && citationData.participant_name === 'Orazio Rispo') {
+    citationData.participant_name = _parsedPersonName;
+  }
 
   // Fire and forget POST to backend
   if (authToken) {

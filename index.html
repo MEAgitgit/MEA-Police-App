@@ -1264,7 +1264,11 @@ function setAmPm(val, el) {
   el.style.color = 'var(--blue)';
 }
 
-// ── VOICE DICTATION ──
+// ── VOICE DICTATION (Web Speech API with simulation fallback) ──
+let recognition = null;
+let liveTranscript = '';
+const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+
 function startVoice() {
   navHistory.push(cur);
   const prev = document.getElementById('s-' + cur);
@@ -1275,15 +1279,61 @@ function startVoice() {
   setTimeout(() => next.classList.remove('in'), 300);
   // Start timer
   voiceSeconds = 0;
+  liveTranscript = '';
   document.getElementById('voice-timer').textContent = '0:00';
   document.getElementById('voice-status').textContent = 'Listening...';
   document.getElementById('voice-transcript').textContent = '';
   document.getElementById('voice-ring').classList.add('recording');
   document.getElementById('voice-done-btn').disabled = true;
   voiceTimer = setInterval(updateVoiceTimer, 1000);
-  // Simulate transcription appearing
-  simulateTranscription();
+
+  if (SpeechAPI) {
+    startRealSpeech();
+  } else {
+    simulateTranscription();
+  }
 }
+
+function startRealSpeech() {
+  recognition = new SpeechAPI();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  let finalTranscript = '';
+  recognition.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        finalTranscript += e.results[i][0].transcript;
+      } else {
+        interim += e.results[i][0].transcript;
+      }
+    }
+    liveTranscript = finalTranscript + interim;
+    document.getElementById('voice-transcript').textContent = '"' + liveTranscript.trim() + (interim ? '...' : '"');
+    if (liveTranscript.trim().length > 10) {
+      document.getElementById('voice-done-btn').disabled = false;
+      document.getElementById('voice-done-btn').style.opacity = '1';
+    }
+  };
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-available') {
+      document.getElementById('voice-status').textContent = 'Mic not available — using demo mode';
+      simulateTranscription();
+    }
+  };
+  recognition.onend = () => {
+    if (liveTranscript.trim().length > 0) {
+      document.getElementById('voice-status').textContent = 'Transcription complete';
+      document.getElementById('voice-ring').classList.remove('recording');
+      document.getElementById('voice-done-btn').disabled = false;
+      document.getElementById('voice-done-btn').style.opacity = '1';
+    }
+  };
+  recognition.start();
+}
+
 function updateVoiceTimer() {
   voiceSeconds++;
   const m = Math.floor(voiceSeconds / 60);
@@ -1310,13 +1360,20 @@ function simulateTranscription() {
 }
 function cancelVoice() {
   clearInterval(voiceTimer);
+  if (recognition) { recognition.abort(); recognition = null; }
   goBack();
 }
 function stopVoice() {
   clearInterval(voiceTimer);
+  if (recognition) { recognition.stop(); recognition = null; }
 }
 function finishVoice() {
   clearInterval(voiceTimer);
+  if (recognition) { recognition.stop(); recognition = null; }
+  // If we have a live transcript, update the voice-result screen with it
+  if (liveTranscript.trim()) {
+    document.getElementById('voice-transcript').textContent = '"' + liveTranscript.trim() + '"';
+  }
   nav('voice-result');
 }
 function acceptFormattedNotes() {

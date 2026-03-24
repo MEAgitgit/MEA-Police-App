@@ -523,7 +523,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     </div>
     <div style="margin-bottom:12px;">
       <label class="form-label" style="color:var(--g4);">🎤 What you said:</label>
-      <div style="background:var(--g1);border-radius:10px;padding:14px;font-size:13px;color:var(--g4);line-height:1.6;font-style:italic;">
+      <div id="voice-what-you-said" style="background:var(--g1);border-radius:10px;padding:14px;font-size:13px;color:var(--g4);line-height:1.6;font-style:italic;">
         "So I was on Broadway near the CVS around like 10:35 tonight and I saw this guy, his name is Orazio Rispo, he was walking out of the store and the manager flagged me down and said he just pocketed some items, like baby formula and some diapers, didn't pay for them, total was about ninety bucks. I detained him, he was cooperative, no warrants, first time I've dealt with him."
       </div>
     </div>
@@ -539,6 +539,8 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
         <em>— End of narrative</em>
       </div>
     </div>
+    <!-- Price lookup results (populated dynamically) -->
+    <div id="price-lookup-results" style="display:none;background:var(--g1);border-radius:12px;padding:14px 16px;margin-top:16px;"></div>
     <div style="height:30px;"></div>
   </div>
   <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
@@ -1612,7 +1614,120 @@ function finishVoice() {
     // Grab the simulated transcript text
     voiceTranscriptText = (document.getElementById('voice-transcript').textContent || '').replace(/^"|"$/g, '').trim();
   }
+  // Update the "what you said" section with real transcript
+  if (voiceTranscriptText) {
+    document.getElementById('voice-what-you-said').textContent = '"' + voiceTranscriptText + '"';
+  }
+  // Look up item prices from the transcript
+  lookupItemPrices(voiceTranscriptText);
   nav('voice-result');
+}
+
+// ── ITEM PRICE LOOKUP ──
+// Parses transcript for mentioned items and estimates retail value
+const PRICE_DB = {
+  // Baby / childcare
+  'baby formula':49.99,'formula':49.99,'enfamil':42.99,'similac':44.99,
+  'diapers':28.99,'pampers':29.99,'huggies':27.99,'pull-ups':26.99,'luvs':21.99,
+  'baby wipes':8.49,'wipes':8.49,'baby food':4.99,'baby bottle':9.99,
+  // Groceries
+  'groceries':45.00,'juice':4.49,'orange juice':5.99,'apple juice':4.49,
+  'granola bars':5.99,'granola':5.99,'cereal':5.49,'milk':4.99,
+  'bread':4.29,'eggs':5.99,'butter':5.49,'cheese':6.99,
+  'chicken':9.99,'ground beef':7.99,'beef':7.99,'steak':14.99,
+  'rice':3.99,'pasta':2.49,'canned goods':2.99,'soup':3.49,
+  'chips':4.99,'cookies':4.49,'crackers':4.49,'candy':2.99,
+  'frozen pizza':7.99,'pizza':7.99,'ice cream':6.99,
+  'coffee':10.99,'tea':5.99,'water':4.99,'soda':2.49,
+  // Drinks
+  'energy drinks':3.99,'energy drink':3.99,'red bull':3.49,'monster':3.49,
+  'beer':9.99,'wine':12.99,'vodka':19.99,'liquor':24.99,
+  // Snacks
+  'snacks':6.99,'protein bar':3.49,'protein bars':3.49,
+  // Personal care / pharmacy
+  'cologne':44.00,'perfume':55.00,'deodorant':7.99,'shampoo':8.99,
+  'conditioner':8.99,'body wash':7.49,'soap':4.99,'toothpaste':5.49,
+  'toothbrush':5.99,'razors':12.99,'razor':12.99,'lotion':9.99,
+  'sunscreen':11.99,'makeup':18.99,'lipstick':9.99,'mascara':11.99,
+  'skincare':38.00,'skincare set':38.00,'face wash':9.99,
+  'vitamins':14.99,'tylenol':9.99,'advil':10.99,'medicine':12.99,
+  'bandaids':6.99,'first aid':12.99,
+  // Electronics
+  'earbuds':29.99,'headphones':34.99,'airpods':129.99,
+  'phone case':19.99,'phone charger':14.99,'charger':14.99,
+  'usb cable':9.99,'batteries':8.99,'bluetooth speaker':29.99,
+  // Clothing
+  'jacket':67.00,'jackets':67.00,'coat':75.00,'hoodie':45.00,
+  'shirt':24.99,'t-shirt':19.99,'jeans':39.99,'pants':34.99,
+  'shoes':64.99,'sneakers':74.99,'socks':9.99,'underwear':14.99,
+  'hat':19.99,'cap':19.99,'sunglasses':24.99,'gloves':14.99,
+  'backpack':39.99,'bag':29.99,'purse':34.99,
+  // Household
+  'laundry detergent':12.99,'detergent':12.99,'tide':13.99,
+  'paper towels':9.99,'toilet paper':11.99,'trash bags':9.99,
+  'cleaning supplies':8.99,'bleach':4.99,'dish soap':3.99,
+  // Tools / misc
+  'tools':24.99,'flashlight':14.99,'spray paint':5.99,
+  'lighter':2.99,'cigarettes':13.99,'tobacco':11.99,
+};
+
+function lookupItemPrices(transcript) {
+  const text = transcript.toLowerCase();
+  const found = [];
+  let total = 0;
+
+  // Sort keys longest-first so "baby formula" matches before "formula"
+  const keys = Object.keys(PRICE_DB).sort((a,b) => b.length - a.length);
+
+  for (const item of keys) {
+    if (text.includes(item)) {
+      // Check we haven't already matched a longer version
+      const alreadyMatched = found.some(f => f.item.includes(item) || item.includes(f.item));
+      if (!alreadyMatched) {
+        // Try to find quantity (e.g., "2 jackets", "three bottles")
+        const qtyWords = {'two':2,'three':3,'four':4,'five':5,'six':6,'a couple':2,'a few':3};
+        let qty = 1;
+        const numMatch = text.match(new RegExp('(\\d+)\\s+(?:' + item.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')'));
+        if (numMatch) qty = parseInt(numMatch[1]);
+        else {
+          for (const [word, n] of Object.entries(qtyWords)) {
+            if (text.includes(word + ' ' + item)) { qty = n; break; }
+          }
+        }
+        const price = PRICE_DB[item];
+        found.push({ item: item.charAt(0).toUpperCase() + item.slice(1), qty, unitPrice: price, total: qty * price });
+        total += qty * price;
+      }
+    }
+  }
+
+  // Show results in the voice-result screen
+  const container = document.getElementById('price-lookup-results');
+  if (container && found.length > 0) {
+    container.style.display = 'block';
+    container.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:16px;">🏷️</span>
+        <span style="font-size:13px;font-weight:700;color:var(--navy);">Estimated Item Values</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--g4);">avg. retail prices</span>
+      </div>
+      ${found.map(f => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--g1);">
+          <div>
+            <span style="font-size:14px;font-weight:600;color:var(--navy);">${f.item}</span>
+            ${f.qty > 1 ? `<span style="font-size:12px;color:var(--g4);"> × ${f.qty}</span>` : ''}
+          </div>
+          <span style="font-size:14px;font-weight:700;color:var(--navy);">$${f.total.toFixed(2)}</span>
+        </div>
+      `).join('')}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:4px;">
+        <span style="font-size:14px;font-weight:800;color:var(--navy);">Estimated Total</span>
+        <span style="font-size:18px;font-weight:800;color:var(--blue);">$${total.toFixed(2)}</span>
+      </div>
+    `;
+  } else if (container) {
+    container.style.display = 'none';
+  }
 }
 function acceptFormattedNotes() {
   // Copy formatted text back to notes textarea

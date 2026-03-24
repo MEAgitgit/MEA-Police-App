@@ -909,14 +909,22 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     </div>
     <h1 style="font-size:28px;font-weight:800;color:#fff;text-align:center;margin-bottom:8px;">Citation Submitted</h1>
     <p style="font-size:15px;color:rgba(255,255,255,.6);text-align:center;line-height:1.6;margin-bottom:8px;">The citation has been filed and the participant has been enrolled in the SWIFT diversion program.</p>
-    <div style="background:rgba(255,255,255,.08);border-radius:12px;padding:16px 20px;width:100%;margin-top:20px;">
+    <div id="confirm-details" style="background:rgba(255,255,255,.08);border-radius:12px;padding:16px 20px;width:100%;margin-top:20px;">
       <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:13px;color:rgba(255,255,255,.5);">Citation</span>
-        <span style="font-size:13px;font-weight:700;color:#fff;">MA2048</span>
+        <span style="font-size:13px;font-weight:700;color:#fff;" id="confirm-citation-code">MA2048</span>
       </div>
       <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:13px;color:rgba(255,255,255,.5);">Participant</span>
-        <span style="font-size:13px;font-weight:700;color:#fff;">Orazio Rispo</span>
+        <span style="font-size:13px;font-weight:700;color:#fff;" id="confirm-participant-name">Orazio Rispo</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:13px;color:rgba(255,255,255,.5);">Offense</span>
+        <span style="font-size:13px;font-weight:700;color:#fff;" id="confirm-offense">Shoplifting</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;" id="confirm-items-row" style="display:none;">
+        <span style="font-size:13px;color:rgba(255,255,255,.5);">Items / Value</span>
+        <span style="font-size:13px;font-weight:700;color:var(--baby-blue);" id="confirm-items-value">—</span>
       </div>
       <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:13px;color:rgba(255,255,255,.5);">Program</span>
@@ -927,7 +935,17 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
         <span style="font-size:13px;font-weight:700;color:var(--green);">SMS sent to participant</span>
       </div>
     </div>
-    <button class="btn" style="margin-top:32px;" onclick="nav('dashboard')">Back to Dashboard</button>
+    <!-- Demo links to other portals -->
+    <div style="width:100%;margin-top:28px;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35);margin-bottom:12px;text-align:center;">Demo — View Other Portals</div>
+      <a href="https://meagitgit.github.io/MEA-DA-Dashboard/" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff;text-decoration:none;font-family:var(--font);font-size:14px;font-weight:700;margin-bottom:10px;">
+        <span style="font-size:18px;">⚖️</span> DA Dashboard — Review Citation
+      </a>
+      <a href="https://meagitgit.github.io/MEA-Citizen-App/" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff;text-decoration:none;font-family:var(--font);font-size:14px;font-weight:700;margin-bottom:10px;">
+        <span style="font-size:18px;">📱</span> Participant App — Citizen View
+      </a>
+    </div>
+    <button class="btn" style="margin-top:16px;" onclick="nav('dashboard')">Back to Dashboard</button>
     <button class="btn-ghost" onclick="nav('case-summary')">View Case Summary →</button>
   </div>
 </div>
@@ -2812,7 +2830,19 @@ function submitCitation() {
     });
   }
 
+  // Populate confirmation screen with real data
+  document.getElementById('confirm-citation-code').textContent = citCode;
+  document.getElementById('confirm-participant-name').textContent = citationData.participant_name;
+  document.getElementById('confirm-offense').textContent = citationData.offense;
+  if (_stolenItems.length > 0) {
+    const total = _stolenItems.reduce((s, i) => s + i.total, 0);
+    document.getElementById('confirm-items-value').textContent = _stolenItems.length + ' items — $' + total.toFixed(2);
+    document.getElementById('confirm-items-row').style.display = 'flex';
+  }
+
   nav('confirm');
+  // Voice confirmation
+  speakPrompt('Citation submitted. ' + citationData.participant_name + ' has been enrolled in the SWIFT diversion program. An SMS has been sent to the participant.');
 }
 
 // ── LOCATION MAP ──

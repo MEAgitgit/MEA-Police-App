@@ -2371,7 +2371,6 @@ function startItemVoice() {
   const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechAPI) {
     showToast('Speech not supported — please type items');
-    document.getElementById('item-type-section').style.display = 'block';
     document.getElementById('item-manual-input').focus();
     return;
   }

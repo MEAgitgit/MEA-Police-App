@@ -1104,6 +1104,18 @@ function updatePinDots() {
   dots.forEach((d, i) => d.classList.toggle('filled', i < pinCode.length));
 }
 
+// ── Offense statute mapping ──
+const _offenseStatutes = {
+  'Shoplifting': 'G.L. c. 266, §30A',
+  'Trespassing': 'G.L. c. 266, §120',
+  'Disorderly Conduct': 'G.L. c. 272, §53',
+  'Simple Drug Possession': 'G.L. c. 94C, §34',
+  'Drug Possession': 'G.L. c. 94C, §34',
+  'Property Crime': 'G.L. c. 266, §127',
+  'Receiving Stolen Property': 'G.L. c. 266, §60',
+  'Vandalism': 'G.L. c. 266, §126A',
+};
+
 // ── CITATIONS LIST ──
 // Icon/color mapping for offense types from API
 const OFFENSE_META = {
@@ -1160,20 +1172,21 @@ function buildCitationsList() {
       updateConnectionIndicator();
       // Map API citations to display format
       const apiCitations = data.citations.map(ac => {
-        const meta = getOffenseMeta(ac.offense_type, ac.status);
-        const name = ((ac.citizen_first_name || '') + ' ' + (ac.citizen_last_name || '')).trim() || 'Unknown';
-        const dateStr = ac.incident_date ? new Date(ac.incident_date).toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'numeric'}) : '';
+        const offenseText = ac.offense || ac.offense_type || 'Unknown';
+        const meta = getOffenseMeta(offenseText, ac.status);
+        const name = ac.participant_name || ((ac.citizen_first_name || '') + ' ' + (ac.citizen_last_name || '')).trim() || 'Unknown';
+        const dateStr = ac.incident_date ? new Date(ac.incident_date + 'T00:00:00').toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'numeric'}) : '';
         return {
           id: ac.id,
           name: name,
-          offense: ac.offense_type || 'Unknown',
-          statute: ac.statute || '',
+          offense: offenseText,
+          statute: ac.offense_statute || ac.statute || '',
           icon: meta.icon,
           iconBg: meta.iconBg,
           status: ac.status === 'closed' ? 'Closed' : ac.status === 'pending' ? 'Pending' : 'Active',
           badge: meta.badge,
           date: dateStr,
-          location: ac.incident_location || '',
+          location: ac.location || ac.incident_location || '',
         };
       });
       // Merge: API citations first, then hardcoded ones that don't conflict
@@ -1378,14 +1391,15 @@ function closeCiteDetail() {
 // Render citation detail from API data (for citations not in hardcoded list)
 function renderApiCiteDetail(data) {
   const ac = data.citation || data;
-  const meta = getOffenseMeta(ac.offense_type, ac.status);
-  document.getElementById('cd-offense').textContent = ac.offense_type || 'Citation';
-  document.getElementById('cd-statute').textContent = ac.statute || '';
+  const offenseText = ac.offense || ac.offense_type || 'Citation';
+  const meta = getOffenseMeta(offenseText, ac.status);
+  document.getElementById('cd-offense').textContent = offenseText;
+  document.getElementById('cd-statute').textContent = ac.offense_statute || ac.statute || '';
   document.getElementById('cd-icon').textContent = meta.icon;
   document.getElementById('cd-icon').style.background = meta.iconBg;
 
-  const name = ((ac.citizen_first_name || '') + ' ' + (ac.citizen_last_name || '')).trim() || 'Unknown';
-  const dateStr = ac.incident_date ? new Date(ac.incident_date).toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'numeric'}) : '';
+  const name = ac.participant_name || ((ac.citizen_first_name || '') + ' ' + (ac.citizen_last_name || '')).trim() || 'Unknown';
+  const dateStr = ac.incident_date ? new Date(ac.incident_date + 'T00:00:00').toLocaleDateString('en-US', {month:'2-digit',day:'2-digit',year:'numeric'}) : '';
   const statusLabel = ac.status === 'closed' ? 'Closed' : ac.status === 'active' ? 'Active' : 'Pending';
 
   const program = data.program;
@@ -1404,9 +1418,9 @@ function renderApiCiteDetail(data) {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <div>
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:rgba(130,203,245,.7);">Program</div>
-          <div style="font-size:15px;font-weight:700;margin-top:2px;">${program.name || 'SWIFT Diversion'}</div>
+          <div style="font-size:15px;font-weight:700;margin-top:2px;">${program.program_name || program.name || 'SWIFT Diversion'}</div>
         </div>
-        <div style="background:var(--blue);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;">${program.status || 'Assigned'}</div>
+        <div style="background:var(--blue);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;">${program.overall_status || program.status || 'Assigned'}</div>
       </div>
       ${program.duration_days ? `<div style="font-size:11px;color:rgba(255,255,255,.4);">Duration: ${program.duration_days} days</div>` : ''}
     </div>` : ''}
@@ -1417,28 +1431,31 @@ function renderApiCiteDetail(data) {
       ${services.map(s => `
         <div style="display:flex;align-items:center;gap:8px;padding:5px 0;">
           <div style="width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0;"></div>
-          <span style="font-size:13px;color:var(--navy);">${s.name || s}</span>
+          <span style="font-size:13px;color:var(--navy);">${s.service_name || s.name || s}</span>
         </div>`).join('')}
     </div>` : ''}
 
     <div class="review-section">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Participant</div>
       <div class="review-row"><span class="review-label">Name</span><span class="review-value">${name}</span></div>
-      ${ac.citizen_dob ? `<div class="review-row"><span class="review-label">DOB</span><span class="review-value">${ac.citizen_dob}</span></div>` : ''}
-      ${ac.citizen_phone ? `<div class="review-row"><span class="review-label">Phone</span><span class="review-value">${ac.citizen_phone}</span></div>` : ''}
+      ${ac.participant_dob || ac.citizen_dob ? `<div class="review-row"><span class="review-label">DOB</span><span class="review-value">${ac.participant_dob || ac.citizen_dob}</span></div>` : ''}
+      ${ac.participant_phone || ac.citizen_phone ? `<div class="review-row"><span class="review-label">Phone</span><span class="review-value">${ac.participant_phone || ac.citizen_phone}</span></div>` : ''}
+      ${ac.participant_address ? `<div class="review-row"><span class="review-label">Address</span><span class="review-value" style="font-size:12px;">${ac.participant_address}</span></div>` : ''}
     </div>
 
     <div class="review-section">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Incident Details</div>
       <div class="review-row"><span class="review-label">Date</span><span class="review-value">${dateStr}</span></div>
-      ${ac.incident_location ? `<div class="review-row"><span class="review-label">Location</span><span class="review-value" style="font-size:12px;">${ac.incident_location}</span></div>` : ''}
+      ${ac.location || ac.incident_location ? `<div class="review-row"><span class="review-label">Location</span><span class="review-value" style="font-size:12px;">${ac.location || ac.incident_location}</span></div>` : ''}
+      ${ac.items_description ? `<div class="review-row"><span class="review-label">Items</span><span class="review-value">${ac.items_description}</span></div>` : ''}
+      ${ac.estimated_value ? `<div class="review-row"><span class="review-label">Value</span><span class="review-value">$${parseFloat(ac.estimated_value).toFixed(2)}</span></div>` : ''}
       ${ac.officer_name ? `<div class="review-row"><span class="review-label">Officer</span><span class="review-value">${ac.officer_name}</span></div>` : ''}
     </div>
 
-    ${ac.notes || ac.formatted_notes ? `
+    ${ac.officer_notes || ac.notes || ac.formatted_notes ? `
     <div class="review-section">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Officer Notes</div>
-      <div style="font-size:13px;color:var(--navy);line-height:1.6;">${ac.formatted_notes || ac.notes}</div>
+      <div style="font-size:13px;color:var(--navy);line-height:1.6;">${ac.formatted_notes || ac.officer_notes || ac.notes}</div>
     </div>` : ''}
 
     ${timeline.length ? `
@@ -1450,8 +1467,8 @@ function renderApiCiteDetail(data) {
             e.status==='completed' || e.s==='done' ? 'background:var(--green);' : 'border:2px solid var(--g3);'
           }"></div>
           <div>
-            <div style="font-size:13px;font-weight:600;color:var(--navy);">${e.event || e.t}</div>
-            <div style="font-size:11px;color:var(--g4);margin-top:1px;">${e.date || e.d || ''}</div>
+            <div style="font-size:13px;font-weight:600;color:var(--navy);">${e.description || e.event_type || e.event || e.t}</div>
+            <div style="font-size:11px;color:var(--g4);margin-top:1px;">${e.event_date || e.date || e.d || ''}</div>
           </div>
         </div>`).join('')}
     </div>` : ''}
@@ -1742,51 +1759,46 @@ function acceptFormattedNotes() {
 
 // ── SUBMIT ──
 function submitCitation() {
-  // Collect form data from all screens
-  const citationData = {
-    // Offense
-    offense_type: selectedOffense || 'Shoplifting',
-    // Location
-    incident_location: document.getElementById('loc-address') ? document.getElementById('loc-address').value : '375 Broadway, Revere, MA 02151',
-    // Time
-    incident_date: new Date().toISOString(),
-    // Notes
-    notes: document.getElementById('notes-textarea') ? document.getElementById('notes-textarea').value : '',
-    formatted_notes: formattedNotesText || '',
-    // Voice
-    intake_source: usedVoice ? 'voice' : 'manual',
-    voice_transcript: usedVoice ? voiceTranscriptText : '',
-    // Citizen identity (read from verify screen inputs)
-    citizen_first_name: 'Orazio',
-    citizen_last_name: 'Rispo',
-    citizen_dob: '04/15/1992',
-    citizen_address: '45 Revere Beach Blvd, Revere, MA 02151',
-    citizen_email: 'orazio@email.com',
-    citizen_phone: '(617) 555-4716',
-    // Eligibility
-    first_time_offense: true,
-    prior_in_24_months: false,
-    has_smartphone: true,
-    // Citation code
-    citation_code: 'MA2048',
-  };
-
-  // Try to read actual values from verify screen inputs
+  // Read identity from verify screen inputs
+  let firstName = 'Orazio', lastName = 'Rispo', dob = '1992-04-15', address = '45 Revere Beach Blvd, Revere, MA 02151', email = 'orazio@email.com', phone = '(617) 555-4716';
   const verifyInputs = document.querySelectorAll('#s-verify .form-input');
   if (verifyInputs.length >= 6) {
-    citationData.citizen_first_name = verifyInputs[0].value || citationData.citizen_first_name;
-    citationData.citizen_last_name = verifyInputs[1].value || citationData.citizen_last_name;
-    citationData.citizen_dob = verifyInputs[2].value || citationData.citizen_dob;
-    citationData.citizen_address = verifyInputs[3].value || citationData.citizen_address;
-    citationData.citizen_email = verifyInputs[4].value || citationData.citizen_email;
-    citationData.citizen_phone = verifyInputs[5].value || citationData.citizen_phone;
+    firstName = verifyInputs[0].value || firstName;
+    lastName = verifyInputs[1].value || lastName;
+    dob = verifyInputs[2].value || dob;
+    address = verifyInputs[3].value || address;
+    email = verifyInputs[4].value || email;
+    phone = verifyInputs[5].value || phone;
   }
 
   // Read citation code from OTP boxes
+  let citCode = 'MA' + Math.floor(1000 + Math.random() * 9000);
   const codeBoxes = document.querySelectorAll('#code-row .otp-box');
   if (codeBoxes.length) {
-    citationData.citation_code = Array.from(codeBoxes).map(b => b.textContent).join('');
+    const typed = Array.from(codeBoxes).map(b => b.textContent).join('').trim();
+    if (typed.length >= 4) citCode = typed;
   }
+
+  // Collect form data matching backend API field names
+  const citationData = {
+    participant_name: (firstName + ' ' + lastName).trim(),
+    participant_dob: dob,
+    participant_address: address,
+    participant_email: email,
+    participant_phone: phone,
+    offense: selectedOffense || 'Shoplifting',
+    offense_statute: _offenseStatutes[selectedOffense] || '',
+    offense_category: (selectedOffense || 'shoplifting').toLowerCase().replace(/\s+/g, '-'),
+    location: document.getElementById('loc-address') ? document.getElementById('loc-address').value : '375 Broadway, Revere, MA 02151',
+    incident_date: new Date().toISOString().split('T')[0],
+    incident_time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}),
+    officer_notes: document.getElementById('notes-textarea') ? document.getElementById('notes-textarea').value : '',
+    formatted_notes: formattedNotesText || '',
+    voice_transcript: usedVoice ? voiceTranscriptText : '',
+    intake_source: usedVoice ? 'voice' : 'manual',
+    first_offense: 1,
+    citation_code: citCode,
+  };
 
   // Fire and forget POST to backend
   if (authToken) {

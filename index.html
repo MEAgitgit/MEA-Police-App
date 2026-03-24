@@ -770,7 +770,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
   </div>
 </div>
 
-<!-- ████ SCREEN 11: FIRST TIME OFFENSE? ████ -->
+<!-- ████ SCREEN 11: AGE 18 OR OLDER? ████ -->
 <div id="s-q1" class="s" style="background:#fff;">
   <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
   <div class="light-nav">
@@ -781,9 +781,11 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       <div style="width:44px;height:44px;border-radius:50%;overflow:hidden;border:1.5px solid var(--g2);flex-shrink:0;">
         <img src="assets/images/selfie-confirmation.png" style="width:100%;height:100%;object-fit:cover;">
       </div>
-      <div style="font-size:13px;color:var(--g4);">Orazio Rispo</div>
+      <div style="font-size:13px;color:var(--g4);" id="q-participant-name">—</div>
     </div>
-    <h1 style="font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-.8px;line-height:1.15;">First Time<br>Offense?</h1>
+    <div style="font-size:11px;font-weight:600;color:var(--blue);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Eligibility Check · G.L. c. 276A</div>
+    <h1 style="font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-.8px;line-height:1.15;">Is the subject<br>18 or older?</h1>
+    <div style="font-size:12px;color:var(--g4);margin-top:6px;">Confirm from ID scan — required for diversion eligibility</div>
     <div class="toggle-row">
       <button class="toggle-btn" onclick="setToggle(this,'yes','q1')" data-q="q1">Yes</button>
       <button class="toggle-btn" onclick="setToggle(this,'no','q1')" data-q="q1">No</button>
@@ -795,14 +797,16 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
   </div>
 </div>
 
-<!-- ████ SCREEN 12: LAST OFFENSE WITHIN 24 MONTHS? ████ -->
+<!-- ████ SCREEN 12: OUTSTANDING WARRANTS? ████ -->
 <div id="s-q2" class="s" style="background:#fff;">
   <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
   <div class="light-nav">
     <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
   </div>
   <div style="flex:1;display:flex;flex-direction:column;padding:0 24px;">
-    <h1 style="font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-.8px;line-height:1.15;">Was the last<br>offense within<br>24 months?</h1>
+    <div style="font-size:11px;font-weight:600;color:var(--blue);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Eligibility Check · G.L. c. 276A</div>
+    <h1 style="font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-.8px;line-height:1.15;">Any outstanding<br>warrants?</h1>
+    <div style="font-size:12px;color:var(--g4);margin-top:6px;">Run the subject through NCIC / WMS</div>
     <div class="toggle-row">
       <button class="toggle-btn" onclick="setToggle(this,'yes','q2')" data-q="q2">Yes</button>
       <button class="toggle-btn" onclick="setToggle(this,'no','q2')" data-q="q2">No</button>
@@ -814,14 +818,16 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
   </div>
 </div>
 
-<!-- ████ SCREEN 13: ACCESS TO SMART PHONE? ████ -->
+<!-- ████ SCREEN 13: RESTRAINING ORDERS / DV FLAG? ████ -->
 <div id="s-q3" class="s" style="background:#fff;">
   <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
   <div class="light-nav">
     <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
   </div>
   <div style="flex:1;display:flex;flex-direction:column;padding:0 24px;">
-    <h1 style="font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-.8px;line-height:1.15;">Access to a<br>smart phone?</h1>
+    <div style="font-size:11px;font-weight:600;color:var(--blue);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Eligibility Check · G.L. c. 276A</div>
+    <h1 style="font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-.8px;line-height:1.15;">Any active<br>209A orders<br>or DV flags?</h1>
+    <div style="font-size:12px;color:var(--g4);margin-top:6px;">Restraining orders or 56A domestic violence allegations</div>
     <div class="toggle-row">
       <button class="toggle-btn" onclick="setToggle(this,'yes','q3')" data-q="q3">Yes</button>
       <button class="toggle-btn" onclick="setToggle(this,'no','q3')" data-q="q3">No</button>
@@ -829,7 +835,28 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <div style="flex:1;"></div>
   </div>
   <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
-    <button class="btn" id="q3-next" onclick="nav('review')" style="opacity:.4;pointer-events:none;">Continue</button>
+    <button class="btn" id="q3-next" onclick="nav('q4')" style="opacity:.4;pointer-events:none;">Continue</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 13B: SMARTPHONE ACCESS? ████ -->
+<div id="s-q4" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;padding:0 24px;">
+    <div style="font-size:11px;font-weight:600;color:var(--blue);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Eligibility Check · G.L. c. 276A</div>
+    <h1 style="font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-.8px;line-height:1.15;">Does the subject<br>have access to a<br>smartphone?</h1>
+    <div style="font-size:12px;color:var(--g4);margin-top:6px;">Required for program enrollment and check-ins</div>
+    <div class="toggle-row">
+      <button class="toggle-btn" onclick="setToggle(this,'yes','q4')" data-q="q4">Yes</button>
+      <button class="toggle-btn" onclick="setToggle(this,'no','q4')" data-q="q4">No</button>
+    </div>
+    <div style="flex:1;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" id="q4-next" onclick="nav('review')" style="opacity:.4;pointer-events:none;">Continue</button>
   </div>
 </div>
 
@@ -887,12 +914,14 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
         <span id="review-total-amount" style="font-size:15px;font-weight:800;color:var(--blue);">$0.00</span>
       </div>
     </div>
-    <!-- Eligibility answers -->
-    <div class="review-section">
-      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Eligibility Check</div>
-      <div class="review-row"><span class="review-label">First time offense</span><span class="review-value" style="color:var(--green);">✓ Yes</span></div>
-      <div class="review-row"><span class="review-label">Prior in 24 months</span><span class="review-value" style="color:var(--green);">✓ No</span></div>
-      <div class="review-row"><span class="review-label">Has smartphone</span><span class="review-value" style="color:var(--green);">✓ Yes</span></div>
+    <!-- Eligibility answers (dynamically populated) -->
+    <div class="review-section" id="review-eligibility">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Eligibility Screening · G.L. c. 276A</div>
+      <div class="review-row"><span class="review-label">Age ≥ 18</span><span class="review-value" id="rev-q1">—</span></div>
+      <div class="review-row"><span class="review-label">Outstanding warrants</span><span class="review-value" id="rev-q2">—</span></div>
+      <div class="review-row"><span class="review-label">209A / DV flag</span><span class="review-value" id="rev-q3">—</span></div>
+      <div class="review-row"><span class="review-label">Qualifying offense</span><span class="review-value" id="rev-q-offense">—</span></div>
+      <div class="review-row"><span class="review-label">Smartphone access</span><span class="review-value" id="rev-q4">—</span></div>
     </div>
     <!-- Read Back Section -->
     <div class="review-section" style="background:linear-gradient(135deg,#EFF6FF,#F0F2FA);border:1.5px solid var(--blue);border-radius:14px;padding:16px;">
@@ -982,27 +1011,8 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     </div>
     <!-- Eligibility checklist -->
     <div style="background:var(--g1);border-radius:14px;padding:16px 18px;margin-bottom:16px;">
-      <div style="font-size:12px;font-weight:700;color:var(--g4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Eligibility Determination</div>
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--g2);">
-        <div style="width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
-        <span style="font-size:14px;color:var(--navy);">Qualifying offense (§30A)</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--g2);">
-        <div style="width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
-        <span style="font-size:14px;color:var(--navy);">First-time offense</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--g2);">
-        <div style="width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
-        <span style="font-size:14px;color:var(--navy);">No prior offenses in 24 months</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--g2);">
-        <div style="width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
-        <span style="font-size:14px;color:var(--navy);">Smartphone access confirmed</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
-        <div style="width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
-        <span style="font-size:14px;color:var(--navy);">No active warrants</span>
-      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--g4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Eligibility Determination · G.L. c. 276A</div>
+      <div id="cs-eligibility-rows"></div>
     </div>
     <!-- Participant details -->
     <div class="review-section">
@@ -1131,7 +1141,7 @@ let voiceTranscriptText = '';
 let formattedNotesText = '';
 let _lastPriceResults = { found: [], total: 0 };
 let _parsedPersonName = '';
-const ORDER = ['pin','dashboard','offense','location','time','notes','voice','voice-result','code','scan-id','scanning','verify','q1','q2','q3','review','confirm','case-summary'];
+const ORDER = ['pin','dashboard','offense','location','time','notes','voice','voice-result','code','scan-id','scanning','verify','q1','q2','q3','q4','review','confirm','case-summary'];
 
 // ── CITATIONS DATA ──
 const CITATIONS = [
@@ -1219,6 +1229,18 @@ function nav(id) {
   if (id === 'dashboard') buildCitationsList();
   if (id === 'review') populateReviewScreen();
   if (id === 'case-summary') populateCaseSummary();
+  if (id === 'q1') {
+    // Populate participant name on eligibility screens
+    const verifyInputs = document.querySelectorAll('#s-verify .form-input');
+    let pName = _parsedPersonName || '';
+    if (verifyInputs.length >= 2) {
+      const fn = (verifyInputs[0].value || '').trim();
+      const ln = (verifyInputs[1].value || '').trim();
+      if (fn || ln) pName = (fn + ' ' + ln).trim();
+    }
+    const el = document.getElementById('q-participant-name');
+    if (el) el.textContent = pName || '—';
+  }
 }
 
 function goBack() {
@@ -2910,6 +2932,30 @@ function populateReviewScreen() {
     evidenceRow.innerHTML = '<div style="font-size:12px;color:var(--g4);font-style:italic;">No photos submitted</div>';
   }
 
+  // ── Eligibility answers from toggle buttons ──
+  const NON_VIOLENT = ['Shoplifting','Trespassing','Drug Possession','Simple Drug Possession','Property Crime','Disorderly Conduct'];
+  const offense = selectedOffense || 'Shoplifting';
+  const isQualifying = NON_VIOLENT.some(o => offense.toLowerCase().includes(o.toLowerCase()));
+
+  function getToggleAnswer(q) {
+    const btn = document.querySelector(`#s-${q} .toggle-btn.active-yes`);
+    const btnNo = document.querySelector(`#s-${q} .toggle-btn.active-no`);
+    if (btn) return 'yes';
+    if (btnNo) return 'no';
+    return null;
+  }
+  const q1 = getToggleAnswer('q1'); // age >= 18
+  const q2 = getToggleAnswer('q2'); // warrants
+  const q3 = getToggleAnswer('q3'); // 209A/DV
+  const q4 = getToggleAnswer('q4'); // smartphone
+
+  function eligStyle(pass) { return pass ? 'color:var(--green);' : 'color:var(--red);'; }
+  document.getElementById('rev-q1').innerHTML = q1 === 'yes' ? '<span style="'+eligStyle(true)+'">✓ Yes — 18+</span>' : q1 === 'no' ? '<span style="'+eligStyle(false)+'">✗ Under 18</span>' : '—';
+  document.getElementById('rev-q2').innerHTML = q2 === 'no' ? '<span style="'+eligStyle(true)+'">✓ None</span>' : q2 === 'yes' ? '<span style="'+eligStyle(false)+'">✗ Active warrants</span>' : '—';
+  document.getElementById('rev-q3').innerHTML = q3 === 'no' ? '<span style="'+eligStyle(true)+'">✓ None</span>' : q3 === 'yes' ? '<span style="'+eligStyle(false)+'">✗ 209A / DV on file</span>' : '—';
+  document.getElementById('rev-q-offense').innerHTML = isQualifying ? '<span style="'+eligStyle(true)+'">✓ Non-violent — ' + offense + '</span>' : '<span style="'+eligStyle(false)+'">✗ ' + offense + '</span>';
+  document.getElementById('rev-q4').innerHTML = q4 === 'yes' ? '<span style="'+eligStyle(true)+'">✓ Yes</span>' : q4 === 'no' ? '<span style="'+eligStyle(false)+'">✗ No smartphone</span>' : '—';
+
   // ── Written summary ──
   document.getElementById('review-written-summary').textContent = buildReviewSummary();
 }
@@ -2940,6 +2986,30 @@ function populateCaseSummary() {
   document.getElementById('cs-timeline-issued').textContent = timeStr;
   const smsTime = new Date(now.getTime() + 60000);
   document.getElementById('cs-timeline-sms').textContent = smsTime.toLocaleDateString('en-US', {month:'2-digit', day:'2-digit', year:'numeric'}) + ' · ' + smsTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+  // Eligibility rows
+  const NON_VIOLENT = ['Shoplifting','Trespassing','Drug Possession','Simple Drug Possession','Property Crime','Disorderly Conduct'];
+  const isQualifying = NON_VIOLENT.some(o => offense.toLowerCase().includes(o.toLowerCase()));
+  function getToggleAnswer(q) {
+    const btn = document.querySelector(`#s-${q} .toggle-btn.active-yes`);
+    const btnNo = document.querySelector(`#s-${q} .toggle-btn.active-no`);
+    if (btn) return 'yes'; if (btnNo) return 'no'; return null;
+  }
+  const checks = [
+    { label: 'Age ≥ 18 (G.L. c. 276A, §2)', pass: getToggleAnswer('q1') === 'yes' },
+    { label: 'Qualifying offense (non-violent)', pass: isQualifying },
+    { label: 'No outstanding warrants', pass: getToggleAnswer('q2') === 'no' },
+    { label: 'No 209A orders / DV flags', pass: getToggleAnswer('q3') === 'no' },
+    { label: 'Smartphone access confirmed', pass: getToggleAnswer('q4') === 'yes' },
+  ];
+  const checkIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+  const failIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  document.getElementById('cs-eligibility-rows').innerHTML = checks.map((c, i) =>
+    `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;${i < checks.length - 1 ? 'border-bottom:1px solid var(--g2);' : ''}">
+      <div style="width:22px;height:22px;border-radius:50%;background:${c.pass ? 'var(--green)' : 'var(--red)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${c.pass ? checkIcon : failIcon}</div>
+      <span style="font-size:14px;color:var(--navy);">${c.label}</span>
+    </div>`
+  ).join('');
 }
 
 function readBackSummary() {

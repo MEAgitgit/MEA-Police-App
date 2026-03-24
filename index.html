@@ -554,25 +554,25 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       </div>
 
       <!-- Photo identify panel -->
-      <div id="item-photo-panel" style="display:none;background:#fff;border-radius:10px;padding:12px;margin-bottom:8px;">
-        <div style="display:flex;gap:10px;align-items:flex-start;">
-          <div id="item-photo-preview" style="width:70px;height:70px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#eee;"></div>
+      <div id="item-photo-panel" style="display:none;background:#fff;border:2px solid var(--blue);border-radius:14px;padding:14px;margin-bottom:8px;box-shadow:0 4px 20px rgba(20,75,216,.15);">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div id="item-photo-preview" style="width:80px;height:80px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#eee;border:2px solid var(--green);"></div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:4px;">What is this item?</div>
-            <input type="text" id="photo-item-name-input" class="form-input" placeholder="e.g. Don Julio 1942" style="font-size:13px;padding:8px 10px;margin-bottom:6px;" onkeydown="if(event.key==='Enter'){confirmPhotoItem();}">
-            <div style="display:flex;gap:6px;">
-              <button onclick="startPhotoVoiceId()" id="photo-voice-btn" style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--blue);background:rgba(20,75,216,.06);color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/></svg>
+            <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:6px;">What is this item?</div>
+            <input type="text" id="photo-item-name-input" class="form-input" placeholder="e.g. Don Julio 1942, Tide Pods..." style="font-size:15px;padding:10px 12px;margin-bottom:8px;border:2px solid var(--blue);" onkeydown="if(event.key==='Enter'){confirmPhotoItem();}">
+            <div style="display:flex;gap:8px;">
+              <button onclick="startPhotoVoiceId()" id="photo-voice-btn" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--navy);background:rgba(0,0,60,.04);color:var(--navy);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/></svg>
                 Say it
               </button>
-              <button onclick="confirmPhotoItem()" style="flex:1;padding:7px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Look Up Price</button>
+              <button onclick="confirmPhotoItem()" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--blue);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Add Item</button>
             </div>
-            <div id="photo-voice-listening" style="display:none;margin-top:4px;text-align:center;">
+            <div id="photo-voice-listening" style="display:none;margin-top:6px;text-align:center;">
               <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
                 <div style="width:8px;height:8px;border-radius:50%;background:#E8444F;animation:pulse 1s infinite;"></div>
-                <span style="font-size:10px;color:var(--navy);font-weight:600;">Listening...</span>
+                <span style="font-size:12px;color:var(--navy);font-weight:600;">Listening...</span>
               </div>
-              <div id="photo-voice-live-text" style="font-size:11px;color:var(--g4);margin-top:3px;font-style:italic;"></div>
+              <div id="photo-voice-live-text" style="font-size:12px;color:var(--g4);margin-top:4px;font-style:italic;"></div>
             </div>
           </div>
         </div>
@@ -588,11 +588,15 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       <div id="item-photo-thumbs" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
 
       <!-- Add Another Item prompt (hidden until first item added) -->
-      <div id="add-another-prompt" style="display:none;margin-top:10px;text-align:center;">
-        <div style="font-size:12px;color:#059669;font-weight:600;margin-bottom:6px;">Item added!</div>
-        <div style="display:flex;gap:6px;">
-          <button onclick="document.getElementById('vr-camera-input').click();this.parentElement.parentElement.style.display='none';" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--blue);background:rgba(20,75,216,.06);color:var(--blue);font-size:13px;font-weight:700;cursor:pointer;">+ Next Item</button>
-          <button onclick="this.parentElement.parentElement.style.display='none';speakPrompt('All items captured. Review the summary below.');" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--green);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Done — All Items</button>
+      <div id="add-another-prompt" style="display:none;margin-top:12px;background:#ECFDF5;border:2px solid #A7F3D0;border-radius:14px;padding:16px;text-align:center;">
+        <div style="font-size:16px;font-weight:800;color:#065F46;margin-bottom:4px;">Item added!</div>
+        <div style="font-size:12px;color:#059669;margin-bottom:12px;">Any more stolen items to photograph?</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="document.getElementById('vr-camera-input').click();this.parentElement.parentElement.style.display='none';" style="flex:1;padding:14px;border-radius:12px;border:2px solid var(--blue);background:rgba(20,75,216,.06);color:var(--blue);font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Next Item
+          </button>
+          <button onclick="this.parentElement.parentElement.style.display='none';speakPrompt('All items captured. Review the summary below.');document.getElementById('items-list-container').scrollIntoView({behavior:'smooth'});" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:15px;font-weight:800;cursor:pointer;">Done</button>
         </div>
       </div>
     </div>
@@ -1844,8 +1848,14 @@ function extractItemPhrases(transcript) {
       // Clean up
       itemText = itemText.replace(/\s+/g,' ').replace(/^(and|the|a|some|of)\s+/i,'').replace(/\s+(and|the|he|she|they|was|were|i|from)$/i,'').trim();
       if (itemText.length < 3 || itemText.length > 60) continue;
-      // Skip non-items (names, locations, etc.)
+      // Cap qty at 50 — anything higher is a parsing error
+      if (qty > 50) qty = 1;
+      // Skip non-items (names, locations, addresses, common words)
       if (/^(he|she|they|i|we|it|the|this|that|my|his|her|their|our|not|no|yes|just|also|about|like|around|near|from|with|into|out|over|very|really|pretty|kind|sort|said|told|saw|went|got|came|walked|ran|left|inside|outside|store|shop|manager|officer|person|guy|man|woman|subject|individual)$/i.test(itemText)) continue;
+      // Skip addresses, streets, locations, times
+      if (/\b(street|st|avenue|ave|road|rd|boulevard|blvd|drive|dr|lane|ln|plaza|broadway|highway|hwy|main|north|south|east|west|tonight|today|yesterday|morning|evening|afternoon|o'?clock|pm|am)\b/i.test(itemText)) continue;
+      // Skip place names and non-product words
+      if (/\b(revere|boston|chelsea|suffolk|massachusetts|pharmacy|police|station|department|parking|lot|building|apartment|block|corner|intersection)\b/i.test(itemText)) continue;
 
       const key = itemText.toLowerCase().replace(/s$/, '');
       if (!seen.has(key)) {
@@ -2362,8 +2372,10 @@ async function confirmPhotoItem() {
   await addItemAndSearchPrice(itemName, qty, _currentPhotoData);
   _currentPhotoData = null;
 
-  // Show "Add Another" prompt
-  document.getElementById('add-another-prompt').style.display = 'block';
+  // Show "Add Another" prompt and scroll to it
+  const prompt = document.getElementById('add-another-prompt');
+  prompt.style.display = 'block';
+  setTimeout(() => prompt.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
 }
 
 // ── VOICE DICTATE MULTIPLE ITEMS ──

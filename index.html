@@ -2228,74 +2228,123 @@ async function searchItemPricesRealTime(transcript) {
 }
 
 // ── DYNAMIC FORMATTED REPORT GENERATOR ──
+// Rebuilds the incident report from ALL live data sources:
+// transcript, AI parse, verify screen, location screen, stolen items
 function generateFormattedReport(transcript, priceResults) {
-  const text = transcript.toLowerCase();
+  const text = (transcript || '').toLowerCase();
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
   const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}).replace(':','');
 
-  // Extract person name from transcript
-  // Look for patterns like "his name is X Y", "named X Y", "identified as X Y", "I stopped X Y", "detained X Y"
+  // ── Person name: priority = verify screen > AI > regex > "the subject" ──
   let personName = null;
-  const namePatterns = [
-    /(?:name is|named|identified as|stopped|detained|individual[,]?\s+)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/i,
-    /(?:this (?:guy|person|individual|man|woman|subject)[,]?\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/i,
-    /([A-Z][a-z]+\s+[A-Z][a-z]+)(?:\s*,?\s*(?:was|he|she|they|had|who))/,
-  ];
-  for (const pat of namePatterns) {
-    const m = transcript.match(pat);
-    if (m && m[1]) {
-      // Filter out common false positives
-      const skip = ['the store','the manager','the officer','i was','i saw','so i','and i','no warrants','first time','baby formula'];
-      if (!skip.some(s => m[1].toLowerCase().includes(s))) {
+  const verifyInputs = document.querySelectorAll('#s-verify .form-input');
+  if (verifyInputs.length >= 2) {
+    const fn = (verifyInputs[0].value || '').trim();
+    const ln = (verifyInputs[1].value || '').trim();
+    if (fn || ln) personName = (fn + ' ' + ln).trim();
+  }
+  if (!personName && _aiParsedData && _aiParsedData.personName) {
+    personName = _aiParsedData.personName;
+  }
+  if (!personName && transcript) {
+    const namePatterns = [
+      /(?:name is|named|identified as|stopped|detained|individual[,]?\s+)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/i,
+      /(?:this (?:guy|person|individual|man|woman|subject)[,]?\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/i,
+      /([A-Z][a-z]+\s+[A-Z][a-z]+)(?:\s*,?\s*(?:was|he|she|they|had|who))/,
+    ];
+    const skip = ['the store','the manager','the officer','i was','i saw','so i','and i','no warrants','first time','baby formula'];
+    for (const pat of namePatterns) {
+      const m = transcript.match(pat);
+      if (m && m[1] && !skip.some(s => m[1].toLowerCase().includes(s))) {
         personName = m[1].trim();
         break;
       }
     }
   }
   if (!personName) personName = 'the subject';
-  // Use AI-parsed name if available
-  if (_aiParsedData && _aiParsedData.personName) personName = _aiParsedData.personName;
   _parsedPersonName = personName;
-  _lastPriceResults = priceResults || { found: [], total: 0 };
 
-  // Extract location from selected offense screen or transcript
-  const locInput = document.getElementById('loc-address');
-  let location = (locInput && locInput.value) ? locInput.value : 'the incident location';
-  // Use AI store name if available, otherwise try regex
-  let storeName = _aiStoreName || '';
-  if (!storeName) {
-  const storePatterns = [/(?:at|near|outside|from|leaving)\s+(?:the\s+)?([A-Z][A-Za-z'\s]+(?:Pharmacy|Market|Store|Target|Walmart|CVS|Walgreens|Stop\s*&?\s*Shop|Star\s+Market|7-Eleven|Dunkin|Starbucks))/i,
-    /(?:CVS|Walgreens|Target|Walmart|Stop\s*&?\s*Shop|Star\s+Market|Market\s+Basket|7-Eleven|Dunkin|Starbucks|Home\s+Depot|Costco|TJ\s*Maxx|Dollar\s+Tree|Rite\s+Aid)/i];
-  for (const sp of storePatterns) {
-    const sm = transcript.match(sp);
-    if (sm) { storeName = sm[0].trim(); break; }
-  }
-  } // end if (!storeName)
-
-  // Build items list from price results
-  let itemsLine = '';
+  // ── Items: always read from _stolenItems (the live shopping cart) ──
+  // This ensures items added via photo/AI/voice are always current
+  let itemsFound = [];
   let totalValue = 0;
-  if (priceResults && priceResults.found.length > 0) {
-    itemsLine = priceResults.found.map(f =>
-      f.item + (f.qty > 1 ? ` (${f.qty} units)` : ' (1 unit)')
-    ).join(', ') + '.';
+  if (_stolenItems.length > 0) {
+    itemsFound = _stolenItems.map(i => ({
+      item: i.name, qty: i.qty, unitPrice: i.unitPrice, total: i.total, source: i.source
+    }));
+    totalValue = _stolenItems.reduce((s, i) => s + i.total, 0);
+  } else if (priceResults && priceResults.found.length > 0) {
+    itemsFound = priceResults.found;
     totalValue = priceResults.total;
   }
+  _lastPriceResults = { found: itemsFound, total: totalValue };
 
-  // Determine offense and statute
+  let itemsLine = '';
+  if (itemsFound.length > 0) {
+    itemsLine = itemsFound.map(f =>
+      f.item + (f.qty > 1 ? ` (${f.qty} units, $${f.unitPrice.toFixed(2)} each)` : ` ($${f.unitPrice.toFixed(2)})`)
+    ).join('; ') + '.';
+  }
+
+  // ── Location: from location screen ──
+  const locInput = document.getElementById('loc-address');
+  let location = (locInput && locInput.value) ? locInput.value : 'the incident location';
+  const cityInput = document.getElementById('loc-city');
+  const stateInput = document.getElementById('loc-state');
+  if (cityInput && cityInput.value && stateInput && stateInput.value) {
+    if (!location.includes(cityInput.value)) location += ', ' + cityInput.value + ', ' + stateInput.value;
+  }
+
+  // ── Store name: AI > regex > transcript ──
+  let storeName = _aiStoreName || '';
+  if (!storeName && transcript) {
+    const storePatterns = [/(?:at|near|outside|from|leaving)\s+(?:the\s+)?([A-Z][A-Za-z'\s]+(?:Pharmacy|Market|Store|Target|Walmart|CVS|Walgreens|Stop\s*&?\s*Shop|Star\s+Market|7-Eleven|Dunkin|Starbucks))/i,
+      /(?:CVS|Walgreens|Target|Walmart|Stop\s*&?\s*Shop|Star\s+Market|Market\s+Basket|7-Eleven|Dunkin|Starbucks|Home\s+Depot|Costco|TJ\s*Maxx|Dollar\s+Tree|Rite\s+Aid)/i];
+    for (const sp of storePatterns) {
+      const sm = transcript.match(sp);
+      if (sm) { storeName = sm[0].trim(); break; }
+    }
+  }
+
+  // ── Offense & statute ──
   const offense = selectedOffense || 'Shoplifting';
   const statute = _offenseStatutes[offense] || 'G.L. c. 266, §30A';
   const thresholdLabel = totalValue > 250 ? 'over $250' : 'under $250';
 
-  // Check for cooperation mentions — use AI data if available, fall back to regex
+  // ── Cooperation & prior offenses ──
   const cooperative = (_aiParsedData && _aiParsedData.cooperative !== null) ? _aiParsedData.cooperative : /cooperat|compliant|without incident|calm|no resist/i.test(text);
   const noWarrants = (_aiParsedData && _aiParsedData.priorOffenses !== null) ? !_aiParsedData.priorOffenses : /no warrant|no prior|first time|no record|no history|clean record/i.test(text);
 
-  // Generate the formal report
+  // ── Date/Time from time screen ──
+  const timeHour = document.getElementById('time-hour');
+  const timeMin = document.getElementById('time-min');
+  const amBtn = document.getElementById('am-btn');
+  const dateInput = document.querySelector('#s-time input[type="date"]');
+  let reportDateStr = dateStr;
+  let reportTimeStr = timeStr;
+  if (dateInput && dateInput.value) {
+    const d = new Date(dateInput.value + 'T12:00:00');
+    reportDateStr = d.toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+  }
+  if (timeHour && timeMin) {
+    const ampm = amBtn && amBtn.classList.contains('active-yes') ? 'AM' : 'PM';
+    let h = parseInt(timeHour.value);
+    if (ampm === 'PM' && h < 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    reportTimeStr = String(h).padStart(2,'0') + timeMin.value;
+  }
+
+  // ── Participant address for report ──
+  let participantAddr = '';
+  if (verifyInputs.length >= 4 && verifyInputs[3].value) {
+    participantAddr = verifyInputs[3].value;
+  }
+
+  // ══ BUILD THE FORMAL REPORT ══
   const report = `<strong>Incident Report — Officer M. Dercolo, Badge #4187</strong><br><br>` +
 
-    `On ${dateStr}, at approximately ${timeStr} hours, the reporting officer ` +
+    `On ${reportDateStr}, at approximately ${reportTimeStr} hours, the reporting officer ` +
     (storeName ? `responded to a report at ${storeName}, ${location}.` : `was on patrol in the vicinity of ${location}.`) +
     `<br><br>` +
 
@@ -2313,7 +2362,9 @@ function generateFormattedReport(transcript, priceResults) {
       `An individual, later identified as <strong>${personName}</strong>, was involved in an incident at the above location.`
     ) + `<br><br>` +
 
-    (itemsLine ? `<strong>Items:</strong> ${itemsLine} Estimated total retail value: <strong>$${totalValue.toFixed(2)}</strong>.<br><br>` : '') +
+    (participantAddr ? `Subject's address on file: <strong>${participantAddr}</strong>.<br><br>` : '') +
+
+    (itemsLine ? `<strong>Stolen Items (${itemsFound.length}):</strong> ${itemsLine}<br>Estimated total retail value: <strong>$${totalValue.toFixed(2)}</strong> (${thresholdLabel}).<br><br>` : '') +
 
     (cooperative ?
       `The officer detained the subject without incident. Subject was cooperative throughout the encounter. ` :
@@ -2732,9 +2783,9 @@ function updateItemsTotal() {
     })),
     total: total
   };
-  // Update readback text and re-generate formatted report
+  // Update readback text and re-generate formatted report with ALL current data
   updateReadbackText();
-  if (voiceTranscriptText) generateFormattedReport(voiceTranscriptText, _lastPriceResults);
+  generateFormattedReport(voiceTranscriptText || '', _lastPriceResults);
 }
 
 // ══════════════════════════════════════════

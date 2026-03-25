@@ -2918,12 +2918,52 @@ function updateItemsTotal() {
 // ══════════════════════════════════════════
 
 // Speak a short prompt to the officer (non-blocking)
+// ── TTS: OpenAI natural voice (LIVE) or browser fallback (DEMO) ──
+let _ttsAudioQueue = [];
+let _ttsPlaying = false;
+
 function speakPrompt(text) {
+  if (!text) return;
+  // If connected to backend, use OpenAI TTS for natural voice
+  if (authToken && API_BASE) {
+    _ttsAudioQueue.push(text);
+    if (!_ttsPlaying) _playNextTTS();
+    return;
+  }
+  // Fallback: browser built-in TTS
+  _speakBrowser(text);
+}
+
+function _speakBrowser(text) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 1.0; u.pitch = 1; u.lang = 'en-US';
   window.speechSynthesis.speak(u);
+}
+
+async function _playNextTTS() {
+  if (_ttsAudioQueue.length === 0) { _ttsPlaying = false; return; }
+  _ttsPlaying = true;
+  const text = _ttsAudioQueue.shift();
+  try {
+    const resp = await fetch(API_BASE + '/api/ai/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ text: text, voice: 'nova' })
+    });
+    if (!resp.ok) throw new Error('TTS API error');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => { URL.revokeObjectURL(url); _playNextTTS(); };
+    audio.onerror = () => { URL.revokeObjectURL(url); _speakBrowser(text); _playNextTTS(); };
+    audio.play().catch(() => { _speakBrowser(text); _playNextTTS(); });
+  } catch(e) {
+    // API failed — fall back to browser TTS
+    _speakBrowser(text);
+    _playNextTTS();
+  }
 }
 
 let _ttsUtterance = null;
@@ -3115,38 +3155,58 @@ function populateCaseSummary() {
   ).join('');
 }
 
+let _ttsReadbackAudio = null;
+
 function readBackSummary() {
   const summary = buildReviewSummary();
-  if (!window.speechSynthesis) {
-    showToast('Text-to-speech not supported');
-    return;
-  }
-  // Stop any existing speech
-  window.speechSynthesis.cancel();
-
-  _ttsUtterance = new SpeechSynthesisUtterance(summary);
-  _ttsUtterance.rate = 0.95;
-  _ttsUtterance.pitch = 1;
-  _ttsUtterance.lang = 'en-US';
-
-  // UI feedback
   const btn = document.getElementById('readback-btn');
   const stopBtn = document.getElementById('stop-readback-btn');
+
   btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Playing...';
   btn.style.background = 'rgba(20,75,216,.15)';
   stopBtn.style.display = 'block';
 
-  _ttsUtterance.onend = function() {
+  function resetBtn() {
     btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Read it Back to Me';
     btn.style.background = 'rgba(20,75,216,.06)';
     stopBtn.style.display = 'none';
-  };
+  }
 
+  // Try OpenAI TTS first
+  if (authToken && API_BASE) {
+    fetch(API_BASE + '/api/ai/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ text: summary, voice: 'nova' })
+    }).then(r => {
+      if (!r.ok) throw new Error('TTS error');
+      return r.blob();
+    }).then(blob => {
+      const url = URL.createObjectURL(blob);
+      _ttsReadbackAudio = new Audio(url);
+      _ttsReadbackAudio.onended = () => { URL.revokeObjectURL(url); resetBtn(); };
+      _ttsReadbackAudio.onerror = () => { URL.revokeObjectURL(url); _readBackBrowser(summary, resetBtn); };
+      _ttsReadbackAudio.play().catch(() => _readBackBrowser(summary, resetBtn));
+    }).catch(() => _readBackBrowser(summary, resetBtn));
+    return;
+  }
+  _readBackBrowser(summary, resetBtn);
+}
+
+function _readBackBrowser(summary, onDone) {
+  if (!window.speechSynthesis) { showToast('Text-to-speech not supported'); if (onDone) onDone(); return; }
+  window.speechSynthesis.cancel();
+  _ttsUtterance = new SpeechSynthesisUtterance(summary);
+  _ttsUtterance.rate = 0.95; _ttsUtterance.pitch = 1; _ttsUtterance.lang = 'en-US';
+  _ttsUtterance.onend = onDone;
   window.speechSynthesis.speak(_ttsUtterance);
 }
 
 function stopReadBack() {
-  window.speechSynthesis.cancel();
+  // Stop OpenAI TTS audio if playing
+  if (_ttsReadbackAudio) { _ttsReadbackAudio.pause(); _ttsReadbackAudio = null; }
+  if (_ttsFullReadbackAudio) { _ttsFullReadbackAudio.pause(); _ttsFullReadbackAudio = null; }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
   // Reset both possible button sets (review screen and voice-result screen)
   const btns = [
     ['readback-btn', 'stop-readback-btn'],
@@ -3164,32 +3224,45 @@ function stopReadBack() {
 }
 
 // Voice readback from the voice-result screen (items + incident)
+let _ttsFullReadbackAudio = null;
+
 function readBackFullSummary() {
   const text = buildFullReadback();
-  if (!window.speechSynthesis) { showToast('Text-to-speech not available'); return; }
-  window.speechSynthesis.cancel();
-
-  _ttsUtterance = new SpeechSynthesisUtterance(text);
-  _ttsUtterance.rate = 0.92;
-  _ttsUtterance.pitch = 1;
-  _ttsUtterance.lang = 'en-US';
-
   const btn = document.getElementById('vr-readback-btn');
   const stopBtn = document.getElementById('vr-stop-btn');
+
   if (btn) {
     btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Playing...';
     btn.style.background = 'rgba(20,75,216,.15)';
   }
   if (stopBtn) stopBtn.style.display = 'block';
 
-  _ttsUtterance.onend = function() {
+  function resetBtn() {
     if (btn) {
       btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Read it Back to Me';
       btn.style.background = 'rgba(20,75,216,.06)';
     }
     if (stopBtn) stopBtn.style.display = 'none';
-  };
-  window.speechSynthesis.speak(_ttsUtterance);
+  }
+
+  if (authToken && API_BASE) {
+    fetch(API_BASE + '/api/ai/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ text: text, voice: 'nova' })
+    }).then(r => {
+      if (!r.ok) throw new Error('TTS error');
+      return r.blob();
+    }).then(blob => {
+      const url = URL.createObjectURL(blob);
+      _ttsFullReadbackAudio = new Audio(url);
+      _ttsFullReadbackAudio.onended = () => { URL.revokeObjectURL(url); resetBtn(); };
+      _ttsFullReadbackAudio.onerror = () => { URL.revokeObjectURL(url); _readBackBrowser(text, resetBtn); };
+      _ttsFullReadbackAudio.play().catch(() => _readBackBrowser(text, resetBtn));
+    }).catch(() => _readBackBrowser(text, resetBtn));
+    return;
+  }
+  _readBackBrowser(text, resetBtn);
 }
 
 function buildFullReadback() {

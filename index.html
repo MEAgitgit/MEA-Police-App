@@ -2470,8 +2470,8 @@ function handleItemCamera(input) {
   if (!input.files || !input.files[0]) return;
   const file = input.files[0];
   const reader = new FileReader();
-  reader.onload = function(e) {
-    _currentPhotoData = e.target.result;
+  reader.onload = async function(e) {
+    _currentPhotoData = await _resizeImageForAI(e.target.result, 1200);
     // Show the photo panel with the image
     const panel = document.getElementById('item-photo-panel');
     const preview = document.getElementById('item-photo-preview');
@@ -2504,14 +2504,21 @@ function handleItemCamera(input) {
           // AI identified the item — auto-fill name
           const fullName = (ai.brand && !ai.name.toLowerCase().includes(ai.brand.toLowerCase()))
             ? ai.brand + ' ' + ai.name : ai.name;
-          nameInput.value = fullName;
-          speakPrompt('I see ' + fullName + '. Tap Add Item to confirm, or correct the name.');
-          showToast('AI identified: ' + fullName);
+          const sizeStr = ai.size ? ' (' + ai.size + ')' : '';
+          nameInput.value = fullName + sizeStr;
+          // Store AI price estimate for use when adding item
+          nameInput.dataset.aiPrice = ai.estimatedPrice || '';
+          nameInput.dataset.aiBrand = ai.brand || '';
+          nameInput.dataset.aiCategory = ai.category || '';
+          const priceStr = ai.estimatedPrice ? ' — estimated $' + ai.estimatedPrice.toFixed(2) : '';
+          speakPrompt('I see ' + fullName + priceStr + '. Tap Add Item to confirm, or correct the name.');
+          showToast('AI identified: ' + fullName + priceStr);
           // Show confidence
           const confLabel = document.getElementById('photo-ai-confidence');
           if (confLabel) {
             confLabel.style.display = 'inline-block';
-            confLabel.textContent = (ai.confidence === 'high' ? '✓ ' : ai.confidence === 'medium' ? '~ ' : '? ') + 'AI: ' + (ai.confidence || 'low') + ' confidence';
+            const priceTag = ai.estimatedPrice ? ' · ~$' + ai.estimatedPrice.toFixed(2) : '';
+            confLabel.textContent = (ai.confidence === 'high' ? '✓ ' : ai.confidence === 'medium' ? '~ ' : '? ') + 'AI: ' + (ai.confidence || 'low') + ' confidence' + priceTag;
             confLabel.style.color = ai.confidence === 'high' ? 'var(--green)' : ai.confidence === 'medium' ? '#F59E0B' : 'var(--g4)';
           }
         } else {
@@ -2600,8 +2607,14 @@ async function confirmPhotoItem() {
   const qm = name.match(/^(\d+)\s*(?:x\s*|pack\s+(?:of\s+)?|bottles?\s+(?:of\s+)?|cans?\s+(?:of\s+)?)?(.+)/i);
   if (qm && parseInt(qm[1]) > 1) { qty = parseInt(qm[1]); itemName = qm[2].trim(); }
 
-  await addItemAndSearchPrice(itemName, qty, _currentPhotoData);
+  // Use AI-estimated price if available from photo identification
+  const aiPrice = parseFloat(nameInput.dataset.aiPrice) || null;
+  await addItemAndSearchPrice(itemName, qty, _currentPhotoData, aiPrice);
   _currentPhotoData = null;
+  // Clear AI data
+  nameInput.dataset.aiPrice = '';
+  nameInput.dataset.aiBrand = '';
+  nameInput.dataset.aiCategory = '';
 
   // Show "Add Another" prompt and scroll to it
   const prompt = document.getElementById('add-another-prompt');
@@ -2682,7 +2695,7 @@ async function addManualItem() {
   input.focus();
 }
 
-async function addItemAndSearchPrice(name, qty, photoData) {
+async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice) {
   const locInput = document.getElementById('loc-address');
   const jurisdiction = locInput ? locInput.value : '';
 
@@ -2700,25 +2713,31 @@ async function addItemAndSearchPrice(name, qty, photoData) {
         ${photoData ? '<div style="width:32px;height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;"><img src="'+photoData+'" style="width:100%;height:100%;object-fit:cover;"></div>' : ''}
         <div>
           <div style="font-size:14px;font-weight:600;color:var(--navy);">${displayName}${qty>1?' <span style="color:var(--g4);font-weight:400;">x '+qty+'</span>':''}</div>
-          <div style="font-size:10px;color:var(--g4);display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;border:1.5px solid var(--blue);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;"></div> Searching price...</div>
+          <div style="font-size:10px;color:var(--g4);display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;border:1.5px solid var(--blue);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;"></div> ${aiEstimatedPrice ? 'AI estimated ~$' + aiEstimatedPrice.toFixed(2) + ' — verifying...' : 'Searching price...'}</div>
         </div>
       </div>
       <span style="font-size:13px;color:var(--g4);">...</span>
     </div>`);
 
-  // Search price via backend API first, then local fallback
+  // If AI already estimated a price from the photo, use it directly
   let price, source, searched = false;
-  const searchResult = await searchSingleItemPrice(name, jurisdiction);
-  if (searchResult && searchResult.price) {
-    price = searchResult.price;
-    source = searchResult.source || 'Retail Price Database';
-    searched = searchResult.searched;
-    // Clean up source name for display
-    if (source === 'fallback_database') source = 'Retail Price Database';
+  if (aiEstimatedPrice && aiEstimatedPrice > 0) {
+    price = aiEstimatedPrice;
+    source = 'AI Vision Estimate';
+    searched = true;
   } else {
-    price = getFallbackPrice(name);
-    source = price ? 'Retail Price Database' : null;
-    if (!price) { price = 9.99; source = 'Est. retail value'; }
+    // Search price via backend API first, then local fallback
+    const searchResult = await searchSingleItemPrice(name, jurisdiction);
+    if (searchResult && searchResult.price) {
+      price = searchResult.price;
+      source = searchResult.source || 'Retail Price Database';
+      searched = searchResult.searched;
+      if (source === 'fallback_database') source = 'Retail Price Database';
+    } else {
+      price = getFallbackPrice(name);
+      source = price ? 'Retail Price Database' : null;
+      if (!price) { price = 9.99; source = 'Est. retail value'; }
+    }
   }
 
   const itemTotal = price * qty;

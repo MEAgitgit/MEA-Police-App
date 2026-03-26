@@ -757,11 +757,11 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     </div>
     <div style="margin-bottom:14px;">
       <label class="form-label">Email</label>
-      <input type="email" class="form-input" value="orazio@email.com">
+      <input type="email" class="form-input" value="" placeholder="Email address">
     </div>
     <div style="margin-bottom:14px;">
       <label class="form-label">Phone Number</label>
-      <input type="tel" class="form-input" value="(617) 555-4716">
+      <input type="tel" class="form-input" value="" placeholder="(555) 555-5555">
     </div>
     <div style="height:30px;"></div>
   </div>
@@ -2800,12 +2800,32 @@ function handleItemRephoto(input) {
 }
 
 // ── ID PHOTO → AI OCR ──
+function _resizeImageForAI(dataUrl, maxWidth) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = function() {
+      // If already small enough, just return original
+      if (img.width <= maxWidth) { resolve(dataUrl); return; }
+      const scale = maxWidth / img.width;
+      const canvas = document.createElement('canvas');
+      canvas.width = maxWidth;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 function handleIdPhoto(input) {
   if (!input.files || !input.files[0]) return;
   const file = input.files[0];
   const reader = new FileReader();
-  reader.onload = function(e) {
-    const photoData = e.target.result;
+  reader.onload = async function(e) {
+    // Resize to max 1200px wide to keep payload small
+    const photoData = await _resizeImageForAI(e.target.result, 1200);
     // Show the scanning screen with the actual photo
     document.getElementById('scan-id-img').src = photoData;
     document.getElementById('scan-status-text').textContent = 'AI reading ID...';
@@ -2813,31 +2833,45 @@ function handleIdPhoto(input) {
 
     if (authToken) {
       // Send to AI for OCR
-      fetch(API_BASE + '/api/ai/scan-id', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-        body: JSON.stringify({ image: photoData })
-      }).then(r => r.json()).then(ai => {
+      try {
+        const resp = await fetch(API_BASE + '/api/ai/scan-id', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+          body: JSON.stringify({ image: photoData })
+        });
+        if (!resp.ok) {
+          const errText = await resp.text();
+          console.error('[ID Scan] HTTP error:', resp.status, errText);
+          document.getElementById('scan-status-text').textContent = 'Scan error (' + resp.status + ') — entering manually';
+          showToast('ID scan error: ' + resp.status);
+          setTimeout(() => nav('verify'), 2000);
+          return;
+        }
+        const ai = await resp.json();
+        console.log('[ID Scan] AI response:', JSON.stringify(ai));
+
         if (ai.fallback) {
-          // AI unavailable — go to manual entry
           document.getElementById('scan-status-text').textContent = 'AI unavailable — entering manually';
+          showToast('AI unavailable (no API key on server)');
           setTimeout(() => nav('verify'), 1500);
           return;
         }
+
         // Populate verify screen with AI-extracted data
         const verifyInputs = document.querySelectorAll('#s-verify .form-input');
-        if (verifyInputs.length >= 6) {
-          if (ai.firstName) verifyInputs[0].value = ai.firstName;
-          if (ai.lastName) verifyInputs[1].value = ai.lastName;
-          if (ai.dateOfBirth) verifyInputs[2].value = ai.dateOfBirth;
-          if (ai.address) {
-            let fullAddr = ai.address;
-            if (ai.city) fullAddr += ', ' + ai.city;
-            if (ai.state) fullAddr += ', ' + ai.state;
-            if (ai.zip) fullAddr += ' ' + ai.zip;
-            verifyInputs[3].value = fullAddr;
-          }
+        console.log('[ID Scan] Found', verifyInputs.length, 'verify inputs');
+
+        if (ai.firstName) verifyInputs[0].value = ai.firstName;
+        if (ai.lastName) verifyInputs[1].value = ai.lastName;
+        if (ai.dateOfBirth) verifyInputs[2].value = ai.dateOfBirth;
+        if (ai.address) {
+          let fullAddr = ai.address;
+          if (ai.city) fullAddr += ', ' + ai.city;
+          if (ai.state) fullAddr += ', ' + ai.state;
+          if (ai.zip) fullAddr += ' ' + ai.zip;
+          verifyInputs[3].value = fullAddr;
         }
+
         // Also set parsed name for report
         if (ai.firstName || ai.lastName) {
           _parsedPersonName = ((ai.firstName || '') + ' ' + (ai.lastName || '')).trim();
@@ -2850,12 +2884,15 @@ function handleIdPhoto(input) {
         speakPrompt('ID scanned. ' + (ai.firstName || '') + ' ' + (ai.lastName || '') + '. Please verify the information.');
         showToast('AI extracted: ' + (ai.firstName || '') + ' ' + (ai.lastName || ''));
         setTimeout(() => nav('verify'), 1800);
-      }).catch(() => {
-        document.getElementById('scan-status-text').textContent = 'Scan failed — entering manually';
-        setTimeout(() => nav('verify'), 1500);
-      });
+      } catch (err) {
+        console.error('[ID Scan] Fetch error:', err);
+        document.getElementById('scan-status-text').textContent = 'Network error — entering manually';
+        showToast('ID scan failed: ' + err.message);
+        setTimeout(() => nav('verify'), 2000);
+      }
     } else {
-      // No backend — simulate scan then manual entry
+      // No backend — manual entry
+      document.getElementById('scan-status-text').textContent = 'No backend — entering manually';
       setTimeout(() => nav('verify'), 2200);
     }
   };

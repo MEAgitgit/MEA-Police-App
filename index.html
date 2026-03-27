@@ -937,6 +937,18 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
         </button>
       </div>
     </div>
+    <!-- Formal Police Report -->
+    <div class="review-section" style="background:#fff;border:1.5px solid var(--navy);border-radius:14px;padding:0;overflow:hidden;">
+      <div style="background:var(--navy);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span style="font-size:13px;font-weight:700;color:#fff;">Incident Report</span>
+        </div>
+        <button onclick="_copyReport()" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:transparent;color:rgba(255,255,255,.8);font-size:11px;font-weight:600;cursor:pointer;">Copy</button>
+      </div>
+      <div id="formal-report-body" style="padding:14px;font-family:'Courier New',monospace;font-size:11px;color:#1a1a2e;line-height:1.7;white-space:pre-wrap;max-height:400px;overflow-y:auto;background:#FAFBFF;"></div>
+    </div>
+
     <div style="height:20px;"></div>
   </div>
   <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
@@ -3258,6 +3270,153 @@ function populateReviewScreen() {
 
   // ── Written summary ──
   document.getElementById('review-written-summary').textContent = buildReviewSummary();
+
+  // ── Formal police incident report ──
+  document.getElementById('formal-report-body').textContent = buildFormalReport();
+}
+
+function buildFormalReport() {
+  const verifyInputs = document.querySelectorAll('#s-verify .form-input');
+  const fn = verifyInputs[0] ? verifyInputs[0].value : '';
+  const ln = verifyInputs[1] ? verifyInputs[1].value : '';
+  const dob = verifyInputs[2] ? verifyInputs[2].value : '';
+  const addr = verifyInputs[3] ? verifyInputs[3].value : '';
+  const phone = verifyInputs[5] ? verifyInputs[5].value : '';
+  const fullName = (fn + ' ' + ln).trim() || 'UNKNOWN';
+
+  const locInput = document.getElementById('loc-address');
+  const locCity = document.getElementById('loc-city');
+  const locState = document.getElementById('loc-state');
+  const location = locInput ? locInput.value : '';
+  const city = locCity ? locCity.value : '';
+  const state = locState ? locState.value : '';
+  const fullLocation = [location, city, state].filter(Boolean).join(', ');
+
+  const offense = selectedOffense || 'Shoplifting';
+  const statute = _offenseStatutes[offense] || 'G.L. c. 266, §30A';
+
+  // Date/Time
+  const dateInput = document.querySelector('#s-time input[type="date"]');
+  const timeHour = document.getElementById('time-hour');
+  const timeMin = document.getElementById('time-min');
+  const amBtn = document.getElementById('am-btn');
+  let incDate = new Date().toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' });
+  if (dateInput && dateInput.value) {
+    const d = new Date(dateInput.value + 'T12:00:00');
+    incDate = d.toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' });
+  }
+  let incTime = '';
+  if (timeHour && timeMin) {
+    const ampm = amBtn && amBtn.classList.contains('active-yes') ? 'AM' : 'PM';
+    incTime = timeHour.value + ':' + timeMin.value + ' ' + ampm;
+  }
+
+  // Citation code
+  const codeBoxes = document.querySelectorAll('#code-row .otp-box');
+  let citCode = '';
+  if (codeBoxes.length) citCode = Array.from(codeBoxes).map(b => b.textContent).join('').trim();
+  if (!citCode || citCode.length < 4) citCode = 'MA' + Math.floor(1000 + Math.random() * 9000);
+
+  // Items
+  let itemsBlock = '';
+  let totalValue = 0;
+  if (_stolenItems.length > 0) {
+    _stolenItems.forEach((item, i) => {
+      itemsBlock += `  ${i + 1}. ${item.name}${item.qty > 1 ? ' (x' + item.qty + ')' : ''}`;
+      itemsBlock += ` — $${item.total.toFixed(2)}`;
+      if (item.source) itemsBlock += ` [${item.source}]`;
+      itemsBlock += '\n';
+      totalValue += item.total;
+    });
+    itemsBlock += `  TOTAL ESTIMATED VALUE: $${totalValue.toFixed(2)}`;
+  }
+
+  // Store name
+  const storeName = _aiStoreName || '';
+
+  // Narrative
+  const narrative = voiceTranscriptText || '';
+
+  // Build the formal report
+  let report = '';
+  report += '═══════════════════════════════════════\n';
+  report += '         INCIDENT / OFFENSE REPORT\n';
+  report += '═══════════════════════════════════════\n\n';
+
+  report += `CASE NO:        ${citCode}\n`;
+  report += `DATE OF REPORT: ${new Date().toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' })}\n`;
+  report += `REPORTING OFC:  ____________________\n`;
+  report += `BADGE NO:       ____________________\n\n`;
+
+  report += '───────────────────────────────────────\n';
+  report += 'INCIDENT INFORMATION\n';
+  report += '───────────────────────────────────────\n';
+  report += `OFFENSE:        ${offense}\n`;
+  report += `STATUTE:        ${statute}\n`;
+  report += `DATE/TIME:      ${incDate}${incTime ? ' at ' + incTime : ''}\n`;
+  report += `LOCATION:       ${fullLocation || '____________________'}\n`;
+  if (storeName) report += `ESTABLISHMENT:  ${storeName}\n`;
+  report += '\n';
+
+  report += '───────────────────────────────────────\n';
+  report += 'SUBJECT INFORMATION\n';
+  report += '───────────────────────────────────────\n';
+  report += `NAME:           ${fullName.toUpperCase()}\n`;
+  report += `DOB:            ${dob || '____________________'}\n`;
+  report += `ADDRESS:        ${addr || '____________________'}\n`;
+  report += `PHONE:          ${phone || '____________________'}\n`;
+  report += '\n';
+
+  if (itemsBlock) {
+    report += '───────────────────────────────────────\n';
+    report += 'PROPERTY / ITEMS INVOLVED\n';
+    report += '───────────────────────────────────────\n';
+    report += itemsBlock + '\n\n';
+  }
+
+  report += '───────────────────────────────────────\n';
+  report += 'NARRATIVE\n';
+  report += '───────────────────────────────────────\n';
+  if (narrative) {
+    // Format narrative into proper police report style
+    const formalNarrative = `On ${incDate}${incTime ? ' at approximately ' + incTime : ''}, this officer responded to ${fullLocation || 'the above location'}${storeName ? ' (' + storeName + ')' : ''} regarding a report of ${offense.toLowerCase()}.`
+      + `\n\nUpon arrival, ${narrative}`
+      + `\n\nThe subject was identified as ${fullName.toUpperCase()}${dob ? ', DOB ' + dob : ''}${addr ? ', residing at ' + addr : ''}.`
+      + (totalValue > 0 ? `\n\nThe total estimated value of the merchandise involved is $${totalValue.toFixed(2)}.` : '')
+      + `\n\nBased on the circumstances of this incident and the subject's eligibility under G.L. c. 276A, the subject was offered pre-arraignment diversion through the SWIFT program administered by the Suffolk County District Attorney's Office.`
+      + `\n\nDisposition: DIVERSION — SWIFT PROGRAM REFERRAL`;
+    report += formalNarrative;
+  } else {
+    report += `On ${incDate}${incTime ? ' at approximately ' + incTime : ''}, this officer responded to ${fullLocation || 'the above location'}${storeName ? ' (' + storeName + ')' : ''} regarding a report of ${offense.toLowerCase()}.`;
+    report += `\n\nThe subject was identified as ${fullName.toUpperCase()}${dob ? ', DOB ' + dob : ''}.`;
+    report += (totalValue > 0 ? `\n\nThe total estimated value of the merchandise involved is $${totalValue.toFixed(2)}.` : '');
+    report += `\n\nBased on the circumstances of this incident and the subject's eligibility under G.L. c. 276A, the subject was offered pre-arraignment diversion through the SWIFT program administered by the Suffolk County District Attorney's Office.`;
+    report += `\n\nDisposition: DIVERSION — SWIFT PROGRAM REFERRAL`;
+  }
+
+  report += '\n\n───────────────────────────────────────\n';
+  report += 'OFFICER SIGNATURE: ____________________\n';
+  report += `DATE: ${new Date().toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' })}\n`;
+  report += '═══════════════════════════════════════\n';
+
+  return report;
+}
+
+function _copyReport() {
+  const reportText = document.getElementById('formal-report-body').textContent;
+  navigator.clipboard.writeText(reportText).then(() => {
+    showToast('Report copied to clipboard');
+  }).catch(() => {
+    // Fallback for iOS
+    const ta = document.createElement('textarea');
+    ta.value = reportText;
+    ta.style.cssText = 'position:fixed;left:-9999px;';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Report copied to clipboard');
+  });
 }
 
 function populateCaseSummary() {

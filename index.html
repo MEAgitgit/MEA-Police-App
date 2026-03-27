@@ -1802,6 +1802,11 @@ function simulateTranscription() {
   el.focus();
   document.getElementById('voice-done-btn').disabled = false;
   document.getElementById('voice-done-btn').style.opacity = '1';
+  // Also enable on any input since user is typing
+  el.addEventListener('input', function() {
+    document.getElementById('voice-done-btn').disabled = false;
+    document.getElementById('voice-done-btn').style.opacity = '1';
+  });
 }
 function cancelVoice() {
   clearInterval(voiceTimer);
@@ -1896,25 +1901,13 @@ function finishVoice() {
         _aiStoreName = ai.storeName;
       }
 
-      // ── AUTO-POPULATE ITEMS from AI extraction ──
+      // ── SHOW AI-SUGGESTED ITEMS for officer to confirm ──
       if (ai.items && ai.items.length > 0) {
-        showToast('AI found ' + ai.items.length + ' item' + (ai.items.length > 1 ? 's' : '') + ' — searching prices...');
-        speakPrompt('I found ' + ai.items.length + ' item' + (ai.items.length > 1 ? 's' : '') + ' from your description. Searching prices now. You can correct or add photos for each one.');
-        // Add items sequentially with price lookups
-        (async function() {
-          for (const aiItem of ai.items) {
-            await addItemAndSearchPrice(aiItem.name, aiItem.qty || 1);
-          }
-          // After all items added, re-generate report with prices
-          generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
-          updateReadbackText();
-          // Show the add-another prompt so officer can add photos or more items
-          const prompt = document.getElementById('add-another-prompt');
-          if (prompt) prompt.style.display = 'block';
-          speakPrompt('Items pre-filled from your description. Tap any item to correct it, or take photos to verify.');
-        })();
+        showToast('AI found ' + ai.items.length + ' item' + (ai.items.length > 1 ? 's' : '') + ' — review below');
+        speakPrompt('I heard ' + ai.items.length + ' item' + (ai.items.length > 1 ? 's' : '') + ' from your description. Please confirm or remove before continuing.');
+        _showAiSuggestedItems(ai.items);
       } else {
-        // No items found — re-generate report and prompt for photos
+        // No items found — prompt for photos
         generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
         updateReadbackText();
         showToast('AI analyzed transcript' + (ai.personName ? ' — found: ' + ai.personName : ''));
@@ -1926,6 +1919,114 @@ function finishVoice() {
 }
 
 let _aiStoreName = ''; // AI-detected store name
+let _aiSuggestedItems = []; // Items AI heard from voice — pending officer confirmation
+
+function _showAiSuggestedItems(items) {
+  _aiSuggestedItems = items.map((it, i) => ({ id: i, name: it.name, qty: it.qty || 1, confirmed: false }));
+
+  // Build suggestion UI inside the voice-result screen
+  const container = document.getElementById('items-list-container');
+  container.style.display = 'block';
+  const rows = document.getElementById('items-list-rows');
+
+  // Clear any existing rows
+  rows.innerHTML = '';
+  _stolenItems = [];
+
+  // Add header for suggestions
+  const hintEl = document.getElementById('photo-section-hint');
+  if (hintEl) hintEl.textContent = 'AI heard these items from your dictation. Confirm the ones that are correct, remove any mistakes, then add photos.';
+
+  // Render each suggestion as a confirmable card
+  _renderAiSuggestions();
+}
+
+function _renderAiSuggestions() {
+  let suggestBox = document.getElementById('ai-suggestions-box');
+  if (!suggestBox) {
+    const container = document.getElementById('items-list-container');
+    container.insertAdjacentHTML('afterbegin', '<div id="ai-suggestions-box"></div>');
+    suggestBox = document.getElementById('ai-suggestions-box');
+  }
+
+  if (_aiSuggestedItems.length === 0) {
+    suggestBox.innerHTML = '<div style="text-align:center;padding:12px;color:var(--g4);font-size:13px;">No suggested items. Use the camera or type to add items.</div>';
+    return;
+  }
+
+  suggestBox.innerHTML = `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+      <span style="font-size:14px;">🤖</span>
+      <span style="font-size:13px;font-weight:700;color:var(--navy);">AI-Suggested Items</span>
+      <span style="font-size:11px;color:var(--g4);margin-left:auto;">Tap ✓ to add, ✕ to remove</span>
+    </div>
+    ${_aiSuggestedItems.map((item, idx) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:10px;margin-bottom:6px;background:${item.confirmed ? '#ECFDF5' : '#FFF7ED'};border:1.5px solid ${item.confirmed ? '#A7F3D0' : '#FED7AA'};border-radius:10px;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:600;color:var(--navy);">${item.name}${item.qty > 1 ? ' <span style="color:var(--g4);font-weight:400;">x' + item.qty + '</span>' : ''}</div>
+          <div style="font-size:11px;color:${item.confirmed ? '#059669' : '#D97706'};">${item.confirmed ? '✓ Added to bill' : 'Pending confirmation'}</div>
+        </div>
+        ${item.confirmed ? `
+          <button onclick="_removeAiSuggestion(${idx})" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #FCA5A5;background:#FEF2F2;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
+            <span style="color:#DC2626;font-size:16px;font-weight:700;">✕</span>
+          </button>
+        ` : `
+          <button onclick="_confirmAiSuggestion(${idx})" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #A7F3D0;background:#ECFDF5;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
+            <span style="color:#059669;font-size:16px;font-weight:700;">✓</span>
+          </button>
+          <button onclick="_dismissAiSuggestion(${idx})" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #FCA5A5;background:#FEF2F2;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
+            <span style="color:#DC2626;font-size:16px;font-weight:700;">✕</span>
+          </button>
+        `}
+      </div>
+    `).join('')}
+    ${_aiSuggestedItems.some(i => !i.confirmed) ? `
+      <button onclick="_confirmAllAiSuggestions()" style="width:100%;padding:12px;margin-top:8px;border-radius:10px;border:none;background:var(--green);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">✓ Confirm All Items</button>
+    ` : ''}
+  `;
+}
+
+async function _confirmAiSuggestion(idx) {
+  const item = _aiSuggestedItems[idx];
+  if (!item || item.confirmed) return;
+  item.confirmed = true;
+  _renderAiSuggestions();
+  await addItemAndSearchPrice(item.name, item.qty);
+  generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
+  updateReadbackText();
+}
+
+async function _confirmAllAiSuggestions() {
+  for (const item of _aiSuggestedItems) {
+    if (!item.confirmed) {
+      item.confirmed = true;
+      await addItemAndSearchPrice(item.name, item.qty);
+    }
+  }
+  _renderAiSuggestions();
+  generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
+  updateReadbackText();
+  speakPrompt('All items confirmed. Take photos to verify, or continue.');
+}
+
+function _dismissAiSuggestion(idx) {
+  _aiSuggestedItems.splice(idx, 1);
+  _renderAiSuggestions();
+}
+
+function _removeAiSuggestion(idx) {
+  // Remove from suggestions and from stolen items
+  const item = _aiSuggestedItems[idx];
+  if (item) {
+    const stealIdx = _stolenItems.findIndex(si => si.name.toLowerCase() === item.name.toLowerCase());
+    if (stealIdx >= 0) _stolenItems.splice(stealIdx, 1);
+    rerenderItemsList();
+  }
+  _aiSuggestedItems.splice(idx, 1);
+  _renderAiSuggestions();
+  generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
+  updateReadbackText();
+}
 
 // ══════════════════════════════════════════
 // REAL-TIME ITEM PRICE SEARCH

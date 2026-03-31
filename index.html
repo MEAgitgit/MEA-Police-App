@@ -308,7 +308,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       <!-- Populated by JS -->
     </div>
     <div style="padding:20px;">
-      <button class="btn" onclick="nav('offense')">+ New Citation</button>
+      <button class="btn" onclick="resetCitationState(); nav('offense')">+ New Citation</button>
     </div>
     <div style="height:calc(var(--sb)+20px);"></div>
   </div>
@@ -1154,6 +1154,34 @@ let formattedNotesText = '';
 let _lastPriceResults = { found: [], total: 0 };
 let _parsedPersonName = '';
 const ORDER = ['pin','dashboard','offense','location','time','notes','voice','voice-result','code','scan-id','scanning','verify','q1','q2','q3','q4','review','confirm','case-summary'];
+
+function resetCitationState() {
+  selectedOffense = '';
+  voiceTimer = null;
+  voiceSeconds = 0;
+  usedVoice = false;
+  voiceTranscriptText = '';
+  formattedNotesText = '';
+  _lastPriceResults = { found: [], total: 0 };
+  _parsedPersonName = '';
+  _stolenItems = [];
+  _aiSuggestedItems = [];
+  _currentPhotoData = null;
+  navHistory = [];
+  // Clear form inputs
+  document.querySelectorAll('#s-verify .form-input').forEach(el => el.value = '');
+  const notesArea = document.getElementById('notes-textarea');
+  if (notesArea) notesArea.value = '';
+  const voiceTranscript = document.getElementById('voice-transcript');
+  if (voiceTranscript) { voiceTranscript.textContent = ''; voiceTranscript.contentEditable = 'false'; }
+  const locInput = document.getElementById('loc-address');
+  if (locInput) locInput.value = '';
+  // Clear formatted report area
+  const reportEl = document.getElementById('formatted-report');
+  if (reportEl) reportEl.innerHTML = '';
+  // Reset offense selection UI
+  document.querySelectorAll('.offense-card').forEach(c => c.classList.remove('selected'));
+}
 
 // ── CITATIONS DATA ──
 const CITATIONS = [
@@ -3658,6 +3686,7 @@ function submitCitation() {
     intake_source: usedVoice ? 'voice' : 'manual',
     first_offense: 1,
     citation_code: citCode,
+    items_json: _stolenItems.map(it => ({ name: it.name, qty: it.qty, unitPrice: it.unitPrice, total: it.total, source: it.source, photoData: it.photoData || null })),
   };
   // Use parsed name from voice if available and form fields are empty
   if (_parsedPersonName && _parsedPersonName !== 'the subject' && (!citationData.participant_name || citationData.participant_name.trim() === '')) {

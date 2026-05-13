@@ -536,6 +536,12 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <!-- STEP 2a (v2): Charge-specific evidence & context (for non-shoplifting charges) -->
     <div id="charge-context-panel" style="display:none;"></div>
 
+    <!-- STEP 2a-2 (v2): Scene evidence photos (for non-shoplifting charges) -->
+    <div id="charge-photos-panel" style="display:none;"></div>
+
+    <!-- STEP 2a-3 (v2): Structured evidence list (for non-shoplifting charges) -->
+    <div id="charge-evidence-list-panel" style="display:none;"></div>
+
     <!-- STEP 2b: Photograph the items (shoplifting) -->
     <div id="photograph-items-block" style="background:linear-gradient(135deg,#EFF6FF,#F8F9FF);border:1.5px solid var(--blue);border-radius:14px;padding:16px;margin-bottom:14px;">
       <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px;">📸 Verify & photograph stolen items</div>
@@ -658,6 +664,22 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
   </div>
   <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
     <button class="btn" onclick="acceptFormattedNotes()">Accept & Continue</button>
+  </div>
+</div>
+
+<!-- ████ SCREEN 6d (v2): EVIDENCE VERIFICATION (charge-specific) ████ -->
+<div id="s-evidence-verify" class="s" style="background:#fff;">
+  <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
+  <div class="light-nav">
+    <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2>Evidence Verification</h2>
+  </div>
+  <div class="scroll" style="padding:0 20px;">
+    <div id="evidence-verify-body"></div>
+    <div style="height:20px;"></div>
+  </div>
+  <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
+    <button class="btn" onclick="nav('code')">Verified · Continue</button>
   </div>
 </div>
 
@@ -927,6 +949,25 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;" id="review-charge-context-title">Evidence & Context</div>
       <div id="review-charge-context-rows"></div>
     </div>
+    <!-- v2: Scene evidence photos (non-shoplifting) -->
+    <div class="review-section" id="review-charge-photos-section" style="display:none;">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Scene Evidence</div>
+      <div id="review-charge-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;"></div>
+    </div>
+    <!-- v2: Structured evidence list (non-shoplifting) -->
+    <div class="review-section" id="review-charge-evlist-section" style="display:none;">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;" id="review-charge-evlist-title">Evidence</div>
+      <div id="review-charge-evlist-rows"></div>
+      <div id="review-charge-evlist-total" style="display:none;justify-content:space-between;align-items:center;padding:8px 0 0;margin-top:4px;border-top:2px solid var(--navy);">
+        <span style="font-size:13px;font-weight:800;color:var(--navy);">Total</span>
+        <span id="review-charge-evlist-total-amount" style="font-size:15px;font-weight:800;color:var(--blue);">$0.00</span>
+      </div>
+    </div>
+    <!-- v2: Specialized verification summary -->
+    <div class="review-section" id="review-specialized-section" style="display:none;">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;" id="review-specialized-title">Verification</div>
+      <div id="review-specialized-rows"></div>
+    </div>
     <!-- Eligibility answers (dynamically populated) -->
     <div class="review-section" id="review-eligibility">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Eligibility Screening · G.L. c. 276A</div>
@@ -1169,7 +1210,7 @@ let voiceTranscriptText = '';
 let formattedNotesText = '';
 let _lastPriceResults = { found: [], total: 0 };
 let _parsedPersonName = '';
-const ORDER = ['pin','dashboard','offense','location','time','notes','voice','voice-result','code','scan-id','scanning','verify','q1','q2','q3','q4','review','confirm','case-summary'];
+const ORDER = ['pin','dashboard','offense','location','time','notes','voice','voice-result','evidence-verify','code','scan-id','scanning','verify','q1','q2','q3','q4','review','confirm','case-summary'];
 
 function resetCitationState() {
   selectedOffense = '';
@@ -1241,22 +1282,93 @@ const CHARGE_CONFIG = {
       { key: 'ownerContact',     label: 'Owner / agent name (optional)', type: 'text', placeholder: 'e.g. DCR Ranger J. Hale' }
     ],
     reviewLabel: 'Property & Conditions',
+    evidenceListLabel: 'Scene Indicators',
+    evidenceListCols: ['name', 'meta'],
+    specializedType: 'priorWarnings',
+    specializedTitle: '📜 Prior Warnings Check',
     subData: {
       'Commercial property — after hours': {
         data: { propertyType: 'Commercial', postedSignage: 'yes', priorWarnings: 'no', ownerPressing: 'no', damageObserved: 'no', ownerContact: 'CVS night mgr. — declined to identify' },
-        transcript: 'At approximately 2:15 AM I observed the subject inside the rear loading-dock area of the CVS Pharmacy at 375 Broadway, well after closing hours. Property is clearly posted with "No Trespassing" at both entrances. No damage observed. Subject stated they were looking for a place to sleep. Night manager on call declined to press charges and asked we remove the subject from the premises.'
+        transcript: 'At approximately 2:15 AM I observed the subject inside the rear loading-dock area of the CVS Pharmacy at 375 Broadway, well after closing hours. Property is clearly posted with "No Trespassing" at both entrances. No damage observed. Subject stated they were looking for a place to sleep. Night manager on call declined to press charges and asked we remove the subject from the premises.',
+        photos: [
+          { icon:'🪧', label:'Posted signage — front entry', ai:'AI: "No Trespassing After Hours" — visible from sidewalk' },
+          { icon:'🏬', label:'Rear loading dock — closed', ai:'AI: commercial loading bay, after-hours' },
+          { icon:'🔦', label:'Subject location — interior', ai:'AI: subject seated against wall, no visible items' }
+        ],
+        evidenceList: [
+          { name:'Posted signage at all entries', meta:'Verified — sign visible on body-cam' },
+          { name:'Premises closed since 11:00 PM', meta:'Per store hours posted at door' },
+          { name:'No forced entry / no damage', meta:'Confirmed by manager review' }
+        ],
+        specialized: {
+          location:'375 Broadway, Revere (CVS Pharmacy)',
+          warningsAtLocation: 0,
+          subjectPriorTrespass: 0,
+          eligibility:'First-time at location · First-time offender',
+          sourcesChecked: ['NCIC III', 'Revere PD RMS', 'CVS Loss-Prevention list']
+        }
       },
       'Residential property — non-resident': {
         data: { propertyType: 'Residential', postedSignage: 'no', priorWarnings: 'no', ownerPressing: 'no', damageObserved: 'no', ownerContact: 'Resident — declined to identify' },
-        transcript: 'Responded to a call at 88 Beach Street, multi-family residential. Resident reported an unknown subject inside the rear common stairwell. Subject left voluntarily upon arrival. No signage required by ownership. No damage. Resident declines to press charges; requested only a warning be noted.'
+        transcript: 'Responded to a call at 88 Beach Street, multi-family residential. Resident reported an unknown subject inside the rear common stairwell. Subject left voluntarily upon arrival. No signage required by ownership. No damage. Resident declines to press charges; requested only a warning be noted.',
+        photos: [
+          { icon:'🏠', label:'Rear common stairwell', ai:'AI: shared residential entry, 4-unit building' },
+          { icon:'🚪', label:'Unsecured entry door', ai:'AI: door propped open, no posted notice' }
+        ],
+        evidenceList: [
+          { name:'No posted signage', meta:'Common-area entry not signed' },
+          { name:'Subject left voluntarily', meta:'On officer arrival, no resistance' },
+          { name:'Resident reporting only', meta:'Resident requests warning, not press' }
+        ],
+        specialized: {
+          location:'88 Beach Street, Revere',
+          warningsAtLocation: 0,
+          subjectPriorTrespass: 0,
+          eligibility:'First-time at location · First-time offender',
+          sourcesChecked: ['NCIC III', 'Revere PD RMS', 'Building 209A check']
+        }
       },
       'Public property — closed area': {
         data: { propertyType: 'Public / Municipal', postedSignage: 'yes', priorWarnings: 'no', ownerPressing: 'no', damageObserved: 'no', ownerContact: 'DCR Ranger J. Hale' },
-        transcript: 'Subject found inside the closed Revere Beach pavilion at 11:48 PM. Area is gated and signed closed dusk to dawn. No damage. Subject stated housing instability. DCR Ranger Hale on scene; DCR owner not pressing charges. Subject referred to MEA shelter intake.'
+        transcript: 'Subject found inside the closed Revere Beach pavilion at 11:48 PM. Area is gated and signed closed dusk to dawn. No damage. Subject stated housing instability. DCR Ranger Hale on scene; DCR owner not pressing charges. Subject referred to MEA shelter intake.',
+        photos: [
+          { icon:'🏖️', label:'Beach pavilion — gated', ai:'AI: DCR pavilion, gates closed, dusk-to-dawn signage' },
+          { icon:'🪧', label:'"Closed Dusk to Dawn"', ai:'AI: DCR posted hours sign' },
+          { icon:'🛏️', label:'Subject possessions', ai:'AI: sleeping bag, no contraband' }
+        ],
+        evidenceList: [
+          { name:'DCR property — posted hours', meta:'Closed 30 min after sunset' },
+          { name:'No damage to pavilion', meta:'Verified by DCR Ranger on scene' },
+          { name:'Housing need indicated', meta:'Shelter referral initiated' }
+        ],
+        specialized: {
+          location:'Revere Beach Pavilion (DCR)',
+          warningsAtLocation: 0,
+          subjectPriorTrespass: 0,
+          eligibility:'First-time · Eligible for SOS (Services Over Sentences)',
+          sourcesChecked: ['NCIC III', 'DCR Ranger log', 'Revere PD RMS', 'Pine Street Inn intake check']
+        }
       },
       'Repeat after prior warning': {
         data: { propertyType: 'Commercial', postedSignage: 'yes', priorWarnings: 'yes', ownerPressing: 'no', damageObserved: 'no', ownerContact: 'Mgr. R. Patel — Squire Rd Target' },
-        transcript: 'Subject observed loitering inside Squire Road Target after store close. Prior trespass warning on file dated 02/28/2026, signed by manager R. Patel. Subject left without incident. Manager declines pressing charges but requests formal diversion enrollment per MEA SWIFT.'
+        transcript: 'Subject observed loitering inside Squire Road Target after store close. Prior trespass warning on file dated 02/28/2026, signed by manager R. Patel. Subject left without incident. Manager declines pressing charges but requests formal diversion enrollment per MEA SWIFT.',
+        photos: [
+          { icon:'🛒', label:'Store entrance — closed', ai:'AI: Target Squire Rd, closed sign visible' },
+          { icon:'📄', label:'Prior warning on file', ai:'AI: trespass warning dated 02/28/2026' },
+          { icon:'🪧', label:'Posted no-trespass notice', ai:'AI: posted at all 3 entrances' }
+        ],
+        evidenceList: [
+          { name:'Prior trespass warning on file', meta:'02/28/2026 · Mgr. R. Patel' },
+          { name:'All entries posted', meta:'Confirmed at scene' },
+          { name:'Subject identified by mgr.', meta:'Mgr. recognized from prior incident' }
+        ],
+        specialized: {
+          location:'200 Squire Rd, Revere (Target)',
+          warningsAtLocation: 1,
+          subjectPriorTrespass: 1,
+          eligibility:'Repeat at location — escalation to SWIFT diversion appropriate',
+          sourcesChecked: ['NCIC III', 'Revere PD RMS', 'Target Asset Protection trespass list', 'MEA prior-encounters check']
+        }
       }
     }
   },
@@ -1280,22 +1392,110 @@ const CHARGE_CONFIG = {
       { key: 'ownerName',        label: 'Owner / agency',          type: 'text',   placeholder: 'e.g. City of Revere — Public Works' }
     ],
     reviewLabel: 'Damage & Restitution',
+    evidenceListLabel: 'Damage Itemized',
+    evidenceListCols: ['name', 'value'],
+    specializedType: 'restitution',
+    specializedTitle: '🔨 Restitution Estimate',
     subData: {
       'Minor vandalism (under $250)': {
         data: { damageType: 'Minor vandalism', estDamageValue: '180', damageReversible: 'yes', ownerNotified: 'yes', ownerName: 'Squire Rd Variety — owner on scene' },
-        transcript: 'Subject observed kicking and denting a metal newspaper box outside 339 Squire Road around 8:30 PM. One side panel bent inward. Owner of the adjacent variety store identified the box owner and called him to scene. Estimated repair $180. Subject cooperative, expressed remorse.'
+        transcript: 'Subject observed kicking and denting a metal newspaper box outside 339 Squire Road around 8:30 PM. One side panel bent inward. Owner of the adjacent variety store identified the box owner and called him to scene. Estimated repair $180. Subject cooperative, expressed remorse.',
+        photos: [
+          { icon:'📰', label:'Newspaper box — bent panel', ai:'AI: metal newspaper box, side panel bent ~30°' },
+          { icon:'📍', label:'Scene — 339 Squire Rd', ai:'AI: sidewalk in front of variety store' },
+          { icon:'👞', label:'Boot print on panel', ai:'AI: visible scuff consistent with kick' }
+        ],
+        evidenceList: [
+          { name:'Replacement side panel', value: 95 },
+          { name:'Labor — 2 hours', value: 70 },
+          { name:'Hardware / fasteners', value: 15 }
+        ],
+        specialized: {
+          totalRestitution: 180,
+          itemizedRows: [
+            { label:'Replacement side panel', amount: 95 },
+            { label:'Labor — 2 hours', amount: 70 },
+            { label:'Hardware / fasteners', amount: 15 }
+          ],
+          ownerSigned: true,
+          ownerName:'Anthony Cinelli — Squire Rd Variety',
+          paymentSchedule:'90-day diversion: 8 hrs community service @ $22.50/hr equivalent — restitution satisfied'
+        }
       },
       'Graffiti / tagging': {
         data: { damageType: 'Graffiti / tagging', estDamageValue: '220', damageReversible: 'yes', ownerNotified: 'yes', ownerName: 'MBTA — Wonderland Station' },
-        transcript: 'At 9:10 PM observed the subject spray-painting a tag on the rear concrete wall of the 88 Beach Street MBTA parking structure. Approximately three square feet of black aerosol paint. MBTA Transit dispatch notified. MBTA maintenance estimates $220 for power-wash and re-seal. One can of paint recovered as evidence.'
+        transcript: 'At 9:10 PM observed the subject spray-painting a tag on the rear concrete wall of the 88 Beach Street MBTA parking structure. Approximately three square feet of black aerosol paint. MBTA Transit dispatch notified. MBTA maintenance estimates $220 for power-wash and re-seal. One can of paint recovered as evidence.',
+        photos: [
+          { icon:'🎨', label:'Graffiti — rear wall', ai:'AI: aerosol paint, ~3 sq ft, single color' },
+          { icon:'🧴', label:'Recovered paint can', ai:'AI: Krylon Glossy Black 1601 — half full' },
+          { icon:'📍', label:'Scene — parking structure', ai:'AI: MBTA Wonderland lot rear wall' }
+        ],
+        evidenceList: [
+          { name:'Power-wash + degrease', value: 120 },
+          { name:'Sealant re-coat', value: 60 },
+          { name:'Materials / paint', value: 40 }
+        ],
+        specialized: {
+          totalRestitution: 220,
+          itemizedRows: [
+            { label:'Power-wash + degrease', amount: 120 },
+            { label:'Sealant re-coat', amount: 60 },
+            { label:'Materials / paint', amount: 40 }
+          ],
+          ownerSigned: true,
+          ownerName:'A. Pham — MBTA Maintenance',
+          paymentSchedule:'90-day diversion: 10 hrs community service with MBTA cleanup crew — restitution satisfied'
+        }
       },
       'Broken window or fixture': {
         data: { damageType: 'Broken window', estDamageValue: '240', damageReversible: 'yes', ownerNotified: 'yes', ownerName: 'Bennington Tap — owner notified' },
-        transcript: 'Subject struck a ground-floor window of the Bennington Tap with a closed fist at 1:45 AM. Single pane of tempered glass cracked, no shattering. Owner on phone, glazier quotes $240 for replacement. Subject states intoxication and apologized to owner directly.'
+        transcript: 'Subject struck a ground-floor window of the Bennington Tap with a closed fist at 1:45 AM. Single pane of tempered glass cracked, no shattering. Owner on phone, glazier quotes $240 for replacement. Subject states intoxication and apologized to owner directly.',
+        photos: [
+          { icon:'🪟', label:'Cracked window — front', ai:'AI: ground-floor pane, radial crack pattern' },
+          { icon:'✊', label:'Fist abrasion', ai:'AI: scuff and minor smear at impact point' },
+          { icon:'📍', label:'Scene — Bennington Tap', ai:'AI: front facade, evening' }
+        ],
+        evidenceList: [
+          { name:'Replacement tempered pane', value: 175 },
+          { name:'Glazier labor', value: 55 },
+          { name:'Sealant / trim', value: 10 }
+        ],
+        specialized: {
+          totalRestitution: 240,
+          itemizedRows: [
+            { label:'Replacement tempered pane', amount: 175 },
+            { label:'Glazier labor', amount: 55 },
+            { label:'Sealant / trim', amount: 10 }
+          ],
+          ownerSigned: true,
+          ownerName:'Maureen Donovan — Bennington Tap',
+          paymentSchedule:'90-day diversion: written apology + 12 hrs community service — restitution satisfied'
+        }
       },
       'Damage to public property': {
         data: { damageType: 'Other', estDamageValue: '150', damageReversible: 'yes', ownerNotified: 'yes', ownerName: 'City of Revere — DPW' },
-        transcript: 'Subject observed knocking over a city-owned trash receptacle on Revere Beach Boulevard at 11:20 PM, scattering trash on the sidewalk. Receptacle dented but intact. Revere DPW dispatched to right and clean. Estimated cost $150. No witnesses to physical altercation.'
+        transcript: 'Subject observed knocking over a city-owned trash receptacle on Revere Beach Boulevard at 11:20 PM, scattering trash on the sidewalk. Receptacle dented but intact. Revere DPW dispatched to right and clean. Estimated cost $150. No witnesses to physical altercation.',
+        photos: [
+          { icon:'🗑️', label:'Knocked-over receptacle', ai:'AI: city trash bin, dented rim, contents scattered' },
+          { icon:'🧹', label:'DPW cleanup', ai:'AI: DPW crew on scene, broom + bag' },
+          { icon:'📍', label:'Scene — Revere Beach Blvd', ai:'AI: sidewalk near Pavilion' }
+        ],
+        evidenceList: [
+          { name:'DPW dispatch + cleanup', value: 95 },
+          { name:'Receptacle re-paint touch-up', value: 35 },
+          { name:'Hardware re-secure', value: 20 }
+        ],
+        specialized: {
+          totalRestitution: 150,
+          itemizedRows: [
+            { label:'DPW dispatch + cleanup', amount: 95 },
+            { label:'Receptacle re-paint touch-up', amount: 35 },
+            { label:'Hardware re-secure', amount: 20 }
+          ],
+          ownerSigned: true,
+          ownerName:'M. Lopez — City of Revere DPW',
+          paymentSchedule:'90-day diversion: 8 hrs community service with DPW — restitution satisfied'
+        }
       }
     }
   },
@@ -1320,22 +1520,105 @@ const CHARGE_CONFIG = {
       { key: 'venueContact',     label: 'Venue / complainant',     type: 'text',   placeholder: 'e.g. Bennington Tap — mgr. on duty' }
     ],
     reviewLabel: 'Behavior & Witnesses',
+    evidenceListLabel: 'Witnesses & Statements',
+    evidenceListCols: ['name', 'meta'],
+    specializedType: 'bodycam',
+    specializedTitle: '📹 Body-cam Linked',
     subData: {
       'Public intoxication': {
         data: { behaviorType: 'Public intoxication', physicalContact: 'no', calmedOnArrival: 'yes', witnessCount: '3', bodycamActive: 'yes', venueContact: "Sully's Tap — bartender on duty" },
-        transcript: 'Around 12:50 AM responded to a call at Sully\'s Tap on Bennington. Subject observed outside the bar visibly intoxicated, unsteady gait, yelling at passing cars. Three bar patrons witnessed. Subject calmed immediately upon officer arrival. Body-cam active throughout. Bartender confirms subject was cut off twenty minutes prior. No prior incidents tonight.'
+        transcript: 'Around 12:50 AM responded to a call at Sully\'s Tap on Bennington. Subject observed outside the bar visibly intoxicated, unsteady gait, yelling at passing cars. Three bar patrons witnessed. Subject calmed immediately upon officer arrival. Body-cam active throughout. Bartender confirms subject was cut off twenty minutes prior. No prior incidents tonight.',
+        photos: [
+          { icon:'📹', label:'Body-cam keyframe — arrival', ai:'AI: subject standing at curb, hands visible' },
+          { icon:'🍺', label:'Venue — Sully\'s Tap', ai:'AI: bar front entry, neon signage' },
+          { icon:'👥', label:'Witnesses present', ai:'AI: 3 patrons on sidewalk' }
+        ],
+        evidenceList: [
+          { name:'Tasha Williams — patron', meta:'Statement: subject yelling at cars for ~5 min' },
+          { name:'Diego Ramírez — patron', meta:'Statement: subject was cut off ~12:30 AM' },
+          { name:'Aisha Patel — bartender', meta:'Statement: refused service, asked to leave' }
+        ],
+        specialized: {
+          startTime:'00:50:12',
+          endTime:'00:54:36',
+          duration:'4:24',
+          clipsCount: 2,
+          witnessStatements: 3,
+          calmedAt:'00:50:38',
+          footageLinked: true,
+          deviceId:'Axon Body 4 · SN A8472'
+        }
       },
       'Loud / disruptive in public': {
         data: { behaviorType: 'Loud / disruptive', physicalContact: 'no', calmedOnArrival: 'yes', witnessCount: '2', bodycamActive: 'yes', venueContact: 'Bystanders — Bennington St sidewalk' },
-        transcript: 'At 1:08 AM dispatched to Bennington Street for a noise complaint. Subject observed shouting on the sidewalk near a residential building. Two neighbors on the second-floor balcony witnessing. No physical altercation. Subject calmed on officer arrival and apologized. Body-cam active. No prior complaints at this address tonight.'
+        transcript: 'At 1:08 AM dispatched to Bennington Street for a noise complaint. Subject observed shouting on the sidewalk near a residential building. Two neighbors on the second-floor balcony witnessing. No physical altercation. Subject calmed on officer arrival and apologized. Body-cam active. No prior complaints at this address tonight.',
+        photos: [
+          { icon:'📹', label:'Body-cam keyframe — arrival', ai:'AI: subject mid-shout, hands raised, no weapons' },
+          { icon:'🏘️', label:'Scene — residential block', ai:'AI: Bennington St, balcony witnesses visible' },
+          { icon:'🤝', label:'Subject apology', ai:'AI: subject facing officer, calm posture' }
+        ],
+        evidenceList: [
+          { name:'Brenda Okafor — neighbor (2F)', meta:'Statement: shouting started ~1:05 AM' },
+          { name:'Robert Yi — neighbor (2F)', meta:'Statement: subject alone, no other party' }
+        ],
+        specialized: {
+          startTime:'01:08:54',
+          endTime:'01:11:22',
+          duration:'2:28',
+          clipsCount: 1,
+          witnessStatements: 2,
+          calmedAt:'01:09:11',
+          footageLinked: true,
+          deviceId:'Axon Body 4 · SN A8472'
+        }
       },
       'Verbal altercation — no contact': {
         data: { behaviorType: 'Verbal altercation', physicalContact: 'no', calmedOnArrival: 'yes', witnessCount: '2', bodycamActive: 'yes', venueContact: 'Bennington Tap — mgr. on duty' },
-        transcript: 'Loud verbal altercation outside the Bennington Tap around 1:20 AM. Two parties shouting, no physical contact made. Other party left scene voluntarily before our arrival. Subject calmed immediately on officer arrival. Two bystander witnesses; bar manager confirms no prior incidents tonight. Body-cam active throughout.'
+        transcript: 'Loud verbal altercation outside the Bennington Tap around 1:20 AM. Two parties shouting, no physical contact made. Other party left scene voluntarily before our arrival. Subject calmed immediately on officer arrival. Two bystander witnesses; bar manager confirms no prior incidents tonight. Body-cam active throughout.',
+        photos: [
+          { icon:'📹', label:'Body-cam keyframe', ai:'AI: subject + bystanders, no physical engagement' },
+          { icon:'🍺', label:'Scene — Bennington Tap front', ai:'AI: sidewalk, bar entry visible' },
+          { icon:'🤝', label:'Post-arrival — calm', ai:'AI: subject sitting on curb, arms at sides' }
+        ],
+        evidenceList: [
+          { name:'Maureen Donovan — bar manager', meta:'Statement: no prior incidents tonight' },
+          { name:'Tomás Reyes — patron leaving', meta:'Statement: shouting only, no contact' }
+        ],
+        specialized: {
+          startTime:'01:20:14',
+          endTime:'01:23:48',
+          duration:'3:34',
+          clipsCount: 1,
+          witnessStatements: 2,
+          calmedAt:'01:20:42',
+          footageLinked: true,
+          deviceId:'Axon Body 4 · SN A8472'
+        }
       },
       'Refusal to disperse': {
         data: { behaviorType: 'Refusal to disperse', physicalContact: 'no', calmedOnArrival: 'yes', witnessCount: '4', bodycamActive: 'yes', venueContact: 'Revere Beach event security' },
-        transcript: 'Following a Revere Beach summer concert around 11:35 PM, event security requested police assistance clearing the bandshell area. Subject remained after three verbal warnings from staff. No physical altercation. Subject complied immediately on officer-issued lawful order. Four event security staff present as witnesses. Body-cam active. Subject cooperative, no prior dispersal history on file.'
+        transcript: 'Following a Revere Beach summer concert around 11:35 PM, event security requested police assistance clearing the bandshell area. Subject remained after three verbal warnings from staff. No physical altercation. Subject complied immediately on officer-issued lawful order. Four event security staff present as witnesses. Body-cam active. Subject cooperative, no prior dispersal history on file.',
+        photos: [
+          { icon:'📹', label:'Body-cam keyframe', ai:'AI: bandshell area, sparse crowd, subject seated' },
+          { icon:'🎶', label:'Scene — bandshell', ai:'AI: post-concert lighting, event staff jackets' },
+          { icon:'🪪', label:'Event staff present', ai:'AI: 4 staff in branded vests' }
+        ],
+        evidenceList: [
+          { name:'Janelle Brooks — event security lead', meta:'Statement: 3 prior verbal warnings issued' },
+          { name:'Marcus Chen — security', meta:'Statement: subject non-violent throughout' },
+          { name:'Priya Sundar — security', meta:'Statement: subject complied with police order' },
+          { name:'Frank Lozano — security', meta:'Statement: no prior dispersal history known' }
+        ],
+        specialized: {
+          startTime:'23:35:08',
+          endTime:'23:39:51',
+          duration:'4:43',
+          clipsCount: 2,
+          witnessStatements: 4,
+          calmedAt:'23:35:24',
+          footageLinked: true,
+          deviceId:'Axon Body 4 · SN A8472'
+        }
       }
     }
   },
@@ -1359,18 +1642,77 @@ const CHARGE_CONFIG = {
       { key: 'returnedToOwner',  label: 'Item returned to owner this shift', type: 'yesno' }
     ],
     reviewLabel: 'Item & Origin',
+    evidenceListLabel: 'Items Recovered',
+    evidenceListCols: ['name', 'value'],
+    specializedType: 'ncicMatch',
+    specializedTitle: '🔎 NCIC Match',
     subData: {
       'Receiving — knowing': {
         data: { itemDescription: 'Apple iPhone 15 Pro — IMEI 358...4192', estItemValue: '700', originStatement: 'Bought on Facebook Marketplace for $50, no receipt', knownStolen: 'yes', subjectAware: 'yes', returnedToOwner: 'yes' },
-        transcript: 'Recovered one Apple iPhone 15 Pro from the subject during a consensual encounter. IMEI ran 10-29 returns stolen — matches Boston PD report 26-014392 dated 03/14. Subject acknowledged he suspected the phone was stolen given the $50 price on Facebook Marketplace and lack of original box or receipt. No paperwork. Phone confirmed via NCIC and returned to victim before end of shift.'
+        transcript: 'Recovered one Apple iPhone 15 Pro from the subject during a consensual encounter. IMEI ran 10-29 returns stolen — matches Boston PD report 26-014392 dated 03/14. Subject acknowledged he suspected the phone was stolen given the $50 price on Facebook Marketplace and lack of original box or receipt. No paperwork. Phone confirmed via NCIC and returned to victim before end of shift.',
+        photos: [
+          { icon:'📱', label:'iPhone 15 Pro — front', ai:'AI: Apple iPhone 15 Pro, natural titanium' },
+          { icon:'🔍', label:'IMEI lookup screen', ai:'AI: NCIC III response — match confirmed' },
+          { icon:'📦', label:'Item returned bag', ai:'AI: evidence return bag sealed for victim' }
+        ],
+        evidenceList: [
+          { name:'iPhone 15 Pro (256GB)', value: 700 },
+          { name:'Magsafe case (third-party)', value: 25 }
+        ],
+        specialized: {
+          item:'Apple iPhone 15 Pro · IMEI 358xxxxxx4192',
+          ncicStatus:'MATCH FOUND',
+          originalCase:'BPD 26-014392',
+          reportDate:'03/14/2026',
+          victim:'Sarah Chen · sarah.c.7842@…',
+          itemReturned: true,
+          returnTimestamp:'03/19 @ 22:35'
+        }
       },
       'Receiving — reasonable suspicion': {
         data: { itemDescription: 'Specialized Allez bicycle — serial WSBC2241067', estItemValue: '420', originStatement: 'Bought from a guy outside Wonderland Station for $80', knownStolen: 'yes', subjectAware: 'no', returnedToOwner: 'no' },
-        transcript: 'Subject in possession of a Specialized Allez road bicycle. Serial WSBC2241067 matches a stolen-bicycle report filed 03/16 from Revere Beach Boulevard. Subject states he bought it that morning from an unknown male outside Wonderland Station for eighty dollars. No receipt. Subject denies knowing it was stolen. Bicycle held in evidence; victim contacted for pickup.'
+        transcript: 'Subject in possession of a Specialized Allez road bicycle. Serial WSBC2241067 matches a stolen-bicycle report filed 03/16 from Revere Beach Boulevard. Subject states he bought it that morning from an unknown male outside Wonderland Station for eighty dollars. No receipt. Subject denies knowing it was stolen. Bicycle held in evidence; victim contacted for pickup.',
+        photos: [
+          { icon:'🚲', label:'Bicycle — Allez', ai:'AI: Specialized Allez, black/red, road frame' },
+          { icon:'🔢', label:'Serial inspection', ai:'AI: bottom-bracket serial WSBC2241067' },
+          { icon:'📋', label:'Stolen-prop report match', ai:'AI: BikeIndex + NCIC match' }
+        ],
+        evidenceList: [
+          { name:'Specialized Allez road bike', value: 420 },
+          { name:'Aftermarket pedals', value: 35 }
+        ],
+        specialized: {
+          item:'Specialized Allez · Serial WSBC2241067',
+          ncicStatus:'MATCH FOUND',
+          originalCase:'Revere 26-02218',
+          reportDate:'03/16/2026',
+          victim:'Daniel Okeke · pickup pending',
+          itemReturned: false,
+          returnTimestamp:'Pending victim pickup'
+        }
       },
       'Possessing recovered stolen item': {
         data: { itemDescription: 'DeWalt 20V power drill w/ battery', estItemValue: '180', originStatement: 'Found in an alley behind Broadway last week', knownStolen: 'yes', subjectAware: 'no', returnedToOwner: 'no' },
-        transcript: 'Subject in possession of a DeWalt 20V power drill with battery, matching the description in a tool-theft report from a construction site at 375 Broadway dated 03/11. Subject states he found the drill in the alley behind the site a week ago and did not know it was stolen. Tool returned to property and owner of site contacted.'
+        transcript: 'Subject in possession of a DeWalt 20V power drill with battery, matching the description in a tool-theft report from a construction site at 375 Broadway dated 03/11. Subject states he found the drill in the alley behind the site a week ago and did not know it was stolen. Tool returned to property and owner of site contacted.',
+        photos: [
+          { icon:'🪛', label:'DeWalt drill', ai:'AI: DeWalt DCD777 20V, yellow/black' },
+          { icon:'🔋', label:'Battery + charger', ai:'AI: DCB203 2.0Ah battery, scuffed' },
+          { icon:'🏗️', label:'Site theft report match', ai:'AI: matches site report 03/11' }
+        ],
+        evidenceList: [
+          { name:'DeWalt 20V drill (DCD777)', value: 140 },
+          { name:'Battery DCB203 2.0Ah', value: 35 },
+          { name:'Charger DCB107', value: 25 }
+        ],
+        specialized: {
+          item:'DeWalt 20V Drill DCD777 + battery',
+          ncicStatus:'MATCH FOUND',
+          originalCase:'Revere 26-02041',
+          reportDate:'03/11/2026',
+          victim:'Murphy Construction LLC',
+          itemReturned: false,
+          returnTimestamp:'Pending site supervisor pickup'
+        }
       }
     }
   },
@@ -1396,26 +1738,119 @@ const CHARGE_CONFIG = {
       { key: 'treatmentRequest', label: 'Subject requests treatment referral', type: 'yesno' }
     ],
     reviewLabel: 'Substance & Use',
+    evidenceListLabel: 'Substances & Paraphernalia',
+    evidenceListCols: ['name', 'meta'],
+    specializedType: 'fieldTest',
+    specializedTitle: '🧪 Field Test & Treatment Hand-off',
     subData: {
       'Marijuana — over personal limit': {
         data: { substance: 'Marijuana', quantity: 'Small (1–3g)', paraphernalia: 'no', fieldTested: 'no', personalUse: 'yes', treatmentRequest: 'no' },
-        transcript: 'Subject stopped on a pedestrian encounter near Wonderland Station. Approximately 2 grams of suspected marijuana flower in an unsealed sandwich bag — above the one-ounce personal-use limit for public possession is not met but display in public area triggers G.L. c. 94C §34 review. No paraphernalia. Subject states personal use. No prior on file.'
+        transcript: 'Subject stopped on a pedestrian encounter near Wonderland Station. Approximately 2 grams of suspected marijuana flower in an unsealed sandwich bag — above the one-ounce personal-use limit for public possession is not met but display in public area triggers G.L. c. 94C §34 review. No paraphernalia. Subject states personal use. No prior on file.',
+        photos: [
+          { icon:'🌿', label:'Suspected marijuana flower', ai:'AI: green vegetable matter, ~2.0g visual estimate' },
+          { icon:'📦', label:'Container — sandwich bag', ai:'AI: clear poly bag, no labels' }
+        ],
+        evidenceList: [
+          { name:'Suspected marijuana flower', meta:'~2.0g · sandwich bag' }
+        ],
+        specialized: {
+          testKit:'No field test required',
+          result:'Visual ID only — not tested',
+          substance:'Marijuana (suspected)',
+          quantityWeighed:'~2.0g',
+          treatmentReferral:'Declined',
+          bedReserved: false,
+          counselorETA:'N/A',
+          dispositionNote:'Photographed and secured. Subject cited and released.'
+        }
       },
       'Stimulants (cocaine / meth)': {
         data: { substance: 'Cocaine', quantity: 'Personal-use amount', paraphernalia: 'yes', fieldTested: 'yes', personalUse: 'yes', treatmentRequest: 'no' },
-        transcript: 'During a consensual encounter outside the Broadway 7-Eleven, subject produced a small folded paper packet containing approximately 0.5g of white powder. Field-tested positive for cocaine. One straw recovered, consistent with personal use. Subject states personal use only. No scale, no additional packaging. Subject offered treatment referral, declined.'
+        transcript: 'During a consensual encounter outside the Broadway 7-Eleven, subject produced a small folded paper packet containing approximately 0.5g of white powder. Field-tested positive for cocaine. One straw recovered, consistent with personal use. Subject states personal use only. No scale, no additional packaging. Subject offered treatment referral, declined.',
+        photos: [
+          { icon:'❄️', label:'Suspected cocaine', ai:'AI: white crystalline powder, ~0.5g, folded paper' },
+          { icon:'🥤', label:'Straw — paraphernalia', ai:'AI: cut plastic straw, residue visible' },
+          { icon:'🧪', label:'Field test result', ai:'AI: NARK II Test 8 positive — cocaine' }
+        ],
+        evidenceList: [
+          { name:'Suspected cocaine — fold', meta:'~0.5g · field-tested positive' },
+          { name:'Cut plastic straw', meta:'Paraphernalia · personal use' }
+        ],
+        specialized: {
+          testKit:'NARK II — Test 8 (Cocaine)',
+          result:'Presumptive positive',
+          substance:'Cocaine',
+          quantityWeighed:'~0.5g',
+          treatmentReferral:'Boston Public Health — Engagement Center',
+          bedReserved: false,
+          counselorETA:'Information card provided',
+          dispositionNote:'Subject declined warm hand-off. Resource card given.'
+        }
       },
       'Opioids (heroin / fentanyl)': {
         data: { substance: 'Fentanyl (suspected)', quantity: 'Personal-use amount', paraphernalia: 'yes', fieldTested: 'yes', personalUse: 'yes', treatmentRequest: 'yes' },
-        transcript: 'Subject stopped at Wonderland MBTA station. Approximately 1.5 grams of suspected fentanyl recovered in a small ziploc bag, plus one used glassine envelope. Field-tested presumptive positive. Subject states personal use, currently waiting for a treatment bed. No scale, no packaging materials. Subject requests treatment referral; warm hand-off to Gavin Foundation initiated on scene.'
+        transcript: 'Subject stopped at Wonderland MBTA station. Approximately 1.5 grams of suspected fentanyl recovered in a small ziploc bag, plus one used glassine envelope. Field-tested presumptive positive. Subject states personal use, currently waiting for a treatment bed. No scale, no packaging materials. Subject requests treatment referral; warm hand-off to Gavin Foundation initiated on scene.',
+        photos: [
+          { icon:'💊', label:'Suspected fentanyl', ai:'AI: tan powder, ~1.5g, ziploc' },
+          { icon:'✉️', label:'Used glassine envelope', ai:'AI: glassine with residue' },
+          { icon:'🧪', label:'Field test result', ai:'AI: NARK II Test 2 positive — opioid' }
+        ],
+        evidenceList: [
+          { name:'Suspected fentanyl', meta:'~1.5g · ziploc · field-tested positive' },
+          { name:'Used glassine envelope', meta:'Paraphernalia · residue only' }
+        ],
+        specialized: {
+          testKit:'NARK II — Test 2 (Opioids)',
+          result:'Presumptive positive',
+          substance:'Fentanyl (suspected)',
+          quantityWeighed:'~1.5g',
+          treatmentReferral:'Gavin Foundation',
+          bedReserved: true,
+          counselorETA:'12 min',
+          dispositionNote:'Warm hand-off initiated on scene. Counselor en route to MEA intake.'
+        }
       },
       'Prescription pills — no Rx': {
         data: { substance: 'Prescription pills', quantity: 'Personal-use amount', paraphernalia: 'no', fieldTested: 'no', personalUse: 'yes', treatmentRequest: 'no' },
-        transcript: 'Subject found in possession of eight (8) oxycodone 5mg tablets, loose in pocket, no prescription bottle and no Rx on record per BORID check. Subject states he gets them from a family member to manage back pain. No paraphernalia. No history of distribution. Subject cooperative, requested information on legal pain-management resources.'
+        transcript: 'Subject found in possession of eight (8) oxycodone 5mg tablets, loose in pocket, no prescription bottle and no Rx on record per BORID check. Subject states he gets them from a family member to manage back pain. No paraphernalia. No history of distribution. Subject cooperative, requested information on legal pain-management resources.',
+        photos: [
+          { icon:'💊', label:'Loose tablets — 8 ct', ai:'AI: round white tablets, "M 5" imprint — oxycodone 5mg' },
+          { icon:'🪪', label:'No Rx record', ai:'AI: BORID Rx lookup — no active prescription' }
+        ],
+        evidenceList: [
+          { name:'Oxycodone 5mg — 8 tablets', meta:'Loose · no Rx on file' }
+        ],
+        specialized: {
+          testKit:'Visual ID + pill imprint database',
+          result:'Identified as oxycodone 5mg',
+          substance:'Prescription pills (oxycodone)',
+          quantityWeighed:'8 tablets',
+          treatmentReferral:'BMC Project ASSERT — pain mgmt referral',
+          bedReserved: false,
+          counselorETA:'Appointment booked for 03/22',
+          dispositionNote:'Subject cooperative, requested legal pain-management resources.'
+        }
       },
       'Other controlled substance': {
         data: { substance: 'Other', quantity: 'Small (1–3g)', paraphernalia: 'no', fieldTested: 'no', personalUse: 'yes', treatmentRequest: 'no' },
-        transcript: 'During a vehicle stop on Beach Street, subject voluntarily produced a small unmarked vial containing approximately 1.2 grams of unknown crystalline substance. Subject unwilling to identify the substance. Not field-tested on scene; sent to MSP crime lab. Subject states personal use only. No paraphernalia recovered. No prior drug history on file.'
+        transcript: 'During a vehicle stop on Beach Street, subject voluntarily produced a small unmarked vial containing approximately 1.2 grams of unknown crystalline substance. Subject unwilling to identify the substance. Not field-tested on scene; sent to MSP crime lab. Subject states personal use only. No paraphernalia recovered. No prior drug history on file.',
+        photos: [
+          { icon:'🧴', label:'Unmarked vial', ai:'AI: small glass vial, crystalline contents' },
+          { icon:'🧪', label:'Lab submission tag', ai:'AI: MSP crime-lab evidence tag attached' }
+        ],
+        evidenceList: [
+          { name:'Unknown crystalline substance', meta:'~1.2g · sent to MSP crime lab' }
+        ],
+        specialized: {
+          testKit:'Not field-tested',
+          result:'Pending MSP crime-lab analysis',
+          substance:'Unknown — lab pending',
+          quantityWeighed:'~1.2g',
+          treatmentReferral:'Information card provided',
+          bedReserved: false,
+          counselorETA:'N/A',
+          dispositionNote:'Sample sent to MSP. Subject diverted pending result.'
+        }
       }
     }
   }
@@ -1510,6 +1945,7 @@ function nav(id) {
   if (id === 'scanning' && !authToken) setTimeout(() => nav('verify'), 2200);
   if (id === 'dashboard') buildCitationsList();
   if (id === 'voice-result') renderChargeContextPanel();
+  if (id === 'evidence-verify') renderEvidenceVerify();
   if (id === 'review') populateReviewScreen();
   if (id === 'case-summary') populateCaseSummary();
   if (id === 'q1') {
@@ -1988,19 +2424,24 @@ function renderChargeContextPanel() {
   const panel = document.getElementById('charge-context-panel');
   const photoBlock = document.getElementById('photograph-items-block');
   const itemsList = document.getElementById('items-list-container');
+  const photosPanel = document.getElementById('charge-photos-panel');
+  const evListPanel = document.getElementById('charge-evidence-list-panel');
   if (!cfg || !panel) return;
 
   // Shoplifting keeps the legacy items-photograph workflow untouched
   if (cfg.evidenceMode === 'items') {
-    panel.style.display = 'none';
-    panel.innerHTML = '';
+    panel.style.display = 'none'; panel.innerHTML = '';
+    if (photosPanel) { photosPanel.style.display = 'none'; photosPanel.innerHTML = ''; }
+    if (evListPanel) { evListPanel.style.display = 'none'; evListPanel.innerHTML = ''; }
     if (photoBlock) photoBlock.style.display = '';
     return;
   }
 
-  // Non-shoplifting: hide the items workflow, render contextual form
+  // Non-shoplifting: hide the items workflow, render contextual form + photos + list
   if (photoBlock) photoBlock.style.display = 'none';
   if (itemsList) itemsList.style.display = 'none';
+  renderChargePhotos();
+  renderChargeEvidenceList();
 
   const subBadge = selectedSub
     ? '<span style="display:inline-block;font-size:10px;font-weight:700;color:var(--blue);background:rgba(20,75,216,.08);padding:3px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;">' + selectedSub + '</span>'
@@ -2098,6 +2539,239 @@ function setCtxYesNo(btn, key, val) {
 
 function setCtxValue(key, val) {
   chargeContextData[key] = val;
+}
+
+// ── v2: Scene Evidence Photos (non-shoplifting) ──
+function _getSubPreset() {
+  const cfg = getCharge();
+  if (!cfg || !cfg.subData || !selectedSub) return null;
+  return cfg.subData[selectedSub] || null;
+}
+
+function renderChargePhotos() {
+  const panel = document.getElementById('charge-photos-panel');
+  const preset = _getSubPreset();
+  if (!panel) return;
+  if (!preset || !preset.photos || !preset.photos.length) {
+    panel.style.display = 'none'; panel.innerHTML = ''; return;
+  }
+  const tiles = preset.photos.map(p =>
+    '<div style="background:#fff;border:1.5px solid var(--g2);border-radius:12px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;">' +
+      '<div style="width:100%;aspect-ratio:1/1;background:linear-gradient(135deg,#EFF6FF,#F3E8FF);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px;">' + p.icon + '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:var(--navy);text-align:center;line-height:1.3;">' + p.label + '</div>' +
+      '<div style="font-size:9px;color:var(--blue);font-weight:700;text-align:center;background:rgba(20,75,216,.08);padding:3px 6px;border-radius:8px;line-height:1.3;">' + p.ai + '</div>' +
+    '</div>'
+  ).join('');
+  panel.innerHTML =
+    '<div style="background:#fff;border:1.5px solid var(--g2);border-radius:14px;padding:14px;margin-bottom:14px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">' +
+        '<div style="font-size:13px;font-weight:800;color:var(--navy);">📸 Scene Evidence · ' + preset.photos.length + ' photo' + (preset.photos.length>1?'s':'') + '</div>' +
+        '<span style="font-size:10px;font-weight:700;color:#065F46;background:#D1FAE5;border:1px solid #A7F3D0;padding:3px 8px;border-radius:10px;">✨ AI labeled</span>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">' + tiles + '</div>' +
+      '<button onclick="showToast(\'Camera ready — add another photo\')" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;border:1.5px dashed var(--blue);background:rgba(20,75,216,.04);color:var(--blue);font-size:12px;font-weight:700;cursor:pointer;">+ Add another photo</button>' +
+    '</div>';
+  panel.style.display = 'block';
+}
+
+// ── v2: Structured Evidence List (non-shoplifting) ──
+function renderChargeEvidenceList() {
+  const panel = document.getElementById('charge-evidence-list-panel');
+  const cfg = getCharge();
+  const preset = _getSubPreset();
+  if (!panel || !cfg) return;
+  if (!preset || !preset.evidenceList || !preset.evidenceList.length) {
+    panel.style.display = 'none'; panel.innerHTML = ''; return;
+  }
+  const cols = cfg.evidenceListCols || ['name', 'meta'];
+  const isValue = cols.includes('value');
+  const rows = preset.evidenceList.map(r =>
+    '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(0,0,60,.06);">' +
+      '<div style="width:24px;height:24px;border-radius:6px;background:rgba(20,75,216,.08);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">✓</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--navy);">' + r.name + '</div>' +
+        (r.meta ? '<div style="font-size:11px;color:var(--g4);margin-top:2px;">' + r.meta + '</div>' : '') +
+      '</div>' +
+      (isValue && r.value != null ? '<div style="font-size:14px;font-weight:800;color:var(--navy);">$' + Number(r.value).toFixed(2) + '</div>' : '') +
+    '</div>'
+  ).join('');
+  let totalRow = '';
+  if (isValue) {
+    const total = preset.evidenceList.reduce((s, r) => s + (Number(r.value) || 0), 0);
+    totalRow =
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:4px;border-top:2px solid var(--navy);">' +
+        '<span style="font-size:14px;font-weight:800;color:var(--navy);">Total</span>' +
+        '<span style="font-size:18px;font-weight:800;color:var(--blue);">$' + total.toFixed(2) + '</span>' +
+      '</div>';
+  }
+  panel.innerHTML =
+    '<div style="background:var(--g1);border-radius:14px;padding:14px 16px;margin-bottom:14px;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+        '<span style="font-size:16px;">🏷</span>' +
+        '<span style="font-size:13px;font-weight:800;color:var(--navy);">' + (cfg.evidenceListLabel || 'Evidence') + '</span>' +
+        '<span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--g4);background:#fff;padding:2px 8px;border-radius:10px;">' + preset.evidenceList.length + ' items</span>' +
+      '</div>' +
+      '<div>' + rows + '</div>' +
+      totalRow +
+    '</div>';
+  panel.style.display = 'block';
+}
+
+// ── v2: Evidence Verification Screen (charge-specific specialized component) ──
+function renderEvidenceVerify() {
+  const body = document.getElementById('evidence-verify-body');
+  const cfg = getCharge();
+  const preset = _getSubPreset();
+  if (!body) return;
+  if (!cfg || !preset || !preset.specialized) {
+    body.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--g4);">No additional verification required for this charge.</div>';
+    return;
+  }
+  const sp = preset.specialized;
+  const subBadge = selectedSub
+    ? '<div style="font-size:12px;color:var(--blue);font-weight:700;margin-top:2px;">› ' + selectedSub + '</div>'
+    : '';
+
+  const header =
+    '<div style="display:flex;align-items:center;gap:12px;margin:14px 0 12px;">' +
+      '<div class="offense-icon" style="background:' + cfg.iconBg + ';width:48px;height:48px;border-radius:12px;font-size:22px;">' + cfg.icon + '</div>' +
+      '<div>' +
+        '<div style="font-size:18px;font-weight:800;color:var(--navy);">' + (cfg.specializedTitle || 'Verification') + '</div>' +
+        '<div style="font-size:12px;color:var(--g4);">' + selectedOffense + ' · ' + cfg.statute + '</div>' +
+        subBadge +
+      '</div>' +
+    '</div>';
+
+  function row(label, value, tone) {
+    const color = tone === 'good' ? 'var(--green)' : tone === 'warn' ? '#D97706' : tone === 'bad' ? 'var(--red)' : 'var(--navy)';
+    return '<div class="review-row"><span class="review-label">' + label + '</span><span class="review-value" style="color:' + color + ';font-size:12px;max-width:60%;text-align:right;">' + value + '</span></div>';
+  }
+
+  let detail = '';
+
+  if (cfg.specializedType === 'priorWarnings') {
+    const sources = (sp.sourcesChecked || []).map(s => '<span style="display:inline-block;font-size:10px;font-weight:700;color:var(--blue);background:rgba(20,75,216,.08);padding:3px 8px;border-radius:10px;margin:2px 4px 2px 0;">✓ ' + s + '</span>').join('');
+    const cleanBadge = (sp.warningsAtLocation === 0 && sp.subjectPriorTrespass === 0)
+      ? '<div style="background:#ECFDF5;border:1.5px solid #A7F3D0;border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">' +
+          '<div style="font-size:28px;">✓</div>' +
+          '<div><div style="font-size:14px;font-weight:800;color:#065F46;">No prior trespass history</div>' +
+          '<div style="font-size:12px;color:#059669;">First-time at location · first-time offender</div></div></div>'
+      : '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">' +
+          '<div style="font-size:28px;">⚠</div>' +
+          '<div><div style="font-size:14px;font-weight:800;color:#9A3412;">Prior trespass found</div>' +
+          '<div style="font-size:12px;color:#C2410C;">Escalation to SWIFT diversion appropriate</div></div></div>';
+    detail = cleanBadge +
+      '<div class="review-section">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Location & History</div>' +
+        row('Location', sp.location) +
+        row('Warnings at this location', String(sp.warningsAtLocation), sp.warningsAtLocation === 0 ? 'good' : 'warn') +
+        row('Subject prior trespass', String(sp.subjectPriorTrespass), sp.subjectPriorTrespass === 0 ? 'good' : 'warn') +
+        row('Eligibility', sp.eligibility, 'good') +
+      '</div>' +
+      '<div class="review-section">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Sources Checked</div>' +
+        '<div>' + sources + '</div>' +
+      '</div>';
+  }
+  else if (cfg.specializedType === 'restitution') {
+    const itemRows = (sp.itemizedRows || []).map(r =>
+      '<div class="review-row"><span class="review-label">' + r.label + '</span><span class="review-value">$' + Number(r.amount).toFixed(2) + '</span></div>'
+    ).join('');
+    detail =
+      '<div style="background:linear-gradient(135deg,#EFF6FF,#F0F2FA);border:1.5px solid var(--blue);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center;">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--g4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Total Restitution</div>' +
+        '<div style="font-size:36px;font-weight:800;color:var(--blue);">$' + Number(sp.totalRestitution).toFixed(2) + '</div>' +
+        '<div style="font-size:11px;color:var(--g4);margin-top:4px;">Auto-calculated · owner-confirmed</div>' +
+      '</div>' +
+      '<div class="review-section">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Itemized Breakdown</div>' +
+        itemRows +
+      '</div>' +
+      '<div class="review-section">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Owner & Payment</div>' +
+        row('Owner / agency', sp.ownerName) +
+        row('Owner signed estimate', sp.ownerSigned ? '✓ Yes' : '— No', sp.ownerSigned ? 'good' : 'warn') +
+        row('Payment plan', sp.paymentSchedule, 'good') +
+      '</div>';
+  }
+  else if (cfg.specializedType === 'bodycam') {
+    detail =
+      '<div style="background:#0f172a;color:#fff;border-radius:14px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;">' +
+        '<div style="width:54px;height:54px;border-radius:50%;background:rgba(232,68,79,.18);display:flex;align-items:center;justify-content:center;font-size:22px;border:1.5px solid #E8444F;">●</div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:13px;font-weight:800;letter-spacing:.4px;">BODY-CAM FOOTAGE LINKED</div>' +
+          '<div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:2px;">' + sp.deviceId + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;">' +
+          '<div style="font-size:18px;font-weight:800;">' + sp.duration + '</div>' +
+          '<div style="font-size:10px;color:rgba(255,255,255,.65);">' + sp.startTime + ' → ' + sp.endTime + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="review-section">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Clip Details</div>' +
+        row('Clips captured', String(sp.clipsCount)) +
+        row('Witness statements', String(sp.witnessStatements)) +
+        row('Calmed at timestamp', sp.calmedAt, 'good') +
+        row('Footage linked', sp.footageLinked ? '✓ Yes' : '— No', sp.footageLinked ? 'good' : 'warn') +
+      '</div>';
+  }
+  else if (cfg.specializedType === 'ncicMatch') {
+    detail =
+      '<div style="background:#ECFDF5;border:1.5px solid #A7F3D0;border-radius:12px;padding:14px;margin-bottom:14px;">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+          '<span style="font-size:22px;">✓</span>' +
+          '<div><div style="font-size:14px;font-weight:800;color:#065F46;">NCIC III — ' + sp.ncicStatus + '</div>' +
+          '<div style="font-size:11px;color:#059669;">Item confirmed in National Crime Information Center</div></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="review-section">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Match Details</div>' +
+        row('Item', sp.item) +
+        row('Original case', sp.originalCase) +
+        row('Report date', sp.reportDate) +
+        row('Victim', sp.victim) +
+      '</div>' +
+      '<div class="review-section">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Disposition</div>' +
+        row('Item returned to owner', sp.itemReturned ? '✓ Yes' : '— Pending', sp.itemReturned ? 'good' : 'warn') +
+        row('Return timestamp', sp.returnTimestamp) +
+      '</div>';
+  }
+  else if (cfg.specializedType === 'fieldTest') {
+    const positive = (sp.result || '').toLowerCase().includes('positive');
+    const pendingLab = (sp.result || '').toLowerCase().includes('pending');
+    const resultBox = positive
+      ? '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">' +
+          '<div style="width:44px;height:44px;border-radius:50%;background:#F59E0B;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;">🧪</div>' +
+          '<div><div style="font-size:14px;font-weight:800;color:#9A3412;">' + sp.result + '</div>' +
+          '<div style="font-size:11px;color:#C2410C;">' + sp.testKit + '</div></div></div>'
+      : pendingLab
+      ? '<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">' +
+          '<div style="width:44px;height:44px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;">🧪</div>' +
+          '<div><div style="font-size:14px;font-weight:800;color:var(--navy);">' + sp.result + '</div>' +
+          '<div style="font-size:11px;color:var(--g4);">' + sp.testKit + '</div></div></div>'
+      : '<div style="background:var(--g1);border:1.5px solid var(--g2);border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">' +
+          '<div style="width:44px;height:44px;border-radius:50%;background:var(--g2);color:var(--navy);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;">🧪</div>' +
+          '<div><div style="font-size:14px;font-weight:800;color:var(--navy);">' + sp.result + '</div>' +
+          '<div style="font-size:11px;color:var(--g4);">' + sp.testKit + '</div></div></div>';
+    const treatmentBox = sp.bedReserved
+      ? '<div style="background:#ECFDF5;border:1.5px solid #A7F3D0;border-radius:12px;padding:14px;margin-bottom:14px;">' +
+          '<div style="font-size:13px;font-weight:800;color:#065F46;margin-bottom:6px;">✓ Warm hand-off initiated</div>' +
+          '<div style="font-size:12px;color:#065F46;">Provider: <strong>' + sp.treatmentReferral + '</strong></div>' +
+          '<div style="font-size:12px;color:#059669;">Counselor ETA: ' + sp.counselorETA + '</div>' +
+        '</div>'
+      : '';
+    detail = resultBox + treatmentBox +
+      '<div class="review-section">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:8px;">Substance & Disposition</div>' +
+        row('Substance', sp.substance) +
+        row('Weighed', sp.quantityWeighed) +
+        row('Treatment referral', sp.treatmentReferral) +
+        row('Disposition note', sp.dispositionNote) +
+      '</div>';
+  }
+
+  body.innerHTML = header + detail;
 }
 
 // ── TOGGLE BUTTONS ──
@@ -2990,10 +3664,15 @@ function acceptFormattedNotes() {
   const formatted = document.getElementById('formatted-notes').innerText;
   formattedNotesText = formatted;
   document.getElementById('notes-textarea').value = formatted;
-  // Navigate back to notes then forward to code
   // Reset history to skip voice screens
   navHistory = navHistory.filter(h => h !== 'voice' && h !== 'voice-result');
-  nav('code');
+  // v2: route non-shoplifting charges through the Evidence Verification screen
+  const _cfg = getCharge();
+  if (_cfg && _cfg.evidenceMode !== 'items' && _cfg.specializedType) {
+    nav('evidence-verify');
+  } else {
+    nav('code');
+  }
 }
 
 // ══════════════════════════════════════════
@@ -3630,6 +4309,101 @@ function populateReviewScreen() {
     ctxSection.style.display = 'block';
   } else if (ctxSection) {
     ctxSection.style.display = 'none';
+  }
+
+  // ── v2: Photos, evidence list, specialized verification (non-shoplifting) ──
+  const _preset = _getSubPreset ? _getSubPreset() : null;
+  const photosSection = document.getElementById('review-charge-photos-section');
+  const photosGrid = document.getElementById('review-charge-photos-grid');
+  if (_cfg && _cfg.evidenceMode !== 'items' && _preset && _preset.photos && _preset.photos.length && photosSection && photosGrid) {
+    photosGrid.innerHTML = _preset.photos.map(p =>
+      '<div style="background:#fff;border:1px solid var(--g2);border-radius:8px;padding:6px;display:flex;flex-direction:column;align-items:center;gap:4px;">' +
+        '<div style="width:100%;aspect-ratio:1/1;background:linear-gradient(135deg,#EFF6FF,#F3E8FF);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:22px;">' + p.icon + '</div>' +
+        '<div style="font-size:10px;font-weight:700;color:var(--navy);text-align:center;line-height:1.2;">' + p.label + '</div>' +
+      '</div>'
+    ).join('');
+    photosSection.style.display = 'block';
+  } else if (photosSection) {
+    photosSection.style.display = 'none';
+  }
+
+  const evListSection = document.getElementById('review-charge-evlist-section');
+  const evListRows = document.getElementById('review-charge-evlist-rows');
+  const evListTitle = document.getElementById('review-charge-evlist-title');
+  const evListTotal = document.getElementById('review-charge-evlist-total');
+  const evListTotalAmt = document.getElementById('review-charge-evlist-total-amount');
+  if (_cfg && _cfg.evidenceMode !== 'items' && _preset && _preset.evidenceList && _preset.evidenceList.length && evListSection) {
+    const cols = _cfg.evidenceListCols || ['name','meta'];
+    const isValue = cols.includes('value');
+    evListTitle.textContent = _cfg.evidenceListLabel || 'Evidence';
+    evListRows.innerHTML = _preset.evidenceList.map(r =>
+      '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(0,0,60,.04);">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:13px;font-weight:600;color:var(--navy);">' + r.name + '</div>' +
+          (r.meta ? '<div style="font-size:10px;color:var(--g4);margin-top:1px;">' + r.meta + '</div>' : '') +
+        '</div>' +
+        (isValue && r.value != null ? '<span style="font-size:13px;font-weight:700;color:var(--navy);">$' + Number(r.value).toFixed(2) + '</span>' : '') +
+      '</div>'
+    ).join('');
+    if (isValue) {
+      const t = _preset.evidenceList.reduce((s, r) => s + (Number(r.value) || 0), 0);
+      evListTotalAmt.textContent = '$' + t.toFixed(2);
+      evListTotal.style.display = 'flex';
+    } else {
+      evListTotal.style.display = 'none';
+    }
+    evListSection.style.display = 'block';
+  } else if (evListSection) {
+    evListSection.style.display = 'none';
+  }
+
+  const spSection = document.getElementById('review-specialized-section');
+  const spRows = document.getElementById('review-specialized-rows');
+  const spTitle = document.getElementById('review-specialized-title');
+  if (_cfg && _cfg.evidenceMode !== 'items' && _preset && _preset.specialized && spSection) {
+    spTitle.textContent = _cfg.specializedTitle || 'Verification';
+    const sp = _preset.specialized;
+    const summary = (function() {
+      switch (_cfg.specializedType) {
+        case 'priorWarnings': return [
+          ['Location', sp.location],
+          ['Warnings at location', String(sp.warningsAtLocation)],
+          ['Subject prior trespass', String(sp.subjectPriorTrespass)],
+          ['Sources checked', (sp.sourcesChecked || []).length + ' sources ✓']
+        ];
+        case 'restitution': return [
+          ['Total restitution', '$' + Number(sp.totalRestitution).toFixed(2)],
+          ['Owner', sp.ownerName],
+          ['Owner signed', sp.ownerSigned ? '✓ Yes' : 'Pending'],
+          ['Plan', sp.paymentSchedule]
+        ];
+        case 'bodycam': return [
+          ['Footage', sp.startTime + ' → ' + sp.endTime + ' (' + sp.duration + ')'],
+          ['Clips', String(sp.clipsCount)],
+          ['Witness statements', String(sp.witnessStatements)],
+          ['Footage linked', sp.footageLinked ? '✓ Yes' : '— No']
+        ];
+        case 'ncicMatch': return [
+          ['NCIC status', sp.ncicStatus],
+          ['Original case', sp.originalCase + ' · ' + sp.reportDate],
+          ['Victim', sp.victim],
+          ['Item returned', sp.itemReturned ? '✓ Yes — ' + sp.returnTimestamp : 'Pending pickup']
+        ];
+        case 'fieldTest': return [
+          ['Result', sp.result],
+          ['Kit', sp.testKit],
+          ['Substance', sp.substance + ' · ' + sp.quantityWeighed],
+          ['Treatment', sp.treatmentReferral + (sp.bedReserved ? ' · bed reserved' : '')]
+        ];
+        default: return [];
+      }
+    })();
+    spRows.innerHTML = summary.map(([k, v]) =>
+      '<div class="review-row"><span class="review-label">' + k + '</span><span class="review-value" style="font-size:12px;max-width:60%;text-align:right;">' + v + '</span></div>'
+    ).join('');
+    spSection.style.display = 'block';
+  } else if (spSection) {
+    spSection.style.display = 'none';
   }
 
   // ── Participant info from verify screen ──

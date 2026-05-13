@@ -1944,6 +1944,7 @@ function nav(id) {
   // scanning auto-advance only if NOT doing AI scan (AI handler navigates itself)
   if (id === 'scanning' && !authToken) setTimeout(() => nav('verify'), 2200);
   if (id === 'dashboard') buildCitationsList();
+  if (id === 'time') populateTimeScreen();
   if (id === 'voice-result') renderChargeContextPanel();
   if (id === 'evidence-verify') renderEvidenceVerify();
   if (id === 'review') populateReviewScreen();
@@ -2416,6 +2417,50 @@ function selectSub(el, name) {
   }
   const btn = document.getElementById('offense-next-btn');
   btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+}
+
+// ── v2: Populate offense-time screen with the current moment ──
+function populateTimeScreen() {
+  const now = new Date();
+  // Hour: 12-hour clock (1–12)
+  const hour24 = now.getHours();
+  const hour12 = ((hour24 + 11) % 12) + 1; // 0→12, 13→1, etc.
+  const ampm = hour24 < 12 ? 'am' : 'pm';
+  // Minute: round to nearest 5
+  const min5 = String(Math.round(now.getMinutes() / 5) * 5 % 60).padStart(2, '0');
+
+  const hourSel = document.getElementById('time-hour');
+  const minSel = document.getElementById('time-min');
+  if (hourSel) {
+    // Match by text since options have no explicit values
+    for (const opt of hourSel.options) { if (opt.text.trim() === String(hour12)) { hourSel.value = opt.value || opt.text; break; } }
+  }
+  if (minSel) {
+    for (const opt of minSel.options) { if (opt.text.trim() === min5) { minSel.value = opt.value || opt.text; break; } }
+  }
+  // AM/PM toggle
+  const amBtn = document.getElementById('am-btn');
+  const pmBtn = document.getElementById('pm-btn');
+  if (amBtn && pmBtn) {
+    const active = ampm === 'am' ? amBtn : pmBtn;
+    const inactive = ampm === 'am' ? pmBtn : amBtn;
+    active.classList.add('active-yes');
+    active.style.borderColor = 'var(--blue)';
+    active.style.background = 'rgba(20,75,216,.08)';
+    active.style.color = 'var(--blue)';
+    inactive.classList.remove('active-yes');
+    inactive.style.borderColor = 'var(--g2)';
+    inactive.style.background = '#fff';
+    inactive.style.color = 'var(--navy)';
+  }
+  // Date input — today, local timezone
+  const dateInput = document.querySelector('#s-time input[type="date"]');
+  if (dateInput) {
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    dateInput.value = y + '-' + m + '-' + d;
+  }
 }
 
 // ── v2: Charge-contextual evidence panel on Screen 6c ──

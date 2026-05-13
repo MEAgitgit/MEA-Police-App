@@ -1161,6 +1161,7 @@ let pinCode = '';
 let selectedOffense = '';
 let selectedSub = '';
 let chargeContextData = {};
+let _subTranscript = '';
 let voiceTimer = null;
 let voiceSeconds = 0;
 let usedVoice = false;
@@ -1174,6 +1175,7 @@ function resetCitationState() {
   selectedOffense = '';
   selectedSub = '';
   chargeContextData = {};
+  _subTranscript = '';
   voiceTimer = null;
   voiceSeconds = 0;
   usedVoice = false;
@@ -1238,7 +1240,25 @@ const CHARGE_CONFIG = {
       { key: 'damageObserved',   label: 'Damage observed',        type: 'yesno' },
       { key: 'ownerContact',     label: 'Owner / agent name (optional)', type: 'text', placeholder: 'e.g. DCR Ranger J. Hale' }
     ],
-    reviewLabel: 'Property & Conditions'
+    reviewLabel: 'Property & Conditions',
+    subData: {
+      'Commercial property — after hours': {
+        data: { propertyType: 'Commercial', postedSignage: 'yes', priorWarnings: 'no', ownerPressing: 'no', damageObserved: 'no', ownerContact: 'CVS night mgr. — declined to identify' },
+        transcript: 'At approximately 2:15 AM I observed the subject inside the rear loading-dock area of the CVS Pharmacy at 375 Broadway, well after closing hours. Property is clearly posted with "No Trespassing" at both entrances. No damage observed. Subject stated they were looking for a place to sleep. Night manager on call declined to press charges and asked we remove the subject from the premises.'
+      },
+      'Residential property — non-resident': {
+        data: { propertyType: 'Residential', postedSignage: 'no', priorWarnings: 'no', ownerPressing: 'no', damageObserved: 'no', ownerContact: 'Resident — declined to identify' },
+        transcript: 'Responded to a call at 88 Beach Street, multi-family residential. Resident reported an unknown subject inside the rear common stairwell. Subject left voluntarily upon arrival. No signage required by ownership. No damage. Resident declines to press charges; requested only a warning be noted.'
+      },
+      'Public property — closed area': {
+        data: { propertyType: 'Public / Municipal', postedSignage: 'yes', priorWarnings: 'no', ownerPressing: 'no', damageObserved: 'no', ownerContact: 'DCR Ranger J. Hale' },
+        transcript: 'Subject found inside the closed Revere Beach pavilion at 11:48 PM. Area is gated and signed closed dusk to dawn. No damage. Subject stated housing instability. DCR Ranger Hale on scene; DCR owner not pressing charges. Subject referred to MEA shelter intake.'
+      },
+      'Repeat after prior warning': {
+        data: { propertyType: 'Commercial', postedSignage: 'yes', priorWarnings: 'yes', ownerPressing: 'no', damageObserved: 'no', ownerContact: 'Mgr. R. Patel — Squire Rd Target' },
+        transcript: 'Subject observed loitering inside Squire Road Target after store close. Prior trespass warning on file dated 02/28/2026, signed by manager R. Patel. Subject left without incident. Manager declines pressing charges but requests formal diversion enrollment per MEA SWIFT.'
+      }
+    }
   },
   'Property Crime': {
     statute: 'G.L. c. 266, §127',
@@ -1259,7 +1279,25 @@ const CHARGE_CONFIG = {
       { key: 'ownerNotified',    label: 'Property owner notified', type: 'yesno' },
       { key: 'ownerName',        label: 'Owner / agency',          type: 'text',   placeholder: 'e.g. City of Revere — Public Works' }
     ],
-    reviewLabel: 'Damage & Restitution'
+    reviewLabel: 'Damage & Restitution',
+    subData: {
+      'Minor vandalism (under $250)': {
+        data: { damageType: 'Minor vandalism', estDamageValue: '180', damageReversible: 'yes', ownerNotified: 'yes', ownerName: 'Squire Rd Variety — owner on scene' },
+        transcript: 'Subject observed kicking and denting a metal newspaper box outside 339 Squire Road around 8:30 PM. One side panel bent inward. Owner of the adjacent variety store identified the box owner and called him to scene. Estimated repair $180. Subject cooperative, expressed remorse.'
+      },
+      'Graffiti / tagging': {
+        data: { damageType: 'Graffiti / tagging', estDamageValue: '220', damageReversible: 'yes', ownerNotified: 'yes', ownerName: 'MBTA — Wonderland Station' },
+        transcript: 'At 9:10 PM observed the subject spray-painting a tag on the rear concrete wall of the 88 Beach Street MBTA parking structure. Approximately three square feet of black aerosol paint. MBTA Transit dispatch notified. MBTA maintenance estimates $220 for power-wash and re-seal. One can of paint recovered as evidence.'
+      },
+      'Broken window or fixture': {
+        data: { damageType: 'Broken window', estDamageValue: '240', damageReversible: 'yes', ownerNotified: 'yes', ownerName: 'Bennington Tap — owner notified' },
+        transcript: 'Subject struck a ground-floor window of the Bennington Tap with a closed fist at 1:45 AM. Single pane of tempered glass cracked, no shattering. Owner on phone, glazier quotes $240 for replacement. Subject states intoxication and apologized to owner directly.'
+      },
+      'Damage to public property': {
+        data: { damageType: 'Other', estDamageValue: '150', damageReversible: 'yes', ownerNotified: 'yes', ownerName: 'City of Revere — DPW' },
+        transcript: 'Subject observed knocking over a city-owned trash receptacle on Revere Beach Boulevard at 11:20 PM, scattering trash on the sidewalk. Receptacle dented but intact. Revere DPW dispatched to right and clean. Estimated cost $150. No witnesses to physical altercation.'
+      }
+    }
   },
   'Disorderly Conduct': {
     statute: 'G.L. c. 272, §53',
@@ -1281,7 +1319,25 @@ const CHARGE_CONFIG = {
       { key: 'bodycamActive',    label: 'Body-cam footage captured', type: 'yesno' },
       { key: 'venueContact',     label: 'Venue / complainant',     type: 'text',   placeholder: 'e.g. Bennington Tap — mgr. on duty' }
     ],
-    reviewLabel: 'Behavior & Witnesses'
+    reviewLabel: 'Behavior & Witnesses',
+    subData: {
+      'Public intoxication': {
+        data: { behaviorType: 'Public intoxication', physicalContact: 'no', calmedOnArrival: 'yes', witnessCount: '3', bodycamActive: 'yes', venueContact: "Sully's Tap — bartender on duty" },
+        transcript: 'Around 12:50 AM responded to a call at Sully\'s Tap on Bennington. Subject observed outside the bar visibly intoxicated, unsteady gait, yelling at passing cars. Three bar patrons witnessed. Subject calmed immediately upon officer arrival. Body-cam active throughout. Bartender confirms subject was cut off twenty minutes prior. No prior incidents tonight.'
+      },
+      'Loud / disruptive in public': {
+        data: { behaviorType: 'Loud / disruptive', physicalContact: 'no', calmedOnArrival: 'yes', witnessCount: '2', bodycamActive: 'yes', venueContact: 'Bystanders — Bennington St sidewalk' },
+        transcript: 'At 1:08 AM dispatched to Bennington Street for a noise complaint. Subject observed shouting on the sidewalk near a residential building. Two neighbors on the second-floor balcony witnessing. No physical altercation. Subject calmed on officer arrival and apologized. Body-cam active. No prior complaints at this address tonight.'
+      },
+      'Verbal altercation — no contact': {
+        data: { behaviorType: 'Verbal altercation', physicalContact: 'no', calmedOnArrival: 'yes', witnessCount: '2', bodycamActive: 'yes', venueContact: 'Bennington Tap — mgr. on duty' },
+        transcript: 'Loud verbal altercation outside the Bennington Tap around 1:20 AM. Two parties shouting, no physical contact made. Other party left scene voluntarily before our arrival. Subject calmed immediately on officer arrival. Two bystander witnesses; bar manager confirms no prior incidents tonight. Body-cam active throughout.'
+      },
+      'Refusal to disperse': {
+        data: { behaviorType: 'Refusal to disperse', physicalContact: 'no', calmedOnArrival: 'yes', witnessCount: '4', bodycamActive: 'yes', venueContact: 'Revere Beach event security' },
+        transcript: 'Following a Revere Beach summer concert around 11:35 PM, event security requested police assistance clearing the bandshell area. Subject remained after three verbal warnings from staff. No physical altercation. Subject complied immediately on officer-issued lawful order. Four event security staff present as witnesses. Body-cam active. Subject cooperative, no prior dispersal history on file.'
+      }
+    }
   },
   'Receiving Stolen Property': {
     statute: 'G.L. c. 266, §60',
@@ -1302,7 +1358,21 @@ const CHARGE_CONFIG = {
       { key: 'subjectAware',     label: 'Subject knew item was stolen', type: 'yesno' },
       { key: 'returnedToOwner',  label: 'Item returned to owner this shift', type: 'yesno' }
     ],
-    reviewLabel: 'Item & Origin'
+    reviewLabel: 'Item & Origin',
+    subData: {
+      'Receiving — knowing': {
+        data: { itemDescription: 'Apple iPhone 15 Pro — IMEI 358...4192', estItemValue: '700', originStatement: 'Bought on Facebook Marketplace for $50, no receipt', knownStolen: 'yes', subjectAware: 'yes', returnedToOwner: 'yes' },
+        transcript: 'Recovered one Apple iPhone 15 Pro from the subject during a consensual encounter. IMEI ran 10-29 returns stolen — matches Boston PD report 26-014392 dated 03/14. Subject acknowledged he suspected the phone was stolen given the $50 price on Facebook Marketplace and lack of original box or receipt. No paperwork. Phone confirmed via NCIC and returned to victim before end of shift.'
+      },
+      'Receiving — reasonable suspicion': {
+        data: { itemDescription: 'Specialized Allez bicycle — serial WSBC2241067', estItemValue: '420', originStatement: 'Bought from a guy outside Wonderland Station for $80', knownStolen: 'yes', subjectAware: 'no', returnedToOwner: 'no' },
+        transcript: 'Subject in possession of a Specialized Allez road bicycle. Serial WSBC2241067 matches a stolen-bicycle report filed 03/16 from Revere Beach Boulevard. Subject states he bought it that morning from an unknown male outside Wonderland Station for eighty dollars. No receipt. Subject denies knowing it was stolen. Bicycle held in evidence; victim contacted for pickup.'
+      },
+      'Possessing recovered stolen item': {
+        data: { itemDescription: 'DeWalt 20V power drill w/ battery', estItemValue: '180', originStatement: 'Found in an alley behind Broadway last week', knownStolen: 'yes', subjectAware: 'no', returnedToOwner: 'no' },
+        transcript: 'Subject in possession of a DeWalt 20V power drill with battery, matching the description in a tool-theft report from a construction site at 375 Broadway dated 03/11. Subject states he found the drill in the alley behind the site a week ago and did not know it was stolen. Tool returned to property and owner of site contacted.'
+      }
+    }
   },
   'Simple Drug Possession': {
     statute: 'G.L. c. 94C, §34',
@@ -1325,7 +1395,29 @@ const CHARGE_CONFIG = {
       { key: 'personalUse',      label: 'Subject indicates personal use', type: 'yesno' },
       { key: 'treatmentRequest', label: 'Subject requests treatment referral', type: 'yesno' }
     ],
-    reviewLabel: 'Substance & Use'
+    reviewLabel: 'Substance & Use',
+    subData: {
+      'Marijuana — over personal limit': {
+        data: { substance: 'Marijuana', quantity: 'Small (1–3g)', paraphernalia: 'no', fieldTested: 'no', personalUse: 'yes', treatmentRequest: 'no' },
+        transcript: 'Subject stopped on a pedestrian encounter near Wonderland Station. Approximately 2 grams of suspected marijuana flower in an unsealed sandwich bag — above the one-ounce personal-use limit for public possession is not met but display in public area triggers G.L. c. 94C §34 review. No paraphernalia. Subject states personal use. No prior on file.'
+      },
+      'Stimulants (cocaine / meth)': {
+        data: { substance: 'Cocaine', quantity: 'Personal-use amount', paraphernalia: 'yes', fieldTested: 'yes', personalUse: 'yes', treatmentRequest: 'no' },
+        transcript: 'During a consensual encounter outside the Broadway 7-Eleven, subject produced a small folded paper packet containing approximately 0.5g of white powder. Field-tested positive for cocaine. One straw recovered, consistent with personal use. Subject states personal use only. No scale, no additional packaging. Subject offered treatment referral, declined.'
+      },
+      'Opioids (heroin / fentanyl)': {
+        data: { substance: 'Fentanyl (suspected)', quantity: 'Personal-use amount', paraphernalia: 'yes', fieldTested: 'yes', personalUse: 'yes', treatmentRequest: 'yes' },
+        transcript: 'Subject stopped at Wonderland MBTA station. Approximately 1.5 grams of suspected fentanyl recovered in a small ziploc bag, plus one used glassine envelope. Field-tested presumptive positive. Subject states personal use, currently waiting for a treatment bed. No scale, no packaging materials. Subject requests treatment referral; warm hand-off to Gavin Foundation initiated on scene.'
+      },
+      'Prescription pills — no Rx': {
+        data: { substance: 'Prescription pills', quantity: 'Personal-use amount', paraphernalia: 'no', fieldTested: 'no', personalUse: 'yes', treatmentRequest: 'no' },
+        transcript: 'Subject found in possession of eight (8) oxycodone 5mg tablets, loose in pocket, no prescription bottle and no Rx on record per BORID check. Subject states he gets them from a family member to manage back pain. No paraphernalia. No history of distribution. Subject cooperative, requested information on legal pain-management resources.'
+      },
+      'Other controlled substance': {
+        data: { substance: 'Other', quantity: 'Small (1–3g)', paraphernalia: 'no', fieldTested: 'no', personalUse: 'yes', treatmentRequest: 'no' },
+        transcript: 'During a vehicle stop on Beach Street, subject voluntarily produced a small unmarked vial containing approximately 1.2 grams of unknown crystalline substance. Subject unwilling to identify the substance. Not field-tested on scene; sent to MSP crime lab. Subject states personal use only. No paraphernalia recovered. No prior drug history on file.'
+      }
+    }
   }
 };
 
@@ -1875,6 +1967,17 @@ function selectSub(el, name) {
     el.classList.add('selected');
   }
   selectedSub = name;
+  // v2: Apply per-sub demo preset (field defaults + sample transcript) so the
+  // contextual panel + review screen render fully populated for any charge.
+  const cfg = getCharge();
+  const preset = cfg && cfg.subData ? cfg.subData[name] : null;
+  if (preset) {
+    chargeContextData = Object.assign({}, preset.data || {});
+    _subTranscript = preset.transcript || cfg.sampleTranscript || '';
+  } else if (cfg) {
+    chargeContextData = {};
+    _subTranscript = cfg.sampleTranscript || '';
+  }
   const btn = document.getElementById('offense-next-btn');
   btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
 }
@@ -1908,11 +2011,17 @@ function renderChargeContextPanel() {
     if (f.type === 'yesno') {
       const yesActive = cur === 'yes' ? ' active-yes' : '';
       const noActive  = cur === 'no'  ? ' active-no'  : '';
+      const yesStyle = cur === 'yes'
+        ? 'padding:6px 14px;border-radius:20px;border:1.5px solid var(--green);background:var(--green);color:#fff;font-size:12px;font-weight:700;cursor:pointer;'
+        : 'padding:6px 14px;border-radius:20px;border:1.5px solid var(--g2);background:#fff;color:var(--navy);font-size:12px;font-weight:700;cursor:pointer;';
+      const noStyle = cur === 'no'
+        ? 'padding:6px 14px;border-radius:20px;border:1.5px solid var(--red);background:var(--red);color:#fff;font-size:12px;font-weight:700;cursor:pointer;'
+        : 'padding:6px 14px;border-radius:20px;border:1.5px solid var(--g2);background:#fff;color:var(--navy);font-size:12px;font-weight:700;cursor:pointer;';
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,0,60,.06);">' +
         '<span style="font-size:13px;color:var(--navy);font-weight:600;flex:1;">' + f.label + '</span>' +
         '<div style="display:flex;gap:6px;">' +
-          '<button type="button" class="ctx-yn-btn' + yesActive + '" onclick="setCtxYesNo(this,\'' + f.key + '\',\'yes\')" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--g2);background:#fff;color:var(--navy);font-size:12px;font-weight:700;cursor:pointer;">Yes</button>' +
-          '<button type="button" class="ctx-yn-btn' + noActive  + '" onclick="setCtxYesNo(this,\'' + f.key + '\',\'no\')"  style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--g2);background:#fff;color:var(--navy);font-size:12px;font-weight:700;cursor:pointer;">No</button>' +
+          '<button type="button" class="ctx-yn-btn' + yesActive + '" onclick="setCtxYesNo(this,\'' + f.key + '\',\'yes\')" style="' + yesStyle + '">Yes</button>' +
+          '<button type="button" class="ctx-yn-btn' + noActive  + '" onclick="setCtxYesNo(this,\'' + f.key + '\',\'no\')"  style="' + noStyle + '">No</button>' +
         '</div></div>';
     }
     if (f.type === 'select') {
@@ -1930,13 +2039,48 @@ function renderChargeContextPanel() {
     '</div>';
   }).join('');
 
+  const hasPreset = Object.keys(chargeContextData).length > 0;
+  const aiBadge = hasPreset
+    ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;color:#065F46;background:#D1FAE5;border:1px solid #A7F3D0;padding:3px 8px;border-radius:10px;margin-left:8px;">✨ AI auto-extracted</span>'
+    : '';
   panel.innerHTML =
     '<div style="background:linear-gradient(135deg,#EFF6FF,#F8F9FF);border:1.5px solid var(--blue);border-radius:14px;padding:16px;margin-bottom:14px;">' +
-      '<div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px;">📋 Evidence & Context — ' + selectedOffense + subBadge + '</div>' +
-      '<div style="font-size:11px;color:var(--g4);margin-bottom:10px;">' + cfg.statute + ' · MEA captures charge-specific evidence so the diversion record is complete.</div>' +
+      '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:4px;">' +
+        '<div style="font-size:14px;font-weight:800;color:var(--navy);">📋 Evidence & Context — ' + selectedOffense + subBadge + '</div>' +
+        aiBadge +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--g4);margin-bottom:10px;">' + cfg.statute + ' · MEA captures charge-specific evidence so the diversion record is complete. Tap any field to correct.</div>' +
       '<div>' + fieldsHtml + '</div>' +
     '</div>';
   panel.style.display = 'block';
+
+  // v2: Pre-fill the voice transcript & formatted incident report from the
+  // sub-category preset when the officer didn't dictate (demo case).
+  if (_subTranscript) {
+    const whatSaid = document.getElementById('voice-what-you-said');
+    if (whatSaid && !whatSaid.textContent.trim()) {
+      whatSaid.textContent = '"' + _subTranscript + '"';
+    }
+    voiceTranscriptText = voiceTranscriptText || _subTranscript;
+    const fmt = document.getElementById('formatted-notes');
+    if (fmt && !fmt.textContent.trim()) {
+      const summaryLine = (cfg.reviewLabel || 'Evidence') + ': ' + (cfg.fields || []).map(f => {
+        let v = chargeContextData[f.key];
+        if (v === undefined || v === null || v === '') return null;
+        if (v === 'yes') v = 'Yes'; else if (v === 'no') v = 'No';
+        return f.label + ' — ' + v;
+      }).filter(Boolean).join('; ');
+      fmt.innerHTML =
+        '<p style="margin:0 0 8px;"><strong>' + selectedOffense + '</strong> (' + cfg.statute + ')' +
+          (selectedSub ? ' · <span style="color:var(--blue);">' + selectedSub + '</span>' : '') + '</p>' +
+        '<p style="margin:0 0 8px;">' + _subTranscript + '</p>' +
+        '<p style="margin:0;font-size:12px;color:var(--g4);">' + summaryLine + '.</p>';
+    }
+    const readback = document.getElementById('readback-summary-text');
+    if (readback && !readback.textContent.trim()) {
+      readback.textContent = _subTranscript;
+    }
+  }
 }
 
 function setCtxYesNo(btn, key, val) {

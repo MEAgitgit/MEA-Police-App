@@ -1268,6 +1268,7 @@ function nav(id) {
   // scanning auto-advance only if NOT doing AI scan (AI handler navigates itself)
   if (id === 'scanning' && !authToken) setTimeout(() => nav('verify'), 2200);
   if (id === 'dashboard') buildCitationsList();
+  if (id === 'time') populateTimeScreen();
   if (id === 'review') populateReviewScreen();
   if (id === 'case-summary') populateCaseSummary();
   if (id === 'q1') {
@@ -3197,6 +3198,45 @@ function buildReviewSummary() {
 
   summary += `This individual has been determined eligible for pre-arrest diversion under the SWIFT program.`;
   return summary;
+}
+
+// Populate offense-time screen with the current moment on entry.
+function populateTimeScreen() {
+  const now = new Date();
+  const hour24 = now.getHours();
+  const hour12 = ((hour24 + 11) % 12) + 1;
+  const ampm = hour24 < 12 ? 'am' : 'pm';
+  const min5 = String(Math.round(now.getMinutes() / 5) * 5 % 60).padStart(2, '0');
+
+  const hourSel = document.getElementById('time-hour');
+  const minSel = document.getElementById('time-min');
+  if (hourSel) {
+    for (const opt of hourSel.options) { if (opt.text.trim() === String(hour12)) { hourSel.value = opt.value || opt.text; break; } }
+  }
+  if (minSel) {
+    for (const opt of minSel.options) { if (opt.text.trim() === min5) { minSel.value = opt.value || opt.text; break; } }
+  }
+  const amBtn = document.getElementById('am-btn');
+  const pmBtn = document.getElementById('pm-btn');
+  if (amBtn && pmBtn) {
+    const active = ampm === 'am' ? amBtn : pmBtn;
+    const inactive = ampm === 'am' ? pmBtn : amBtn;
+    active.classList.add('active-yes');
+    active.style.borderColor = 'var(--blue)';
+    active.style.background = 'rgba(20,75,216,.08)';
+    active.style.color = 'var(--blue)';
+    inactive.classList.remove('active-yes');
+    inactive.style.borderColor = 'var(--g2)';
+    inactive.style.background = '#fff';
+    inactive.style.color = 'var(--navy)';
+  }
+  const dateInput = document.querySelector('#s-time input[type="date"]');
+  if (dateInput) {
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    dateInput.value = y + '-' + m + '-' + d;
+  }
 }
 
 function populateReviewScreen() {

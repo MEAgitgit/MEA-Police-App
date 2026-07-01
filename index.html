@@ -1090,7 +1090,9 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 // Check localStorage for custom API URL (set via ?api=URL param or settings)
 const _urlParams = new URLSearchParams(window.location.search);
 if (_urlParams.get('api')) localStorage.setItem('mea_api_url', _urlParams.get('api'));
-const API_BASE = localStorage.getItem('mea_api_url') || 'http://localhost:3001';
+// Ignore any stale localhost value cached on the device — it can never work on a phone
+if ((localStorage.getItem('mea_api_url') || '').includes('localhost')) localStorage.removeItem('mea_api_url');
+const API_BASE = localStorage.getItem('mea_api_url') || 'https://mea-backend-um9p.onrender.com';
 let authToken = null;
 let apiConnected = false;
 

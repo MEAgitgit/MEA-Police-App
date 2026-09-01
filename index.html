@@ -215,7 +215,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       gate.style.opacity='0';
       setTimeout(function(){gate.style.display='none';},350);
       // Login to backend API after gate succeeds
-      if(typeof loginToBackend==='function') loginToBackend();
+      if(typeof ensureSignedIn==='function') ensureSignedIn();
     }else{
       err.textContent='Incorrect password';
       inp.style.borderColor='#E8444F';
@@ -1117,30 +1117,90 @@ function updateConnectionIndicator() {
     dot.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:99998;display:flex;align-items:center;gap:5px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);padding:4px 10px 4px 8px;border-radius:20px;font-family:Inter,sans-serif;font-size:10px;font-weight:600;color:rgba(255,255,255,.8);transition:opacity .3s;';
     document.body.appendChild(dot);
   }
-  if (apiConnected) {
+  // Three honest states. The old badge went green as soon as the login request
+  // came back, whether or not it carried a token, so a signed-out app sat there
+  // claiming LIVE while every AI call was being rejected. LIVE now means one
+  // thing only: we are holding a token the server issued.
+  dot.onclick = function() { if (!authToken) loginToBackend(); };
+  if (authToken) {
+    dot.style.cursor = 'default';
+    dot.style.background = 'rgba(0,0,0,.55)';
     dot.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#00B67A;display:inline-block;box-shadow:0 0 6px #00B67A;"></span> LIVE';
     dot.style.opacity = '1';
+  } else if (_loginInFlight) {
+    dot.style.cursor = 'default';
+    dot.style.background = 'rgba(0,0,0,.55)';
+    dot.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#F5A623;display:inline-block;"></span> CONNECTING';
+    dot.style.opacity = '1';
   } else {
-    dot.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#555;display:inline-block;"></span> DEMO';
-    dot.style.opacity = '0.5';
+    // Loud on purpose. Finding this out mid-demo is the failure worth preventing.
+    dot.style.cursor = 'pointer';
+    dot.style.background = 'rgba(232,68,79,.92)';
+    dot.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#fff;display:inline-block;"></span> NOT CONNECTED \u2014 TAP';
+    dot.style.opacity = '1';
   }
 }
 
-function loginToBackend() {
-  fetch(API_BASE + '/api/auth/login', {
+// The demo signs itself in as this officer. Everything AI-powered in the app
+// (photo identification, price lookup, ID scan, voice parsing) is refused without
+// the token this returns, so this is the single point of failure for the demo.
+const DEMO_USER = {
+  email: 'dercolo@revere.pd', password: '4321', name: 'Mike Dercolo',
+  role: 'officer', badge_number: '4187', department: 'Revere PD', jurisdiction: 'Revere'
+};
+let _loginInFlight = false;
+
+function _postJson(path, body, ms) {
+  return fetch(API_BASE + path, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({email: 'dercolo@revere.pd', password: '4321'})
-  }).then(r => r.json()).then(d => {
-    authToken = d.token;
-    apiConnected = true;
-    updateConnectionIndicator();
-    console.log('[MEA] Backend authenticated');
-  }).catch(() => {
-    apiConnected = false;
-    updateConnectionIndicator();
-    console.log('[MEA] Backend unavailable — demo mode');
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(ms || 20000)
   });
+}
+
+// Resolves to a token, or null. Never throws, so no caller has to guard it.
+function _attemptLogin() {
+  return _postJson('/api/auth/login', {email: DEMO_USER.email, password: DEMO_USER.password})
+    .then(r => r.json().catch(() => ({})))
+    .then(d => (d && d.token) ? d.token : null)
+    .catch(() => null);
+}
+
+function loginToBackend(onDone) {
+  if (_loginInFlight || authToken) { if (onDone) onDone(!!authToken); return; }
+  _loginInFlight = true;
+  updateConnectionIndicator();
+
+  function finish(token, how) {
+    authToken = token || null;
+    apiConnected = !!token;
+    _loginInFlight = false;
+    updateConnectionIndicator();
+    console.log(token ? '[MEA] Signed in (' + how + ')' : '[MEA] NOT signed in - AI features will be refused');
+    if (onDone) onDone(!!token);
+  }
+
+  _attemptLogin().then(token => {
+    if (token) return finish(token, 'existing account');
+
+    // No token. The usual cause is a backend whose database came up empty, which
+    // takes the seeded account with it. Recreate it and sign in again rather than
+    // spending the demo in a broken state.
+    console.log('[MEA] Sign-in refused - recreating the demo account');
+    return _postJson('/api/auth/register', DEMO_USER)
+      .then(r => r.json().catch(() => ({})))
+      .then(d => d && d.token ? finish(d.token, 'account recreated')
+                              : _attemptLogin().then(t => finish(t, 'recovered')))
+      .catch(() => _attemptLogin().then(t => finish(t, 'recovered')));
+  });
+}
+
+// Keep trying quietly in the background until it is connected, so a backend that
+// was merely cold or briefly unreachable does not need anyone to notice and retry.
+function ensureSignedIn() {
+  if (authToken || _loginInFlight) return;
+  loginToBackend(ok => { if (!ok) setTimeout(ensureSignedIn, 8000); });
 }
 
 // ── STATE ──
@@ -1306,7 +1366,7 @@ function pinTap(n) {
   updatePinDots();
   if (pinCode.length === 4) {
     // Login to backend when PIN is entered
-    if (!authToken) loginToBackend();
+    ensureSignedIn();
     setTimeout(() => { pinCode = ''; nav('dashboard'); }, 300);
   }
 }
@@ -1383,7 +1443,6 @@ function buildCitationsList() {
     return r.json();
   }).then(data => {
     if (data.citations && data.citations.length > 0) {
-      apiConnected = true;
       updateConnectionIndicator();
       // Map API citations to display format
       const apiCitations = data.citations.map(ac => {

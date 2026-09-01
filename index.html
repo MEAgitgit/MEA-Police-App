@@ -575,6 +575,9 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/></svg>
                 Correct it
               </button>
+              <button onclick="readBackPhotoItem(this)" id="photo-speak-btn" title="Read this back to me" aria-label="Read this back to me" style="flex:0 0 auto;padding:10px 12px;border-radius:10px;border:1.5px solid var(--blue);background:rgba(20,75,216,.06);color:var(--blue);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+              </button>
               <button onclick="confirmPhotoItem()" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--green);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✓ Add Item</button>
             </div>
             <div id="photo-voice-listening" style="display:none;margin-top:6px;text-align:center;">
@@ -606,7 +609,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
             Next Item
           </button>
-          <button onclick="this.parentElement.parentElement.style.display='none';speakPrompt('All items captured. Review the summary below.');document.getElementById('items-list-container').scrollIntoView({behavior:'smooth'});" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:15px;font-weight:800;cursor:pointer;">Done</button>
+          <button onclick="this.parentElement.parentElement.style.display='none';document.getElementById('items-list-container').scrollIntoView({behavior:'smooth'});" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--green);color:#fff;font-size:15px;font-weight:800;cursor:pointer;">Done</button>
         </div>
       </div>
     </div>
@@ -617,6 +620,9 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
         <span style="font-size:16px;">🏷</span>
         <span style="font-size:13px;font-weight:700;color:var(--navy);">Items & Estimated Values</span>
         <span id="items-jurisdiction-badge" style="margin-left:auto;font-size:10px;color:var(--g4);background:#fff;padding:2px 8px;border-radius:10px;"></span>
+        <button onclick="readBackItemList(this)" id="items-speak-btn" title="Read the items and values back to me" aria-label="Read the items and values back to me" style="flex:0 0 auto;padding:4px 8px;border-radius:10px;border:1.5px solid var(--blue);background:#fff;color:var(--blue);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M18.5 5.5a9 9 0 010 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+        </button>
       </div>
       <div id="items-list-rows"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0;margin-top:4px;border-top:2px solid var(--navy);">
@@ -2108,7 +2114,6 @@ async function _confirmAllAiSuggestions() {
   _renderAiSuggestions();
   generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
   updateReadbackText();
-  speakPrompt('All items confirmed. Take photos to verify, or continue.');
 }
 
 function _dismissAiSuggestion(idx) {
@@ -2774,7 +2779,9 @@ function identifyPhotoItem(photoData) {
     showToast(shaky
       ? 'Best guess: ' + fullName + ' \u2014 check this is right'
       : 'Identified: ' + fullName);
-    speakPrompt('I see ' + fullName + '. Tap Add Item to confirm, or correct the name.');
+    // Deliberately silent. An officer is often standing in front of the person
+    // they stopped; the app announcing what it thinks it sees is the last thing
+    // wanted there. The speaker button reads it back when it is actually useful.
 
     if (confLabel) {
       confLabel.style.display = 'inline-block';
@@ -3001,8 +3008,6 @@ async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice) {
   _stolenItems.push({ name: displayName, qty, unitPrice: price, total: itemTotal, source, photoData: photoData || null });
   rerenderItemsList();
 
-  // Voice feedback: speak the item and price
-  speakPrompt(displayName + ', $' + itemTotal.toFixed(2) + '. Tap to correct if wrong.');
 
   // Scroll the item into view
   container.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -3066,7 +3071,6 @@ function handleItemRephoto(input) {
       thumb.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
       thumbs.appendChild(thumb);
       showToast('Photo added for ' + _stolenItems[idx].name);
-      speakPrompt('Photo verified for ' + _stolenItems[idx].name);
     }
   };
   reader.readAsDataURL(file);
@@ -3203,7 +3207,6 @@ function editItem(idx) {
       item.total = item.unitPrice * item.qty;
       rerenderItemsList();
       showToast('Updated: ' + item.name + ' — $' + item.total.toFixed(2));
-      speakPrompt(item.name + ', updated to $' + item.total.toFixed(2));
     });
   } else {
     // Just re-price check same name
@@ -3256,6 +3259,7 @@ function setVoicePrompts(on) {
 
 // Drop anything queued or mid-sentence.
 function stopSpokenPrompts() {
+  stopReadBackOnDemand();
   _ttsAudioQueue = [];
   _ttsPlaying = false;
   if (_ttsPromptAudio) { try { _ttsPromptAudio.pause(); } catch (e) {} _ttsPromptAudio = null; }
@@ -3281,6 +3285,87 @@ function _speakBrowser(text) {
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 1.0; u.pitch = 1; u.lang = 'en-US';
   window.speechSynthesis.speak(u);
+}
+
+// ── READ BACK ON DEMAND ──────────────────────────────────────────────────
+// The photo page never speaks on its own. These run only when the officer taps
+// a speaker button, so unlike speakPrompt they ignore VOICE_PROMPTS_ENABLED:
+// tapping the button IS the request. Tapping it again stops the playback.
+let _onDemandAudio = null;
+let _onDemandBtn = null;
+
+const _SPEAK_STOP_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+
+function stopReadBackOnDemand() {
+  if (_onDemandAudio) { try { _onDemandAudio.pause(); } catch (e) {} _onDemandAudio = null; }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  if (_onDemandBtn) {
+    if (_onDemandBtn.dataset.idleHtml) _onDemandBtn.innerHTML = _onDemandBtn.dataset.idleHtml;
+    _onDemandBtn.style.background = _onDemandBtn.dataset.idleBg || '';
+    _onDemandBtn = null;
+  }
+}
+
+async function speakOnDemand(text, btn) {
+  if (_onDemandBtn === btn) { stopReadBackOnDemand(); return; }   // tapped again
+  stopReadBackOnDemand();
+  if (!text) { showToast('Nothing to read back yet'); return; }
+
+  if (btn) {
+    if (!btn.dataset.idleHtml) {
+      btn.dataset.idleHtml = btn.innerHTML;
+      btn.dataset.idleBg = btn.style.background || '';
+    }
+    btn.innerHTML = _SPEAK_STOP_ICON;
+    btn.style.background = 'rgba(20,75,216,.18)';
+    _onDemandBtn = btn;
+  }
+
+  if (authToken && API_BASE) {
+    try {
+      const resp = await fetch(API_BASE + '/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+        body: JSON.stringify({ text: text, voice: 'nova' }),
+        signal: AbortSignal.timeout(20000)
+      });
+      if (!resp.ok) throw new Error('tts ' + resp.status);
+      const audio = new Audio(URL.createObjectURL(await resp.blob()));
+      if (_onDemandBtn !== btn) return;        // stopped while the audio was fetching
+      _onDemandAudio = audio;
+      audio.onended = stopReadBackOnDemand;
+      audio.onerror = stopReadBackOnDemand;
+      await audio.play();
+      return;
+    } catch (e) { /* fall through to the device voice */ }
+  }
+
+  if (_onDemandBtn !== btn) return;
+  if (!window.speechSynthesis) { stopReadBackOnDemand(); showToast('Speech is not available on this device'); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.0; u.pitch = 1; u.lang = 'en-US';
+  u.onend = stopReadBackOnDemand;
+  u.onerror = stopReadBackOnDemand;
+  window.speechSynthesis.speak(u);
+}
+
+// Reads whatever is in the name field, so it works for a typed correction too,
+// not only for what the AI proposed.
+function readBackPhotoItem(btn) {
+  const input = document.getElementById('photo-item-name-input');
+  const name = input ? input.value.trim() : '';
+  speakOnDemand(name ? name + '.' : '', btn);
+}
+
+// The values are what decide the charge threshold, so this reads each item with
+// its price and then the total.
+function readBackItemList(btn) {
+  if (!_stolenItems || !_stolenItems.length) { speakOnDemand('', btn); return; }
+  const lines = _stolenItems.map(function(i) {
+    return (i.qty > 1 ? i.qty + ' ' : '') + i.name + ', $' + i.total.toFixed(2);
+  });
+  const total = _stolenItems.reduce(function(a, i) { return a + i.total; }, 0);
+  speakOnDemand(lines.join('. ') + '. Total, $' + total.toFixed(2) + '.', btn);
 }
 
 async function _playNextTTS() {

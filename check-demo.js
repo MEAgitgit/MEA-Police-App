@@ -16,12 +16,16 @@ const EXPECT_IN_NAME = 'tide';
 
 const green = s => '\x1b[32m' + s + '\x1b[0m';
 const red   = s => '\x1b[31m' + s + '\x1b[0m';
-const dim   = s => '\x1b[2m'  + s + '\x1b[0m';
+const dim    = s => '\x1b[2m'  + s + '\x1b[0m';
+const yellow = s => '\x1b[33m' + s + '\x1b[0m';
 
 const results = [];
-function record(name, ok, detail, fix) {
-  results.push({ name, ok, fix });
-  console.log((ok ? green('  PASS  ') : red('  FAIL  ')) + name + (detail ? dim('   ' + detail) : ''));
+// A check marked advisory is reported but does not change the verdict: the demo
+// still works without it. Only the checks an officer would visibly hit are fatal.
+function record(name, ok, detail, fix, advisory) {
+  results.push({ name, ok, fix, advisory: !!advisory });
+  const tag = ok ? green('  PASS  ') : (advisory ? yellow('  WARN  ') : red('  FAIL  '));
+  console.log(tag + name + (detail ? dim('   ' + detail) : ''));
 }
 
 async function req(path, opts, ms) {
@@ -46,7 +50,7 @@ async function req(path, opts, ms) {
       record('Claude key present', !!c.anthropicKey, 'photo, price, ID scan',
              'ANTHROPIC_API_KEY is not set on Render. Add it in the Render dashboard.');
       record('Voice key present', !!c.openaiKey, 'spoken prompts',
-             'OPENAI_API_KEY is not set on Render. Add it in the Render dashboard.');
+             'OPENAI_API_KEY is not set on Render. Spoken prompts fall back to the browser voice, which sounds robotic. Everything else works. Add the key in the Render dashboard.', true);
     } else {
       // An older backend without /api/ready. Fall back to plain health.
       const h = await req('/api/health', {}, 60000);
@@ -120,14 +124,18 @@ async function req(path, opts, ms) {
     }
   }
 
-  const failed = results.filter(r => !r.ok);
+  const fatal    = results.filter(r => !r.ok && !r.advisory);
+  const warnings = results.filter(r => !r.ok && r.advisory);
   console.log('');
-  if (!failed.length) {
-    console.log(green('  Ready to demo.') + '  ' + results.length + ' checks passed.\n');
+  if (!fatal.length) {
+    console.log(green('  Ready to demo.') + '  ' + (results.length - warnings.length) + ' of ' + results.length + ' checks passed.');
+    for (const w of warnings) console.log(yellow('  Worth knowing: ') + w.fix);
+    console.log('');
     process.exit(0);
   }
-  console.log(red('  Do not demo yet.') + '  ' + failed.length + ' of ' + results.length + ' checks failed:\n');
-  for (const f of failed) if (f.fix) console.log('  - ' + f.name + ': ' + f.fix);
+  console.log(red('  Do not demo yet.') + '  ' + fatal.length + ' of ' + results.length + ' checks failed:\n');
+  for (const f of fatal) if (f.fix) console.log('  - ' + f.name + ': ' + f.fix);
+  for (const w of warnings) console.log(yellow('  Also: ') + w.fix);
   console.log('');
   process.exit(1);
 })();

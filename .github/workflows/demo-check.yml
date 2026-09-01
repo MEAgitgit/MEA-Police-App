@@ -1,0 +1,22 @@
+name: Demo check
+
+# Is the live demo actually going to work? Runs the officer's real path against
+# the deployed backend: sign in, photograph an item, look up its price, dictate
+# a report. Runs on GitHub's machines, so it does not depend on anyone's laptop
+# being open. A failure emails whoever is watching this repository.
+
+on:
+  schedule:
+    - cron: '30 5 * * *'    # 07:30 Europe/Rome (05:30 UTC)
+  workflow_dispatch:         # and on demand, from the Actions tab
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run the pre-demo check
+        run: node check-demo.js

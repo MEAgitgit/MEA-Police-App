@@ -1146,7 +1146,11 @@ const _urlParams = new URLSearchParams(window.location.search);
 if (_urlParams.get('api')) localStorage.setItem('mea_api_url', _urlParams.get('api'));
 // Ignore any stale localhost value cached on the device — it can never work on a phone
 if ((localStorage.getItem('mea_api_url') || '').includes('localhost')) localStorage.removeItem('mea_api_url');
-const API_BASE = localStorage.getItem('mea_api_url') || 'https://mea-backend-um9p.onrender.com';
+// When the app is served by the backend itself, talk to that same server. This
+// is what makes the hosted demo work from a plain link, with no ?api= to
+// remember and nothing stale cached on someone's phone.
+const _selfHosted = location.hostname.endsWith('.onrender.com') ? location.origin : null;
+const API_BASE = localStorage.getItem('mea_api_url') || _selfHosted || 'https://mea-backend-um9p.onrender.com';
 let authToken = null;
 let apiConnected = false;
 

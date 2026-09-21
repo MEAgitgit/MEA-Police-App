@@ -574,6 +574,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
             </div>
             <span id="photo-ai-confidence" style="display:none;font-size:10px;font-weight:700;margin-bottom:4px;"></span>
             <input type="text" id="photo-item-name-input" class="form-input" placeholder="e.g. Don Julio 1942, Tide Pods..." style="font-size:15px;padding:10px 12px;margin-bottom:8px;border:2px solid var(--blue);" onkeydown="if(event.key==='Enter'){confirmPhotoItem();}">
+            <div id="photo-alternatives" style="display:none;margin:-4px 0 8px;font-size:11px;color:var(--g4);line-height:1.6;"></div>
             <div style="display:flex;gap:8px;">
               <button onclick="startPhotoVoiceId()" id="photo-voice-btn" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--navy);background:rgba(0,0,60,.04);color:var(--navy);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/></svg>
@@ -2337,14 +2338,15 @@ async function searchSingleItemPrice(query, jurisdiction, opts) {
     try {
       const r = await fetch(API_BASE + '/api/price-search?q=' + encodeURIComponent(query) + '&loc=' + encodeURIComponent(jurisdiction || '') + (verify ? '&verify=1' : ''), {
         headers: {'Authorization': 'Bearer ' + authToken},
-        signal: AbortSignal.timeout(verify ? 30000 : 3000)
+        signal: AbortSignal.timeout(verify ? 75000 : 3000)
       });
       if (r.ok) {
         const d = await r.json();
         if (d.price) {
           let src = d.source || 'Retail Price Database';
           if (src === 'fallback_database') src = 'Retail Price Database';
-          return { price: d.price, source: src, searched: true, verified: !!d.verified, sourceUrl: d.sourceUrl || null };
+          return { price: d.price, source: src, searched: true, verified: !!d.verified, sourceUrl: d.sourceUrl || null,
+            retailer: d.retailer || null, msrp: d.msrp || null, areaConfirmed: !!d.areaConfirmed, area: d.area || null, note: d.note || null };
         }
       }
     } catch(e) {}
@@ -2810,7 +2812,7 @@ function handleItemCamera(input) {
 // Send the photo to Claude Vision and fill in the item name.
 // Always finishes: on timeout or error the field is handed back for typing,
 // never left sitting disabled on "Identifying item...".
-const IDENTIFY_TIMEOUT_MS = 30000;
+const IDENTIFY_TIMEOUT_MS = 60000;
 
 function identifyPhotoItem(photoData) {
   const nameInput = document.getElementById('photo-item-name-input');
@@ -2848,7 +2850,7 @@ function identifyPhotoItem(photoData) {
   fetch(API_BASE + '/api/ai/identify-item', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-    body: JSON.stringify({ image: photoData, location: locInput ? locInput.value : '' }),
+    body: JSON.stringify({ image: photoData, location: (typeof _priceLocation === 'function' ? _priceLocation() : '') || (locInput ? locInput.value : '') }),
     signal: AbortSignal.timeout(IDENTIFY_TIMEOUT_MS)
   }).then(function(r) {
     if (!r.ok) throw new Error('identify failed: ' + r.status);
@@ -2867,12 +2869,20 @@ function identifyPhotoItem(photoData) {
 
     const fullName = (ai.brand && !ai.name.toLowerCase().includes(ai.brand.toLowerCase()))
       ? ai.brand + ' ' + ai.name : ai.name;
-    const sizeStr = ai.size ? ' (' + ai.size + ')' : '';
-    nameInput.value = fullName + sizeStr;
+    // Only a size that reads like one goes on the name: "750 ml", "42 ct",
+    // "256 GB". The model sometimes files "1 pair with charging case" here.
+    const sizeLike = /^\s*\d+(\.\d+)?\s*(ml|l|fl\.? ?oz|oz|g|kg|lb|lbs|ct|count|pack|pk|gb|tb|mm|cm|in|w|v|mah|pcs?|sheets?|rolls?|tablets?|capsules?|cans?|bottles?)\b/i;
+    const sizeStr = ai.size && sizeLike.test(String(ai.size)) ? ' (' + ai.size + ')' : '';
+    const qty = parseInt(ai.quantity, 10) > 1 ? parseInt(ai.quantity, 10) : 1;
+    nameInput.value = (qty > 1 ? qty + ' x ' : '') + fullName + sizeStr;
     nameInput.dataset.aiPrice = ai.estimatedPrice || '';
     nameInput.dataset.aiBrand = ai.brand || '';
     nameInput.dataset.aiCategory = ai.category || '';
     nameInput.dataset.aiConfidence = ai.confidence || 'low';
+    // The clean product name the price search should use, kept apart from the
+    // display text so "(USB-C)" and "3 x" never end up in a retailer query.
+    nameInput.dataset.searchQuery = ai.searchQuery || fullName;
+    nameInput.dataset.aiName = nameInput.value;
 
     // A low-confidence guess is a prompt to check, not an answer. Say so plainly
     // and put the cursor in the field so it is quick to correct.
@@ -2887,11 +2897,34 @@ function identifyPhotoItem(photoData) {
 
     if (confLabel) {
       confLabel.style.display = 'inline-block';
-      // No price on this label any more — the real one is looked up when the
-      // item is added, and showing a guess here made it look verified.
+      // How it was identified matters as much as how sure: a model read off a
+      // label is a different claim from a model recognised by its shape.
+      const basis = ai.basis === 'label' ? 'read from the label'
+        : ai.basis === 'design' ? 'recognised by design \u2014 check the model'
+        : 'generic \u2014 name the product';
       confLabel.textContent = (ai.confidence === 'high' ? '\u2713 ' : ai.confidence === 'medium' ? '~ ' : '? ')
-        + 'AI: ' + (ai.confidence || 'low') + ' confidence';
+        + 'AI: ' + (ai.confidence || 'low') + ' confidence, ' + basis;
       confLabel.style.color = ai.confidence === 'high' ? 'var(--green)' : ai.confidence === 'medium' ? '#F59E0B' : 'var(--g4)';
+    }
+
+    // Models that look alike from this angle. One tap swaps the name and the
+    // search query, which is faster than retyping "AirPods Pro (1st generation)".
+    const altBox = document.getElementById('photo-alternatives');
+    if (altBox) {
+      const alts = Array.isArray(ai.alternatives) ? ai.alternatives.filter(a => a && a !== fullName).slice(0, 4) : [];
+      // The model's own reasons: which features in this photo decided the
+      // model, and anything odd, such as a colour Apple never sold.
+      const why = ai.basis === 'design' && ai.distinguishingFeatures ? String(ai.distinguishingFeatures) : '';
+      const whyHtml = why ? '<div style="margin-top:3px;color:var(--g4);"><strong>Why:</strong> ' + _escapeHtml(why.length > 260 ? why.slice(0, 257) + '\u2026' : why) + '</div>' : '';
+      if (alts.length || whyHtml) {
+        altBox.innerHTML = (alts.length ? 'Could also be: ' : '') + alts.map(a =>
+          '<button type="button" onclick="_pickAlternative(this)" data-name="' + _escapeHtml(a) + '" style="margin:2px 4px 2px 0;padding:2px 8px;border-radius:10px;border:1px solid var(--g2);background:#fff;color:var(--navy);font-size:11px;cursor:pointer;">' + _escapeHtml(a) + '</button>'
+        ).join('') + whyHtml;
+        altBox.style.display = 'block';
+      } else {
+        altBox.style.display = 'none';
+        altBox.innerHTML = '';
+      }
     }
   }).catch(function(err) {
     clearTimeout(watchdog);
@@ -2902,6 +2935,16 @@ function identifyPhotoItem(photoData) {
       ? 'Identification timed out \u2014 type the item name'
       : 'Couldn\u2019t reach the server \u2014 type the item name');
   });
+}
+
+function _pickAlternative(btn) {
+  const nameInput = document.getElementById('photo-item-name-input');
+  const name = btn.getAttribute('data-name') || '';
+  if (!nameInput || !name) return;
+  nameInput.value = name;
+  nameInput.dataset.searchQuery = name;
+  nameInput.dataset.aiConfidence = 'medium';
+  showToast('Changed to ' + name);
 }
 
 // Voice identify after photo
@@ -2972,12 +3015,20 @@ async function confirmPhotoItem() {
 
   // Use AI-estimated price if available from photo identification
   const aiPrice = parseFloat(nameInput.dataset.aiPrice) || null;
-  await addItemAndSearchPrice(itemName, qty, _currentPhotoData, aiPrice);
+  // The search query stays the model's clean product name unless the officer
+  // retyped the name, in which case what they typed is what gets priced.
+  const typed = nameInput.dataset.aiName && nameInput.value.trim() !== nameInput.dataset.aiName;
+  const searchQuery = (!typed && nameInput.dataset.searchQuery) ? nameInput.dataset.searchQuery : itemName;
+  await addItemAndSearchPrice(itemName, qty, _currentPhotoData, aiPrice, searchQuery);
   _currentPhotoData = null;
   // Clear AI data
   nameInput.dataset.aiPrice = '';
   nameInput.dataset.aiBrand = '';
   nameInput.dataset.aiCategory = '';
+  nameInput.dataset.searchQuery = '';
+  nameInput.dataset.aiName = '';
+  const altBox = document.getElementById('photo-alternatives');
+  if (altBox) { altBox.style.display = 'none'; altBox.innerHTML = ''; }
 
   // Show "Add Another" prompt and scroll to it
   const prompt = document.getElementById('add-another-prompt');
@@ -3058,9 +3109,18 @@ async function addManualItem() {
   input.focus();
 }
 
-async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice) {
-  const locInput = document.getElementById('loc-address');
-  const jurisdiction = locInput ? locInput.value : '';
+// The price search wants the place, not the street: "Revere, MA 02151" is what
+// a retailer's store finder understands. The street stays in the report.
+function _priceLocation() {
+  const get = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const city = get('loc-city'), state = get('loc-state'), zip = get('loc-zip');
+  const place = [city && state ? city + ', ' + state : (city || state), zip].filter(Boolean).join(' ');
+  return place || get('loc-address');
+}
+
+async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice, searchQuery) {
+  const jurisdiction = _priceLocation();
+  const query = (searchQuery || name).trim();
 
   // Show searching state in list
   const container = document.getElementById('items-list-container');
@@ -3086,28 +3146,41 @@ async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice) {
   // recalling a price from memory — fine as a placeholder while the lookup
   // runs, but it is not a figure to put on a report, because item value is
   // what decides the larceny threshold.
-  let price, source, searched = false;
-  const searchResult = await searchSingleItemPrice(name, jurisdiction, { verify: !!photoData });
+  let price, source, searched = false, sourceUrl = null;
+  const verify = !!photoData;
+  const searchResult = await searchSingleItemPrice(query, jurisdiction, { verify });
   if (searchResult && searchResult.price) {
     price = searchResult.price;
     source = searchResult.source || 'Retail Price Database';
     searched = searchResult.searched;
+    sourceUrl = searchResult.sourceUrl || null;
     if (source === 'fallback_database') source = 'Retail Price Database';
+    if (searchResult.verified) {
+      // Say where the number came from and whether it was checked for this
+      // area. "Verified" alone would let a national price pass as a local one.
+      source = (searchResult.retailer ? searchResult.retailer : 'Web') +
+        (searchResult.areaConfirmed && searchResult.area ? ' \u00b7 confirmed for ' + searchResult.area : ' \u00b7 national price');
+      if (searchResult.msrp && Math.abs(searchResult.msrp - price) >= 1) source += ' \u00b7 list $' + Number(searchResult.msrp).toFixed(2);
+    }
   } else if (aiEstimatedPrice && aiEstimatedPrice > 0) {
     // Lookup failed — fall back to the estimate, flagged so it reads as unconfirmed.
     price = aiEstimatedPrice;
-    source = 'AI estimate — unverified';
+    source = 'AI estimate \u2014 unverified';
     searched = false;
+  } else if (!verify && getFallbackPrice(query)) {
+    price = getFallbackPrice(query);
+    source = 'Retail Price Database';
   } else {
-    price = getFallbackPrice(name);
-    source = price ? 'Retail Price Database' : null;
-    if (!price) { price = 9.99; source = 'Est. retail value'; }
+    // Nothing could be verified. A made-up $9.99 on a property report is worse
+    // than a blank, because the value decides the larceny threshold.
+    price = 0;
+    source = 'No verified price \u2014 tap the amount to enter one';
   }
 
   const itemTotal = price * qty;
 
   // Replace searching row with result — use full re-render for correction support
-  _stolenItems.push({ name: displayName, qty, unitPrice: price, total: itemTotal, source, photoData: photoData || null });
+  _stolenItems.push({ name: displayName, qty, unitPrice: price, total: itemTotal, source, sourceUrl, photoData: photoData || null });
   rerenderItemsList();
 
 
@@ -3118,6 +3191,22 @@ async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice) {
 function removeItem(idx) {
   _stolenItems.splice(idx, 1);
   rerenderItemsList();
+}
+
+// A price the officer enters by hand is recorded as exactly that.
+function editItemPrice(idx) {
+  const item = _stolenItems[idx];
+  if (!item) return;
+  const entered = prompt('Unit price for ' + item.name + ' (what the store charges for one):', item.unitPrice > 0 ? item.unitPrice.toFixed(2) : '');
+  if (entered === null) return;
+  const n = parseFloat(String(entered).replace(/[^0-9.]/g, ''));
+  if (!Number.isFinite(n) || n <= 0) { showToast('Enter a price greater than zero'); return; }
+  item.unitPrice = Math.round(n * 100) / 100;
+  item.total = item.unitPrice * item.qty;
+  item.source = 'Entered by officer';
+  item.sourceUrl = null;
+  rerenderItemsList();
+  showToast(item.name + ' set to $' + item.unitPrice.toFixed(2));
 }
 
 function rerenderItemsList() {
@@ -3142,7 +3231,7 @@ function rerenderItemsList() {
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:14px;font-weight:700;color:var(--navy);">$${item.total.toFixed(2)}</span>
+          <span onclick="editItemPrice(${idx})" title="Tap to set the price" style="font-size:14px;font-weight:700;color:${item.unitPrice > 0 ? 'var(--navy)' : '#B45309'};cursor:pointer;text-decoration:underline dotted;">${item.unitPrice > 0 ? '$' + item.total.toFixed(2) : 'set price'}</span>
           <button onclick="removeItem(${idx})" style="width:22px;height:22px;border-radius:50%;border:1px solid #ddd;background:none;cursor:pointer;font-size:11px;color:var(--g4);display:flex;align-items:center;justify-content:center;">✕</button>
         </div>
       </div>`);

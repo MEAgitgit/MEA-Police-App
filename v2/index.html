@@ -38,6 +38,8 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 .s.on{display:flex;}
 .s.in{animation:sIn .28s cubic-bezier(.4,0,.2,1) forwards;}
 .s.back{animation:sBack .28s cubic-bezier(.4,0,.2,1) forwards;}
+/* A second tap during the slide must not land on the next screen's button. */
+.s.in,.s.back{pointer-events:none;}
 @keyframes sIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
 @keyframes sBack{from{transform:translateX(-24%)}to{transform:translateX(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -171,7 +173,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 @keyframes checkPop{from{transform:scale(0)}to{transform:scale(1)}}
 
 /* ── Toast ── */
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:#fff;padding:12px 22px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap;}
+#toast{pointer-events:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:#fff;padding:12px 22px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap;}
 #toast.show{transform:translateX(-50%) translateY(0);}
 
 /* ── Map ── */
@@ -411,7 +413,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
       </div>
       <div style="width:100px;">
         <label class="form-label">Zip</label>
-        <input type="text" class="form-input" id="loc-zip" value="" autocomplete="off" placeholder="Zip" oninput="_locTouch(this)">
+        <input type="text" class="form-input" id="loc-zip" value="" autocomplete="off" placeholder="Zip" oninput="_locTouch(this)" onchange="findAddressOnMap()">
       </div>
     </div>
     <div style="height:40px;"></div>
@@ -478,7 +480,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     </div>
     <div style="margin-top:20px;">
       <label class="form-label">Evidence & Item Photos</label>
-      <p style="font-size:12px;color:var(--g4);margin-bottom:8px;">You'll photograph each item on the next screen</p>
+      <p style="font-size:12px;color:var(--g4);margin-bottom:8px;">You'll add item photos and evidence on the next screen</p>
     </div>
     <div style="height:40px;"></div>
   </div>
@@ -649,7 +651,12 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <!-- FORMATTED INCIDENT REPORT -->
     <div style="margin-bottom:14px;">
       <label class="form-label" style="color:var(--navy);">📋 Formatted Incident Report:</label>
-      <div id="formatted-notes" oninput="_syncNarrativeEdits()" style="background:#fff;border:1.5px solid var(--blue);border-radius:10px;padding:14px;font-size:13px;color:var(--navy);line-height:1.7;max-height:200px;overflow-y:auto;" contenteditable="true"></div>
+      <div id="formatted-notes" style="background:#fff;border:1.5px solid var(--blue);border-radius:10px;padding:14px;font-size:13px;color:var(--navy);line-height:1.7;">
+        <div id="fn-top"></div>
+        <div id="fn-narrative-label" style="font-size:11px;font-weight:700;color:var(--g4);line-height:1.4;margin-bottom:4px;">Narrative (tap to correct)</div>
+        <textarea id="fn-narrative" oninput="_narrativeEdited(this)" rows="4" style="display:block;width:100%;box-sizing:border-box;border:1px solid var(--g2);border-radius:8px;padding:10px;font-family:inherit;font-size:16px;color:var(--navy);line-height:1.5;resize:none;overflow:hidden;background:#FAFBFF;"></textarea>
+        <div id="fn-bottom" style="margin-top:12px;"></div>
+      </div>
       <div id="report-gaps" style="display:none;margin-top:8px;font-size:12px;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:8px 10px;line-height:1.5;"></div>
     </div>
 
@@ -1158,6 +1165,9 @@ if ((localStorage.getItem('mea_api_url') || '').includes('localhost')) localStor
 // remember and nothing stale cached on someone's phone.
 const _selfHosted = location.hostname.endsWith('.onrender.com') ? location.origin : null;
 const API_BASE = localStorage.getItem('mea_api_url') || _selfHosted || 'https://mea-backend-um9p.onrender.com';
+// AbortSignal.timeout is missing on iPadOS 15 and older, where calling it throws
+// and takes the whole tap with it.
+const _timeoutSignal = ms => (window.AbortSignal && AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
 let authToken = null;
 let _tokenAt = 0;
 let apiConnected = false;
@@ -1237,6 +1247,8 @@ let voiceSeconds = 0;
 let usedVoice = false;
 let voiceTranscriptText = '';
 let formattedNotesText = '';
+let _citationGen = 0; // bumped for each new citation
+let _timeScreenSet = false; // the clock fills this screen once per citation, never over what was set
 let _lastPriceResults = { found: [], total: 0 };
 let _parsedPersonName = '';
 const ORDER = ['pin','dashboard','offense','location','time','notes','voice','voice-result','evidence-verify','code','scan-id','scanning','verify','q1','q2','q3','q4','review','confirm','case-summary'];
@@ -1267,11 +1279,33 @@ function resetCitationState() {
   // Clearing only the street is how a new citation picked up the last one's
   // town, state and zip, and how the last citation's narrative could reach the
   // next one's report.
+  _citationGen++; // an answer still on its way belongs to the last citation
+  _timeScreenSet = false;
   _resetLocationScreen();
   _resetIncidentSummary();
   _refreshSignInIfStale();
-  // Reset offense selection UI
-  document.querySelectorAll('.offense-card').forEach(c => c.classList.remove('selected'));
+  // Reset offense selection UI. With the old offense still lit and Next still
+  // on, an officer could tap straight through and file the wrong charge.
+  document.querySelectorAll('.off-row, .off-sub').forEach(c => c.classList.remove('selected'));
+  const offenseNext = document.getElementById('offense-next-btn');
+  if (offenseNext) { offenseNext.style.opacity = '.35'; offenseNext.style.pointerEvents = 'none'; }
+  const shopliftingSubs = document.getElementById('shoplifting-subs');
+  if (shopliftingSubs) shopliftingSubs.style.display = 'none';
+  document.querySelectorAll('.off-subs').forEach(p => { p.style.display = 'none'; p.innerHTML = ''; });
+  // Eligibility answers belong to one person. Continue stays off until this
+  // person has been answered for.
+  ['q1', 'q2', 'q3', 'q4'].forEach(q => {
+    document.querySelectorAll('#s-' + q + ' .toggle-btn').forEach(b => b.classList.remove('active-yes', 'active-no'));
+    const next = document.getElementById(q + '-next');
+    if (next) { next.style.opacity = '.4'; next.style.pointerEvents = 'none'; }
+  });
+  // The last person's name and items on the ID and confirmation screens.
+  const verifyName = document.getElementById('verify-header-name');
+  if (verifyName) verifyName.textContent = 'Participant';
+  const verifyStatus = document.getElementById('verify-scan-status');
+  if (verifyStatus) { verifyStatus.textContent = 'Enter participant details'; verifyStatus.style.color = 'var(--green)'; }
+  const confirmItems = document.getElementById('confirm-items-row');
+  if (confirmItems) confirmItems.style.display = 'none';
 }
 
 // ── CHARGE-CONTEXTUAL CONFIG (v2) ──
@@ -2004,6 +2038,8 @@ function goBack() {
   prevEl.classList.add('on', 'back');
   setTimeout(() => prevEl.classList.remove('back'), 300);
   cur = prev;
+  // A map measured while hidden, after a rotation for instance, draws broken.
+  if (prev === 'location') setTimeout(initLocMap, 300);
 }
 
 // ── PIN LOGIN ──
@@ -2452,13 +2488,16 @@ function selectSub(el, name) {
 
 // ── v2: Populate offense-time screen with the current moment ──
 function populateTimeScreen() {
-  const now = new Date();
+  if (_timeScreenSet) return;
+  _timeScreenSet = true;
+  // Down to the last five minutes, so 2:58 never reads as 2:00.
+  const now = new Date(Math.floor(Date.now() / 300000) * 300000);
   // Hour: 12-hour clock (1–12)
   const hour24 = now.getHours();
   const hour12 = ((hour24 + 11) % 12) + 1; // 0→12, 13→1, etc.
   const ampm = hour24 < 12 ? 'am' : 'pm';
   // Minute: round to nearest 5
-  const min5 = String(Math.round(now.getMinutes() / 5) * 5 % 60).padStart(2, '0');
+  const min5 = String(now.getMinutes()).padStart(2, '0');
 
   const hourSel = document.getElementById('time-hour');
   const minSel = document.getElementById('time-min');
@@ -2571,33 +2610,6 @@ function renderChargeContextPanel() {
     '</div>';
   panel.style.display = 'block';
 
-  // v2: Pre-fill the voice transcript & formatted incident report from the
-  // sub-category preset when the officer didn't dictate (demo case).
-  if (_subTranscript) {
-    const whatSaid = document.getElementById('voice-what-you-said');
-    if (whatSaid && !whatSaid.textContent.trim()) {
-      whatSaid.textContent = '"' + _subTranscript + '"';
-    }
-    voiceTranscriptText = voiceTranscriptText || _subTranscript;
-    const fmt = document.getElementById('formatted-notes');
-    if (fmt && !fmt.textContent.trim()) {
-      const summaryLine = (cfg.reviewLabel || 'Evidence') + ': ' + (cfg.fields || []).map(f => {
-        let v = chargeContextData[f.key];
-        if (v === undefined || v === null || v === '') return null;
-        if (v === 'yes') v = 'Yes'; else if (v === 'no') v = 'No';
-        return f.label + ' — ' + v;
-      }).filter(Boolean).join('; ');
-      fmt.innerHTML =
-        '<p style="margin:0 0 8px;"><strong>' + selectedOffense + '</strong> (' + cfg.statute + ')' +
-          (selectedSub ? ' · <span style="color:var(--blue);">' + selectedSub + '</span>' : '') + '</p>' +
-        '<p style="margin:0 0 8px;">' + _subTranscript + '</p>' +
-        '<p style="margin:0;font-size:12px;color:var(--g4);">' + summaryLine + '.</p>';
-    }
-    const readback = document.getElementById('readback-summary-text');
-    if (readback && !readback.textContent.trim()) {
-      readback.textContent = _subTranscript;
-    }
-  }
 }
 
 function setCtxYesNo(btn, key, val) {
@@ -2872,6 +2884,7 @@ function setAmPm(val, el) {
   el.style.borderColor = 'var(--blue)';
   el.style.background = 'rgba(20,75,216,.08)';
   el.style.color = 'var(--blue)';
+  el.classList.add('active-yes'); // every report reads this class: without it, tapping AM recorded PM
 }
 
 // ── VOICE DICTATION (Web Speech API with simulation fallback) ──
@@ -2929,7 +2942,7 @@ function startRealSpeech() {
   };
   recognition.onerror = (e) => {
     console.log('Speech recognition error:', e.error);
-    if (e.error === 'not-allowed') {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') {
       document.getElementById('voice-status').textContent = 'Microphone access denied — tap to allow in Settings, or type below';
       recognition = null;
       simulateTranscription();
@@ -2980,7 +2993,10 @@ function simulateTranscription() {
   document.getElementById('voice-status').textContent = 'Microphone unavailable — type your notes below';
   document.getElementById('voice-ring').classList.remove('recording');
   const el = document.getElementById('voice-transcript');
-  el.textContent = '';
+  // Keep what was heard before the microphone gave out, as words to edit. Left
+  // behind, it used to replace whatever the officer then typed here.
+  el.textContent = liveTranscript.trim();
+  liveTranscript = '';
   // Replace the transcript display with a textarea for manual input
   el.contentEditable = 'true';
   el.style.cssText += 'border:1.5px solid rgba(255,255,255,.2);border-radius:12px;padding:14px;min-height:120px;font-size:15px;text-align:left;outline:none;background:rgba(255,255,255,.05);cursor:text;';
@@ -3014,15 +3030,20 @@ function stopVoice() {
 let _aiParsedData = null; // Store AI-parsed transcript data
 let _narrativeSeq = 0;         // only the newest request may write its answer
 let _narrativeState = 'none';  // none | pending | done | failed
-let _narrativeFor = null;      // the exact words the current narrative was built from
-let _acceptWhenReady = false;  // Accept was tapped while the narrative was still coming
+let _narrativeFor = null;      // what the current narrative was built from: words, place and offense
+let _officerNarrative = null;  // the narrative as the officer corrected it; null means untouched
+let _rawDictation = '';        // exactly what was spoken, kept for the record if the words are later edited
+let _summaryOpenedAt = 0;      // when the summary last opened, to ignore a stray second tap
+let _itemsPricing = 0;         // price lookups still running
+let _identifySeq = 0;          // only the newest photo identification may fill the panel
 
 function finishVoice() {
   clearInterval(voiceTimer);
   if (recognition) { recognition.stop(); recognition = null; }
   // If we have a live transcript from speech recognition, use it
+  const spokeWords = !!liveTranscript.trim();
   let spoken;
-  if (liveTranscript.trim()) {
+  if (spokeWords) {
     spoken = liveTranscript.trim();
     document.getElementById('voice-transcript').textContent = '"' + spoken + '"';
   } else {
@@ -3042,12 +3063,14 @@ function finishVoice() {
   const box = document.getElementById('notes-textarea');
   const combined = [box ? box.value.trim() : '', spoken].filter(Boolean).join(' ');
   if (box) box.value = combined;
-  _openIncidentSummary(combined, true);
+  if (spokeWords) _rawDictation = [_rawDictation, spoken].filter(Boolean).join(' ');
+  // Words typed on the "microphone unavailable" screen are typed words, not voice.
+  _openIncidentSummary(combined, spokeWords);
   // The recording is over, so Back from the summary lands on the box rather
   // than on a finished recording screen.
   navHistory = navHistory.filter(h => h !== 'voice');
   // Speak the prompt to the officer after a short delay
-  setTimeout(() => {
+  if (spokeWords) setTimeout(() => {
     if (authToken) {
       speakPrompt('Transcription complete. Analyzing your report now.');
     } else {
@@ -3060,14 +3083,20 @@ function finishVoice() {
 // takes the same road to the items screen and gets the same narrative.
 function continueFromNotes() {
   const box = document.getElementById('notes-textarea');
-  // v2 demo: with nothing typed, the charge's sample transcript stands in, as it
-  // does when nothing was dictated. It never replaces what an officer wrote.
-  const typed = (box ? box.value : '').trim() || _subTranscript || '';
+  const typed = (box ? box.value : '').trim();
   // Came back from the summary without changing the dictated words: still voice.
   _openIncidentSummary(typed, usedVoice && typed === voiceTranscriptText);
 }
 
 function _detailsNoun() { return usedVoice ? 'dictation' : 'notes'; }
+
+// The narrative is written from the words AND the place and offense, so a
+// corrected town has to count as a change, or the opening and the narrative
+// end up naming different places.
+function _narrativeKey(text) {
+  const ctx = _reportContext();
+  return JSON.stringify([text, ctx.location, ctx.offense]);
+}
 
 // One road from "what happened" to the items screen, however the officer gave it.
 function _openIncidentSummary(details, viaVoice) {
@@ -3079,13 +3108,15 @@ function _openIncidentSummary(details, viaVoice) {
     : (text ? 'Incident details received' : 'No incident details yet');
   document.getElementById('vr-what-label').textContent = viaVoice ? '🎤 What you said' : '✏️ What you typed';
   document.getElementById('voice-what-you-said').textContent = text ? '"' + text + '"' : 'Nothing entered.';
-  // Same words as last time (Back, then Continue with no changes): keep the
-  // narrative already written or still on its way, and do not ask again.
-  const sameWords = text === _narrativeFor && (_narrativeState === 'done' || _narrativeState === 'pending');
-  if (!sameWords) _requestNarrative(text);
+  // Nothing changed (Back, then Continue): keep the narrative already written,
+  // still on its way, or corrected by hand, and do not ask again.
+  const same = _narrativeKey(text) === _narrativeFor &&
+    (_narrativeState === 'done' || _narrativeState === 'pending' || _officerNarrative !== null);
+  if (!same) _requestNarrative(text);
+  _summaryOpenedAt = Date.now();
   generateFormattedReport(text, _lastPriceResults || { found: [], total: 0 });
   nav('voice-result');
-  setTimeout(updateReadbackText, 500);
+  setTimeout(() => { _autosizeNarrative(); updateReadbackText(); }, 350);
 }
 
 function _setFormatStatus(text, tone) {
@@ -3097,10 +3128,7 @@ function _setFormatStatus(text, tone) {
 
 // Everything the app already knows that the narrative should agree with.
 function _reportContext() {
-  const locInput = document.getElementById('loc-address');
-  const cityInput = document.getElementById('loc-city');
-  const stateInput = document.getElementById('loc-state');
-  const location = [locInput && locInput.value, cityInput && cityInput.value, stateInput && stateInput.value].filter(Boolean).join(', ');
+  const location = _fullLocation(false);
   const verifyInputs = document.querySelectorAll('#s-verify .form-input');
   const subjectName = verifyInputs.length >= 2 ? ((verifyInputs[0].value || '') + ' ' + (verifyInputs[1].value || '')).trim() : '';
   const dateInput = document.querySelector('#s-time input[type="date"]');
@@ -3121,88 +3149,95 @@ function _reportContext() {
   };
 }
 
-function _setAcceptWaiting(waiting) {
+// Accept stays disabled while the report is still changing, and the officer
+// decides when to move on. It used to carry on by itself when the narrative
+// landed, which pulled people off the items screen mid-task.
+function _updateAcceptButton() {
   const btn = document.getElementById('vr-accept-btn');
   if (!btn) return;
-  btn.disabled = waiting;
+  const waiting = _narrativeState === 'pending' ? 'Finishing the report…'
+    : (_itemsPricing > 0 ? 'Checking item prices…' : '');
+  btn.disabled = !!waiting;
   btn.style.opacity = waiting ? '.6' : '';
-  btn.textContent = waiting ? 'Finishing the report…' : 'Accept & Continue';
-}
-
-// The request is finished, one way or the other. If the officer tapped Accept
-// while waiting, carry on, but only on success: a failure has to be read.
-function _narrativeSettled() {
-  const wanted = _acceptWhenReady;
-  _acceptWhenReady = false;
-  _setAcceptWaiting(false);
-  if (wanted && _narrativeState === 'done' && cur === 'voice-result') acceptFormattedNotes();
+  btn.textContent = waiting || 'Accept & Continue';
 }
 
 function _requestNarrative(transcript) {
   const seq = ++_narrativeSeq; // any answer still on its way for older words is now ignored
   const noun = _detailsNoun();
   const asGiven = usedVoice ? 'it as spoken' : 'them as typed';
-  const putInto = 'Put ' + (usedVoice ? 'it' : 'them') + ' into report language before filing, or go back and tap Continue to try again.';
-  _narrativeFor = transcript;
+  const fixIt = 'Correct ' + (usedVoice ? 'it' : 'them') + ' in the report below before filing, or go back and tap Continue to try again.';
+  const hadCorrections = _officerNarrative !== null;
+  _narrativeFor = _narrativeKey(transcript);
   _aiParsedData = null;
+  _officerNarrative = null;
   _aiStoreName = '';
-  _acceptWhenReady = false;
-  _setAcceptWaiting(false);
+  _clearSuggestions();
   if (!transcript) {
     _narrativeState = 'none';
-    _setFormatStatus('Go back to type or dictate what happened, or add the items below.', 'warn');
+    _updateAcceptButton();
+    _setFormatStatus('Go back to type or dictate what happened.', 'warn');
     return;
   }
   if (!authToken) {
     ensureSignedIn();
     _narrativeState = 'failed';
-    _setFormatStatus('Not connected right now, so your ' + noun + ' could not be formalized. The report shows ' + asGiven + '. ' + putInto, 'warn');
+    _updateAcceptButton();
+    _setFormatStatus('Not connected right now, so your ' + noun + ' could not be formalized. The report shows ' + asGiven + '. ' + fixIt, 'warn');
     return;
   }
   _narrativeState = 'pending';
+  _updateAcceptButton();
   _setFormatStatus('Formalizing your ' + noun + ' into report language…', 'pending');
-  const render = () => {
+  const settle = () => {
     generateFormattedReport(transcript, _lastPriceResults || { found: [], total: 0 });
     updateReadbackText();
+    _updateAcceptButton();
   };
   const fail = (reason) => {
     console.log('[MEA] narrative not formalized:', reason);
     _narrativeState = 'failed';
-    _setFormatStatus('Could not formalize your ' + noun + '. The report shows ' + asGiven + '. ' + putInto, 'warn');
-    render();
-    _narrativeSettled();
+    _setFormatStatus('Could not formalize your ' + noun + '. The report shows ' + asGiven + '. ' + fixIt, 'warn');
+    settle();
   };
   const ctx = _reportContext();
   fetch(API_BASE + '/api/ai/parse-transcript', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
     body: JSON.stringify(Object.assign({ transcript }, ctx)),
-    signal: AbortSignal.timeout(60000)
+    signal: _timeoutSignal(60000)
   }).then(r => r.json()).then(ai => {
     if (seq !== _narrativeSeq) return; // the words changed, or this is a new citation
     if (!ai || ai.fallback || !ai.narrative) return fail(ai && (ai.reason || ai.error));
     _aiParsedData = ai;
     _narrativeState = 'done';
     console.log('[MEA] AI parsed transcript:', ai);
-    _setFormatStatus('Narrative formalized. Read it and correct anything that is not what happened.', 'ok');
+    _setFormatStatus(hadCorrections
+      ? 'Narrative rewritten from your changes. Your earlier corrections were not carried over, so read it again.'
+      : 'Narrative formalized. Read it and correct anything that is not what happened.', 'ok');
 
-    // Auto-fill person name if AI found one
+    // Fill the name if the AI found one, replacing only what it filled itself.
     if (ai.personName) {
       _parsedPersonName = ai.personName;
       const verifyInputs = document.querySelectorAll('#s-verify .form-input');
       if (verifyInputs.length >= 2) {
         const parts = ai.personName.split(' ');
-        if (!verifyInputs[0].value) verifyInputs[0].value = parts[0] || '';
-        if (!verifyInputs[1].value) verifyInputs[1].value = parts.slice(1).join(' ') || '';
+        const fill = (el, value) => { if (!el.value || el.value === el.dataset.aiFilled) { el.value = value; el.dataset.aiFilled = value; } };
+        fill(verifyInputs[0], parts[0] || '');
+        fill(verifyInputs[1], parts.slice(1).join(' ') || '');
       }
     }
-    // Auto-fill location if AI found a store address and the field is empty
-    const locInput = document.getElementById('loc-address');
-    if (ai.storeAddress && locInput && !locInput.value) locInput.value = ai.storeAddress;
+    // A street named in the words only goes in when the location is still blank,
+    // and through a lookup, so a town comes with it and nothing gets mixed.
+    if (ai.storeAddress && LOC_FIELDS.every(id => { const f = document.getElementById(id); return f && !f.value.trim(); })) {
+      document.getElementById('loc-address').value = ai.storeAddress;
+      _locTouched['loc-address'] = true;
+      findAddressOnMap();
+    }
     if (ai.storeName) _aiStoreName = ai.storeName;
 
     // Items the officer mentioned are suggestions until confirmed
-    const suggested = ai.items && ai.items.length ? _showAiSuggestedItems(ai.items) : 0;
+    const suggested = _showAiSuggestedItems(ai.items || []);
     if (suggested) {
       const items = suggested + ' item' + (suggested > 1 ? 's' : '');
       showToast('AI found ' + items + '. Review them below.');
@@ -3210,45 +3245,132 @@ function _requestNarrative(transcript) {
     } else {
       showToast('Narrative formalized' + (ai.personName ? '. Subject: ' + ai.personName : ''));
     }
-    render();
-    _narrativeSettled();
+    settle();
   }).catch(err => {
     if (seq !== _narrativeSeq) return;
     fail(err && err.message);
   });
 }
 
-// Corrections typed into the narrative are the record. Without this they
-// vanished the moment an item was added, and never reached the report that gets
-// copied. Only ever runs while the screen is on show, so the line breaks are real.
-function _syncNarrativeEdits() {
-  const el = document.getElementById('fn-narrative');
-  if (!el || !_aiParsedData) return;
-  const edited = (el.innerText || '').trim();
-  if (edited) _aiParsedData.narrative = edited;
+// The narrative as it stands: what the officer corrected it to, else what the AI
+// wrote, else nothing yet.
+function _currentNarrative() {
+  if (_officerNarrative !== null) return _officerNarrative.trim();
+  if (_aiParsedData && !_aiParsedData.fallback && _aiParsedData.narrative) return String(_aiParsedData.narrative).trim();
+  return '';
+}
+
+// Every keystroke in the narrative box is the record. It is its own box, so
+// Return adds a line, deleting it all works, and nothing above or below can be
+// typed over and lost.
+function _narrativeEdited(el) {
+  _officerNarrative = el.value;
+  _autosizeNarrative();
+  updateReadbackText();
+}
+
+function _autosizeNarrative() {
+  const box = document.getElementById('fn-narrative');
+  if (!box || box.offsetParent === null) return; // a hidden box measures as zero
+  box.style.height = 'auto';
+  box.style.height = (box.scrollHeight + 2) + 'px';
+}
+
+function _renderNarrativeBox(transcript) {
+  const box = document.getElementById('fn-narrative');
+  const label = document.getElementById('fn-narrative-label');
+  if (!box || !label) return;
+  const current = _currentNarrative();
+  let value = '', text = 'Narrative (tap to correct)', warn = false, show = true;
+  box.readOnly = false;
+  box.placeholder = '';
+  if (_narrativeState === 'pending') {
+    text = 'Narrative';
+    box.placeholder = 'Turning your ' + _detailsNoun() + ' into report language…';
+    box.readOnly = true;
+  } else if (current || _officerNarrative !== null) {
+    value = current;
+  } else if (!transcript) {
+    text = 'No incident details entered. Go back to type or dictate what happened.';
+    warn = true;
+    show = false;
+  } else {
+    value = transcript;
+    text = (usedVoice ? 'Your dictation as spoken' : 'Your notes as typed') + ', not yet in report language. Correct them here before filing.';
+    warn = true;
+  }
+  label.textContent = text;
+  label.style.color = warn ? '#B45309' : 'var(--g4)';
+  box.style.display = show ? '' : 'none';
+  // Never move the cursor under someone who is typing: a price can land mid-sentence.
+  const typing = document.activeElement === box && !box.readOnly && _officerNarrative !== null;
+  if (!typing) box.value = _narrativeState === 'pending' ? '' : value;
+  _autosizeNarrative();
+}
+
+// The finished report as filed, kept apart from the officer's own words.
+function _formattedReportText() {
+  const part = id => { const el = document.getElementById(id); return el ? (el.innerText || '').trim() : ''; };
+  const asGiven = usedVoice ? "Officer's dictation, as spoken" : "Officer's notes, as typed";
+  const narrative = _currentNarrative() ||
+    (_officerNarrative === null && voiceTranscriptText ? asGiven + ' (not yet in report language): "' + voiceTranscriptText + '"' : '');
+  return [part('fn-top'), narrative, part('fn-bottom')].filter(Boolean).join('\n\n');
+}
+
+function _clearSuggestions() {
+  _aiSuggestedItems = [];
+  const box = document.getElementById('ai-suggestions-box');
+  if (box) box.remove();
+  const hint = document.getElementById('photo-section-hint');
+  if (hint) hint.textContent = 'Items detected from your report are shown below. Tap to correct, or snap photos to verify and add more.';
+  if (_stolenItems.length === 0) {
+    const list = document.getElementById('items-list-container');
+    if (list) list.style.display = 'none';
+  }
 }
 
 // Back to a blank summary screen for a new citation.
 function _resetIncidentSummary() {
   _narrativeSeq++; // an answer still on its way belongs to the last citation
+  _identifySeq++;
   _narrativeState = 'none';
   _narrativeFor = null;
   _aiParsedData = null;
+  _officerNarrative = null;
+  _rawDictation = '';
   _aiStoreName = '';
-  _acceptWhenReady = false;
-  _setAcceptWaiting(false);
-  ['voice-what-you-said', 'formatted-notes', 'report-gaps', 'formal-report-gaps', 'formal-report-body',
-   'items-list-rows', 'item-photo-thumbs', 'price-lookup-results', 'readback-summary-text', 'photo-alternatives'
+  _itemsPricing = 0;
+  _summaryOpenedAt = 0;
+  _updateAcceptButton();
+  ['voice-what-you-said', 'fn-top', 'fn-bottom', 'report-gaps', 'formal-report-gaps', 'formal-report-body',
+   'items-list-rows', 'item-photo-thumbs', 'price-lookup-results', 'readback-summary-text', 'photo-alternatives',
+   'item-voice-live', 'items-jurisdiction-badge'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
   ['report-gaps', 'formal-report-gaps', 'items-list-container', 'add-another-prompt', 'price-lookup-results',
-   'item-photo-panel', 'photo-alternatives'
+   'item-photo-panel', 'photo-alternatives', 'photo-ai-confidence', 'item-voice-status'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  const narrativeBox = document.getElementById('fn-narrative');
+  if (narrativeBox) { narrativeBox.value = ''; narrativeBox.readOnly = false; narrativeBox.placeholder = ''; }
   const total = document.getElementById('items-total-amount');
   if (total) total.textContent = '$0.00';
-  const suggestions = document.getElementById('ai-suggestions-box');
-  if (suggestions) suggestions.remove();
-  const hint = document.getElementById('photo-section-hint');
-  if (hint) hint.textContent = 'Items detected from your report are shown below. Tap to correct, or snap photos to verify and add more.';
+  _clearSuggestions();
+  // The photo panel and item boxes hold the last item's name and AI details.
+  const nameInput = document.getElementById('photo-item-name-input');
+  if (nameInput) {
+    nameInput.value = '';
+    nameInput.disabled = false;
+    nameInput.placeholder = 'e.g. Don Julio 1942, Tide Pods...';
+    ['aiPrice', 'aiBrand', 'aiCategory', 'aiConfidence', 'searchQuery', 'aiName'].forEach(k => { nameInput.dataset[k] = ''; });
+  }
+  const identifyStatus = document.getElementById('photo-ai-status');
+  if (identifyStatus) identifyStatus.style.display = 'none';
+  const manual = document.getElementById('item-manual-input');
+  if (manual) manual.value = '';
+  // Anything still listening or talking belongs to the last person.
+  _itemVoiceActive = false;
+  if (_itemVoiceRecognition) { try { _itemVoiceRecognition.abort(); } catch (e) {} _itemVoiceRecognition = null; }
+  if (typeof stopReadBack === 'function') stopReadBack();
+  if (typeof stopSpokenPrompts === 'function') stopSpokenPrompts();
 }
 
 function _escapeHtml(s) {
@@ -3285,19 +3407,17 @@ function _showAiSuggestedItems(items) {
   const _cfg = getCharge();
   if (_cfg && _cfg.evidenceMode !== 'items') return;
   // Whatever is already on the list stays on it. This answer can arrive after
-  // the officer has started photographing, and it used to wipe the list.
-  const have = _stolenItems.map(i => String(i.name).toLowerCase());
+  // the officer has started photographing, and it used to wipe the list. Only an
+  // identical name counts as a duplicate: a loose match would swallow "Shampoo"
+  // because "Ham" is on the list, and the officer can always dismiss a repeat.
+  const have = _stolenItems.map(i => String(i.name).trim().toLowerCase());
   const isNew = it => {
-    const n = String(it.name || '').toLowerCase();
-    return n && !have.some(h => h.includes(n) || n.includes(h));
+    const n = String(it.name || '').trim().toLowerCase();
+    return n && !have.includes(n);
   };
-  _aiSuggestedItems = items.filter(isNew).map((it, i) => ({ id: i, name: it.name, qty: it.qty || 1, confirmed: false }));
-
-  const oldBox = document.getElementById('ai-suggestions-box');
-  if (!_aiSuggestedItems.length) {
-    if (oldBox) oldBox.remove();
-    return 0;
-  }
+  _clearSuggestions();
+  _aiSuggestedItems = (items || []).filter(isNew).map((it, i) => ({ id: i, name: it.name, qty: it.qty || 1, confirmed: false }));
+  if (!_aiSuggestedItems.length) return 0;
 
   // Build suggestion UI inside the voice-result screen
   const container = document.getElementById('items-list-container');
@@ -3362,7 +3482,7 @@ async function _confirmAiSuggestion(idx) {
   if (!item || item.confirmed) return;
   item.confirmed = true;
   _renderAiSuggestions();
-  await addItemAndSearchPrice(item.name, item.qty);
+  if (!(await addItemAndSearchPrice(item.name, item.qty))) return;
   generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
   updateReadbackText();
 }
@@ -3371,7 +3491,7 @@ async function _confirmAllAiSuggestions() {
   for (const item of _aiSuggestedItems) {
     if (!item.confirmed) {
       item.confirmed = true;
-      await addItemAndSearchPrice(item.name, item.qty);
+      if (!(await addItemAndSearchPrice(item.name, item.qty))) return;
     }
   }
   _renderAiSuggestions();
@@ -3520,7 +3640,7 @@ async function searchSingleItemPrice(query, jurisdiction, opts) {
     try {
       const r = await fetch(API_BASE + '/api/price-search?q=' + encodeURIComponent(query) + '&loc=' + encodeURIComponent(jurisdiction || '') + (verify ? '&verify=1' : ''), {
         headers: {'Authorization': 'Bearer ' + authToken},
-        signal: AbortSignal.timeout(verify ? 75000 : 3000)
+        signal: _timeoutSignal(verify ? 75000 : 3000)
       });
       if (r.ok) {
         const d = await r.json();
@@ -3769,12 +3889,14 @@ async function searchItemPricesRealTime(transcript) {
 // Rebuilds the incident report from ALL live data sources:
 // transcript, AI parse, verify screen, location screen, stolen items
 function generateFormattedReport(transcript, priceResults) {
-  const text = (transcript || '').toLowerCase();
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
   const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}).replace(':','');
 
-  // ── Person name: priority = verify screen > AI > regex > "the subject" ──
+  // ── Person name: priority = verify screen > AI > "the subject" ──
+  // No guessing from the words. Any two capitalized words used to be taken for a
+  // name, so "Store Manager was the one who called" put a store manager on the
+  // report as the subject.
   let personName = null;
   const verifyInputs = document.querySelectorAll('#s-verify .form-input');
   if (verifyInputs.length >= 2) {
@@ -3784,25 +3906,6 @@ function generateFormattedReport(transcript, priceResults) {
   }
   if (!personName && _aiParsedData && _aiParsedData.personName) {
     personName = _aiParsedData.personName;
-  }
-  if (!personName && transcript) {
-    const namePatterns = [
-      /(?:name is|named|identified as|stopped|detained|individual[,]?\s+)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/i,
-      /(?:this (?:guy|person|individual|man|woman|subject)[,]?\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/i,
-      /([A-Z][a-z]+\s+[A-Z][a-z]+)(?:\s*,?\s*(?:was|he|she|they|had|who))/,
-    ];
-    const skip = ['the store','the manager','the officer','i was','i saw','so i','and i','no warrants','first time','baby formula'];
-    for (const pat of namePatterns) {
-      const m = transcript.match(pat);
-      // The patterns are case-insensitive so the lead-in matches, which let
-      // "this guy just walked out with" capture "just walked out with" as a
-      // name. A name is two or more capitalised words.
-      const looksLikeName = m && m[1] && m[1].trim().split(/\s+/).every(w => /^[A-Z]/.test(w));
-      if (looksLikeName && !skip.some(s => m[1].toLowerCase().includes(s))) {
-        personName = m[1].trim();
-        break;
-      }
-    }
   }
   if (!personName) personName = 'the subject';
   _parsedPersonName = personName;
@@ -3822,41 +3925,32 @@ function generateFormattedReport(transcript, priceResults) {
   }
   _lastPriceResults = { found: itemsFound, total: totalValue };
 
+  // An item with no verified price has no value to state, and the threshold
+  // decides the charge, so the report says so rather than printing $0.00.
+  const unpriced = itemsFound.some(f => !(f.unitPrice > 0));
   let itemsLine = '';
   if (itemsFound.length > 0) {
-    itemsLine = itemsFound.map(f =>
-      f.item + (f.qty > 1 ? ` (${f.qty} units, $${f.unitPrice.toFixed(2)} each)` : ` ($${f.unitPrice.toFixed(2)})`)
-    ).join('; ') + '.';
+    itemsLine = itemsFound.map(f => _escapeHtml(f.item) + (
+      !(f.unitPrice > 0) ? ' (price not verified)'
+        : f.qty > 1 ? ` (${f.qty} units, $${f.unitPrice.toFixed(2)} each)` : ` ($${f.unitPrice.toFixed(2)})`
+    )).join('; ') + '.';
   }
 
-  // ── Location: from location screen ──
-  const locInput = document.getElementById('loc-address');
-  let location = (locInput && locInput.value) ? locInput.value : 'the incident location';
-  const cityInput = document.getElementById('loc-city');
-  const stateInput = document.getElementById('loc-state');
-  if (cityInput && cityInput.value && stateInput && stateInput.value) {
-    if (!location.includes(cityInput.value)) location += ', ' + cityInput.value + ', ' + stateInput.value;
-  }
-
-  // ── Store name: AI > regex > transcript ──
-  let storeName = _aiStoreName || '';
-  if (!storeName && transcript) {
-    const storePatterns = [/(?:at|near|outside|from|leaving)\s+(?:the\s+)?([A-Z][A-Za-z'\s]+(?:Pharmacy|Market|Store|Target|Walmart|CVS|Walgreens|Stop\s*&?\s*Shop|Star\s+Market|7-Eleven|Dunkin|Starbucks))/i,
-      /(?:CVS|Walgreens|Target|Walmart|Stop\s*&?\s*Shop|Star\s+Market|Market\s+Basket|7-Eleven|Dunkin|Starbucks|Home\s+Depot|Costco|TJ\s*Maxx|Dollar\s+Tree|Rite\s+Aid)/i];
-    for (const sp of storePatterns) {
-      const sm = transcript.match(sp);
-      if (sm) { storeName = (sm[1] || sm[0]).trim().replace(/^the\s+/i, ''); break; }
-    }
-  }
+  // ── Location and store ──
+  const location = _fullLocation(false) || 'the incident location';
+  const storeName = _aiStoreName || '';
 
   // ── Offense & statute ──
   const offense = selectedOffense || 'Shoplifting';
   const statute = _offenseStatutes[offense] || 'G.L. c. 266, §30A';
-  const thresholdLabel = totalValue > 250 ? 'over $250' : 'under $250';
+  const thresholdLabel = !itemsFound.length ? '' : unpriced ? 'value not established' : (totalValue > 250 ? 'over $250' : 'under $250');
+  const offenseLine = offense + (thresholdLabel ? (unpriced ? ', ' : ' ') + thresholdLabel : '') + ', ' + statute;
 
-  // ── Cooperation & prior offenses ──
-  const cooperative = (_aiParsedData && _aiParsedData.cooperative !== null) ? _aiParsedData.cooperative : /cooperat|compliant|without incident|calm|no resist/i.test(text);
-  const noWarrants = (_aiParsedData && _aiParsedData.priorOffenses !== null) ? !_aiParsedData.priorOffenses : /no warrant|no prior|first time|no record|no history|clean record/i.test(text);
+  // ── Cooperation & prior offenses: only what the AI read in the officer's words ──
+  // A keyword search used to read "uncooperative" as cooperative and "two priors
+  // and no warrants" as no priors.
+  const cooperative = !!(_aiParsedData && _aiParsedData.cooperative === true);
+  const noPriors = !!(_aiParsedData && _aiParsedData.priorOffenses === false);
 
   // ── Date/Time from time screen ──
   const timeHour = document.getElementById('time-hour');
@@ -3884,47 +3978,49 @@ function generateFormattedReport(transcript, priceResults) {
   }
 
   // ══ BUILD THE FORMAL REPORT ══
-  const aiNarrative = (_aiParsedData && !_aiParsedData.fallback && _aiParsedData.narrative) ? String(_aiParsedData.narrative).trim() : '';
-
   // Says when and where, and nothing about how the officer came to be there.
   // The narrative says that, in the officer's own facts.
-  const opening = `On ${reportDateStr}, at approximately ${reportTimeStr} hours, the reporting officer documented the following incident at ${storeName ? _escapeHtml(storeName) + ', ' : ''}${_escapeHtml(location)}.<br><br>`;
+  const opening = `On ${reportDateStr}, at approximately ${reportTimeStr} hours, the reporting officer documented the following incident at ${storeName ? _escapeHtml(storeName) + ', ' : ''}${_escapeHtml(location)}.`;
   const addressPara = participantAddr ? `Subject's address on file: <strong>${_escapeHtml(participantAddr)}</strong>.<br><br>` : '';
-  const itemsPara = itemsLine ? `<strong>Stolen Items (${itemsFound.length}):</strong> ${itemsLine}<br>Estimated total retail value: <strong>$${totalValue.toFixed(2)}</strong> (${thresholdLabel}).<br><br>` : '';
-  const eligibility = `Based on the nature of the offense (${offense} ${thresholdLabel}, ${statute}), ` +
-    (noWarrants ? 'the absence of prior offenses, and ' : '') +
-    (cooperative ? `the subject's cooperative demeanor, ` : '') +
-    `this incident qualifies for <strong>pre-arrest diversion</strong> under the SWIFT program.<br><br>`;
+  const itemsPara = !itemsLine ? '' : `<strong>Stolen Items (${itemsFound.length}):</strong> ${itemsLine}<br>` +
+    (unpriced
+      ? `Estimated total retail value: <strong>not established</strong>, because not every item has a verified price.<br><br>`
+      : `Estimated total retail value: <strong>$${totalValue.toFixed(2)}</strong> (${thresholdLabel}).<br><br>`);
+  const grounds = [`the nature of the offense (${_escapeHtml(offenseLine)})`];
+  if (noPriors) grounds.push('the absence of prior offenses');
+  if (cooperative) grounds.push(`the subject's cooperative demeanor`);
+  const groundsText = grounds.length < 3 ? grounds.join(' and ') : grounds.slice(0, -1).join(', ') + ', and ' + grounds[grounds.length - 1];
+  const eligibility = `Based on ${groundsText}, this incident qualifies for <strong>pre-arrest diversion</strong> under the SWIFT program.<br><br>`;
 
-  // Only ever what the officer gave. This used to fall back on stock sentences
-  // keyed to the offense ("the store manager reported...", "was detained at the
-  // scene"), which an officer could have accepted as fact nobody had stated.
-  let narrativeBlock;
-  if (aiNarrative) {
-    narrativeBlock = '<span id="fn-narrative">' + _escapeHtml(aiNarrative).replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>') + '</span><br><br>';
-  } else if (!transcript) {
-    narrativeBlock = `<span style="color:#B45309;"><strong>No incident details entered.</strong> Go back to type or dictate what happened.</span><br><br>`;
-  } else if (_narrativeState === 'pending') {
-    narrativeBlock = `<em style="color:var(--g4);">Turning your ${_detailsNoun()} into report language…</em><br><br>`;
-  } else {
-    narrativeBlock = `<span style="color:#B45309;"><strong>${usedVoice ? "Officer's dictation, as spoken" : "Officer's notes, as typed"} (not yet in report language):</strong> "${_escapeHtml(transcript)}"</span><br><br>`;
-  }
-
-  const report = `<strong>Incident Report: Officer M. Dercolo, Badge #4187</strong><br><br>` + opening + narrativeBlock + addressPara + itemsPara + eligibility + `<em>End of narrative</em>`;
-  document.getElementById('formatted-notes').innerHTML = report;
+  // The narrative has its own box between these two, and only what the officer
+  // gave ever goes in it. This used to fall back on stock sentences keyed to the
+  // offense ("was detained at the scene") that nobody had stated.
+  document.getElementById('fn-top').innerHTML = `<strong>Incident Report: Officer M. Dercolo, Badge #4187</strong><br><br>` + opening + `<br><br>`;
+  document.getElementById('fn-bottom').innerHTML = addressPara + itemsPara + eligibility + `<em>End of narrative</em>`;
+  _renderNarrativeBox(transcript);
   _renderReportGaps('report-gaps');
 }
 function acceptFormattedNotes() {
-  // Still formalizing: moving on now would file the placeholder. Wait, then
-  // carry on by itself when the narrative lands.
-  if (_narrativeState === 'pending') {
-    _acceptWhenReady = true;
-    _setAcceptWaiting(true);
+  // This button sits exactly where Continue was, so a quick second tap on
+  // Continue lands here. That was how an officer jumped straight to the citation
+  // code without ever seeing the items screen.
+  if (Date.now() - _summaryOpenedAt < 700) return;
+  if (_narrativeState === 'pending' || _itemsPricing > 0) return;
+  // Still listening for items: take what was heard, and let the officer see it.
+  // Otherwise the microphone stays open on the next screens and whatever is said
+  // to the subject becomes an item.
+  if (_itemVoiceActive) { stopItemVoice(); return; }
+  // A photographed item not yet added would be dropped without a word.
+  const panel = document.getElementById('item-photo-panel');
+  if (panel && panel.style.display !== 'none' && _currentPhotoData) {
+    showToast('Tap Add Item for this photo first');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
+  stopReadBack();
   // The finished report is kept apart from the officer's own words, which stay
   // in the box so that coming back shows what they actually wrote.
-  formattedNotesText = voiceTranscriptText ? document.getElementById('formatted-notes').innerText : '';
+  formattedNotesText = voiceTranscriptText ? _formattedReportText() : '';
   // Reset history to skip voice screens
   navHistory = navHistory.filter(h => h !== 'voice' && h !== 'voice-result');
   // v2: route non-shoplifting charges through the Evidence Verification screen
@@ -3979,6 +4075,7 @@ function handleItemCamera(input) {
 const IDENTIFY_TIMEOUT_MS = 60000;
 
 function identifyPhotoItem(photoData) {
+  const seq = ++_identifySeq; // only this photo's answer may fill the panel
   const nameInput = document.getElementById('photo-item-name-input');
   const identifyStatus = document.getElementById('photo-ai-status');
   const confLabel = document.getElementById('photo-ai-confidence');
@@ -4006,6 +4103,7 @@ function identifyPhotoItem(photoData) {
 
   // Belt and braces: AbortSignal covers the network, this covers everything else.
   const watchdog = setTimeout(function() {
+    if (seq !== _identifySeq) return;
     release();
     nameInput.focus();
     showToast('Identification timed out — type the item name, or tap the photo to retry');
@@ -4015,12 +4113,13 @@ function identifyPhotoItem(photoData) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
     body: JSON.stringify({ image: photoData, location: (typeof _priceLocation === 'function' ? _priceLocation() : '') || (locInput ? locInput.value : '') }),
-    signal: AbortSignal.timeout(IDENTIFY_TIMEOUT_MS)
+    signal: _timeoutSignal(IDENTIFY_TIMEOUT_MS)
   }).then(function(r) {
     if (!r.ok) throw new Error('identify failed: ' + r.status);
     return r.json();
   }).then(function(ai) {
     clearTimeout(watchdog);
+    if (seq !== _identifySeq) return; // a newer photo, or a new citation
     release();
 
     if (ai.fallback || !ai.name) {
@@ -4092,6 +4191,7 @@ function identifyPhotoItem(photoData) {
     }
   }).catch(function(err) {
     clearTimeout(watchdog);
+    if (seq !== _identifySeq) return;
     release();
     nameInput.focus();
     const timedOut = err && (err.name === 'TimeoutError' || err.name === 'AbortError');
@@ -4183,7 +4283,9 @@ async function confirmPhotoItem() {
   // retyped the name, in which case what they typed is what gets priced.
   const typed = nameInput.dataset.aiName && nameInput.value.trim() !== nameInput.dataset.aiName;
   const searchQuery = (!typed && nameInput.dataset.searchQuery) ? nameInput.dataset.searchQuery : itemName;
-  await addItemAndSearchPrice(itemName, qty, _currentPhotoData, aiPrice, searchQuery);
+  // Take everything this item needs before waiting on its price. A second photo
+  // can arrive during the wait, and clearing these afterwards erased it.
+  const photo = _currentPhotoData;
   _currentPhotoData = null;
   // Clear AI data
   nameInput.dataset.aiPrice = '';
@@ -4193,6 +4295,8 @@ async function confirmPhotoItem() {
   nameInput.dataset.aiName = '';
   const altBox = document.getElementById('photo-alternatives');
   if (altBox) { altBox.style.display = 'none'; altBox.innerHTML = ''; }
+  const added = await addItemAndSearchPrice(itemName, qty, photo, aiPrice, searchQuery);
+  if (!added) return; // a new citation started while this was being priced
 
   // Show "Add Another" prompt and scroll to it
   const prompt = document.getElementById('add-another-prompt');
@@ -4213,6 +4317,7 @@ function startItemVoice() {
   _itemVoiceRecognition.interimResults = true;
   _itemVoiceRecognition.lang = 'en-US';
 
+  document.getElementById('item-voice-live').textContent = '';
   let finalText = '';
   _itemVoiceRecognition.onresult = function(e) {
     let interim = '';
@@ -4224,7 +4329,14 @@ function startItemVoice() {
   };
   _itemVoiceRecognition.onerror = function() { stopItemVoice(); };
   _itemVoiceRecognition.onend = function() {
-    if (_itemVoiceActive) processItemVoiceInput(finalText.trim());
+    // iOS ends recognition by itself after a silence. Take what was heard once and
+    // close the panel, or Done adds the same items a second time.
+    if (!_itemVoiceActive) return;
+    _itemVoiceActive = false;
+    _itemVoiceRecognition = null;
+    document.getElementById('item-voice-status').style.display = 'none';
+    document.getElementById('item-voice-live').textContent = '';
+    processItemVoiceInput(finalText.trim());
   };
   _itemVoiceRecognition.start();
   _itemVoiceActive = true;
@@ -4236,6 +4348,7 @@ function stopItemVoice() {
   if (_itemVoiceRecognition) { _itemVoiceRecognition.stop(); _itemVoiceRecognition = null; }
   const liveText = (document.getElementById('item-voice-live').textContent || '').replace(/^"|"$/g, '').trim();
   document.getElementById('item-voice-status').style.display = 'none';
+  document.getElementById('item-voice-live').textContent = '';
   if (liveText) processItemVoiceInput(liveText);
 }
 
@@ -4249,11 +4362,11 @@ async function processItemVoiceInput(text) {
       let qty = 1, name = p;
       const qm = p.match(/^(\d+)\s*(?:x\s*|pack\s+(?:of\s+)?|bottles?\s+(?:of\s+)?)?(.+)/i);
       if (qm && parseInt(qm[1]) > 1) { qty = parseInt(qm[1]); name = qm[2].trim(); }
-      await addItemAndSearchPrice(name.replace(/^(a |the |some )/i, ''), qty);
+      if (!(await addItemAndSearchPrice(name.replace(/^(a |the |some )/i, ''), qty))) return;
     }
   } else {
     for (const item of extracted) {
-      await addItemAndSearchPrice(item.searchQuery, item.qty);
+      if (!(await addItemAndSearchPrice(item.searchQuery, item.qty))) return;
     }
   }
   document.getElementById('add-another-prompt').style.display = 'block';
@@ -4268,9 +4381,10 @@ async function addManualItem() {
   let qty = 1, name = text;
   const qm = text.match(/^(\d+)\s*(?:x\s*|[-\s]?pack\s*(?:of\s+)?|bottles?\s+(?:of\s+)?|cans?\s+(?:of\s+)?)?(.+)/i);
   if (qm && parseInt(qm[1]) > 1) { qty = parseInt(qm[1]); name = qm[2].trim(); }
-  await addItemAndSearchPrice(name, qty);
+  if (!(await addItemAndSearchPrice(name, qty))) return;
   document.getElementById('add-another-prompt').style.display = 'block';
-  input.focus();
+  // Never pull the cursor out of the narrative if the officer has moved on to it.
+  if (document.activeElement !== document.getElementById('fn-narrative')) input.focus();
 }
 
 // The price search wants the place, not the street: "Revere, MA 02151" is what
@@ -4283,6 +4397,7 @@ function _priceLocation() {
 }
 
 async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice, searchQuery) {
+  const gen = _citationGen;
   const jurisdiction = _priceLocation();
   const query = (searchQuery || name).trim();
 
@@ -4312,7 +4427,17 @@ async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice, sea
   // what decides the larceny threshold.
   let price, source, searched = false, sourceUrl = null;
   const verify = !!photoData;
-  const searchResult = await searchSingleItemPrice(query, jurisdiction, { verify });
+  _itemsPricing++;
+  _updateAcceptButton();
+  let searchResult = null;
+  try {
+    searchResult = await searchSingleItemPrice(query, jurisdiction, { verify });
+  } catch (e) {}
+  // A new citation started while this was being priced. This item belongs to the
+  // last citation and must never land on this one.
+  if (gen !== _citationGen) return false;
+  _itemsPricing--;
+  _updateAcceptButton();
   if (searchResult && searchResult.price) {
     price = searchResult.price;
     source = searchResult.source || 'Retail Price Database';
@@ -4338,7 +4463,7 @@ async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice, sea
     // Nothing could be verified. A made-up $9.99 on a property report is worse
     // than a blank, because the value decides the larceny threshold.
     price = 0;
-    source = 'No verified price. Tap the amount to enter one.';
+    source = 'No verified price';
   }
 
   const itemTotal = price * qty;
@@ -4350,8 +4475,9 @@ async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice, sea
   // Voice feedback: speak the item and price
   speakPrompt(displayName + ', $' + itemTotal.toFixed(2) + '. Tap to correct if wrong.');
 
-  // Scroll the item into view
-  container.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  // Scroll the item into view, unless the officer has moved on to the narrative
+  if (document.activeElement !== document.getElementById('fn-narrative')) container.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return true;
 }
 
 function removeItem(idx) {
@@ -4551,21 +4677,26 @@ function editItem(idx) {
   if (correctedName.toLowerCase() !== item.name.toLowerCase()) {
     // Re-search price with corrected name
     item.name = correctedName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    const locInput = document.getElementById('loc-address');
-    const jurisdiction = locInput ? locInput.value : '';
-    searchSingleItemPrice(correctedName, jurisdiction).then(result => {
+    // A price the officer entered stands: fixing a typo must not change the value.
+    if (item.source === 'Entered by officer') {
+      rerenderItemsList();
+      showToast('Updated: ' + item.name);
+      return;
+    }
+    const gen = _citationGen;
+    searchSingleItemPrice(correctedName, _priceLocation()).then(result => {
+      if (gen !== _citationGen) return;
       if (result && result.price) {
         item.unitPrice = result.price;
         item.source = result.source === 'fallback_database' ? 'Retail Price Database' : (result.source || 'Retail Price Database');
       } else {
         const fb = getFallbackPrice(correctedName);
         if (fb) { item.unitPrice = fb; item.source = 'Retail Price Database'; }
-        else { item.unitPrice = 9.99; item.source = 'Est. retail value'; }
+        else { item.unitPrice = 0; item.source = 'No verified price'; } // never an invented number
       }
       item.total = item.unitPrice * item.qty;
       rerenderItemsList();
-      showToast('Updated: ' + item.name + ' — $' + item.total.toFixed(2));
-      speakPrompt(item.name + ', updated to $' + item.total.toFixed(2));
+      showToast('Updated: ' + item.name + (item.unitPrice > 0 ? ', $' + item.total.toFixed(2) : ', no verified price'));
     });
   } else {
     // Just re-price check same name
@@ -4576,7 +4707,7 @@ function editItem(idx) {
 function updateItemsTotal() {
   const total = _stolenItems.reduce((s, i) => s + i.total, 0);
   document.getElementById('items-total-amount').textContent = '$' + total.toFixed(2);
-  if (_stolenItems.length === 0) {
+  if (_stolenItems.length === 0 && !_aiSuggestedItems.length) { // suggestions live inside this list
     document.getElementById('items-list-container').style.display = 'none';
   }
   // Sync to _lastPriceResults for later use in report and submission
@@ -4676,14 +4807,13 @@ function buildReviewSummary() {
   // Build a human-readable summary
   const offense = selectedOffense || 'Shoplifting';
   const statute = _offenseStatutes[offense] || '';
-  const locInput = document.getElementById('loc-address');
-  const location = locInput ? locInput.value : '';
+  const location = _fullLocation();
   const verifyInputs = document.querySelectorAll('#s-verify .form-input');
   let name = 'the subject';
   if (verifyInputs.length >= 2) {
     name = ((verifyInputs[0].value || '') + ' ' + (verifyInputs[1].value || '')).trim() || name;
   }
-  if (_parsedPersonName && _parsedPersonName !== 'the subject') name = _parsedPersonName;
+  if (name === 'the subject' && _parsedPersonName) name = _parsedPersonName; // the form always wins
 
   let summary = `Offense: ${offense}. `;
   if (statute) summary += `Statute: ${statute}. `;
@@ -4695,11 +4825,11 @@ function buildReviewSummary() {
     _stolenItems.forEach((item, i) => {
       summary += `${item.name}`;
       if (item.qty > 1) summary += ` times ${item.qty}`;
-      summary += `, estimated at $${item.total.toFixed(2)}`;
+      summary += item.unitPrice > 0 ? `, estimated at $${item.total.toFixed(2)}` : ', price not verified';
       if (i < _stolenItems.length - 1) summary += '; ';
     });
     const total = _stolenItems.reduce((s, i) => s + i.total, 0);
-    summary += `. Total estimated value: $${total.toFixed(2)}. `;
+    summary += _stolenItems.some(i => !(i.unitPrice > 0)) ? '. Total value not established. ' : `. Total estimated value: $${total.toFixed(2)}. `;
   }
 
   summary += `This individual has been determined eligible for pre-arrest diversion under the SWIFT program.`;
@@ -4849,7 +4979,7 @@ function populateReviewScreen() {
 
   // ── Incident details ──
   const locInput = document.getElementById('loc-address');
-  document.getElementById('review-location').textContent = locInput && locInput.value ? locInput.value : '—';
+  document.getElementById('review-location').textContent = _fullLocation() || '—';
 
   // Date/Time from time screen
   const timeHour = document.getElementById('time-hour');
@@ -4888,10 +5018,10 @@ function populateReviewScreen() {
           <div style="font-size:13px;font-weight:600;color:var(--navy);">${item.name}${item.qty > 1 ? ' x' + item.qty : ''}</div>
           <div style="font-size:10px;color:var(--g4);">${item.source}</div>
         </div>
-        <span style="font-size:13px;font-weight:700;color:var(--navy);">$${item.total.toFixed(2)}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--navy);">${item.unitPrice > 0 ? '$' + item.total.toFixed(2) : 'price not verified'}</span>
       </div>`).join('');
     const total = _stolenItems.reduce((s, i) => s + i.total, 0);
-    document.getElementById('review-total-amount').textContent = '$' + total.toFixed(2);
+    document.getElementById('review-total-amount').textContent = _stolenItems.some(i => !(i.unitPrice > 0)) ? 'Not established' : '$' + total.toFixed(2);
   } else {
     itemsSection.style.display = 'none';
   }
@@ -4948,13 +5078,7 @@ function buildFormalReport() {
   const phone = verifyInputs[5] ? verifyInputs[5].value : '';
   const fullName = (fn + ' ' + ln).trim() || 'UNKNOWN';
 
-  const locInput = document.getElementById('loc-address');
-  const locCity = document.getElementById('loc-city');
-  const locState = document.getElementById('loc-state');
-  const location = locInput ? locInput.value : '';
-  const city = locCity ? locCity.value : '';
-  const state = locState ? locState.value : '';
-  const fullLocation = [location, city, state].filter(Boolean).join(', ');
+  const fullLocation = _fullLocation();
 
   const offense = selectedOffense || 'Shoplifting';
   const statute = _offenseStatutes[offense] || 'G.L. c. 266, §30A';
@@ -4984,15 +5108,16 @@ function buildFormalReport() {
   // Items
   let itemsBlock = '';
   let totalValue = 0;
+  const unpriced = _stolenItems.some(i => !(i.unitPrice > 0));
   if (_stolenItems.length > 0) {
     _stolenItems.forEach((item, i) => {
       itemsBlock += `  ${i + 1}. ${item.name}${item.qty > 1 ? ' (x' + item.qty + ')' : ''}`;
-      itemsBlock += ` — $${item.total.toFixed(2)}`;
-      if (item.source) itemsBlock += ` [${item.source}]`;
+      itemsBlock += item.unitPrice > 0 ? `: $${item.total.toFixed(2)}` : ': price not verified';
+      if (item.source && item.unitPrice > 0) itemsBlock += ` [${item.source}]`;
       itemsBlock += '\n';
       totalValue += item.total;
     });
-    itemsBlock += `  TOTAL ESTIMATED VALUE: $${totalValue.toFixed(2)}`;
+    itemsBlock += unpriced ? '  TOTAL ESTIMATED VALUE: NOT ESTABLISHED' : `  TOTAL ESTIMATED VALUE: $${totalValue.toFixed(2)}`;
   }
 
   // Store name
@@ -5041,17 +5166,17 @@ function buildFormalReport() {
   report += '───────────────────────────────────────\n';
   report += 'NARRATIVE\n';
   report += '───────────────────────────────────────\n';
-  const aiNarrative = (_aiParsedData && !_aiParsedData.fallback && _aiParsedData.narrative) ? String(_aiParsedData.narrative).trim() : '';
+  const aiNarrative = _currentNarrative();
   // The opening states when and where without asserting how the officer came
   // to be there; the narrative says that, in the officer's own facts.
   const openingLine = `On ${incDate}${incTime ? ' at approximately ' + incTime : ''}, this officer documented the following ${offense.toLowerCase()} incident at ${fullLocation || 'the above location'}${storeName ? ' (' + storeName + ')' : ''}.`;
   const closingLines = `\n\nThe subject was identified as ${fullName.toUpperCase()}${dob ? ', DOB ' + dob : ''}${addr ? ', residing at ' + addr : ''}.`
-    + (totalValue > 0 ? `\n\nThe total estimated value of the merchandise involved is $${totalValue.toFixed(2)}.` : '')
+    + (totalValue > 0 && !unpriced ? `\n\nThe total estimated value of the merchandise involved is $${totalValue.toFixed(2)}.` : '')
     + `\n\nBased on the circumstances of this incident and the subject's eligibility under G.L. c. 276A, the subject was offered pre-arraignment diversion through the SWIFT program administered by the Suffolk County District Attorney's Office.`
     + `\n\nDisposition: DIVERSION (SWIFT PROGRAM REFERRAL)`;
   if (aiNarrative) {
     report += openingLine + '\n\n' + aiNarrative + closingLines;
-  } else if (narrative) {
+  } else if (narrative && _officerNarrative === null) {
     // Not formalized. The dictation goes in as spoken and is labelled, so it
     // cannot pass for report language once it is pasted somewhere else.
     report += openingLine
@@ -5250,28 +5375,27 @@ function readBackFullSummary() {
 
 function buildFullReadback() {
   const offense = selectedOffense || 'Shoplifting';
-  const locInput = document.getElementById('loc-address');
-  const location = locInput ? locInput.value : '';
+  const location = _fullLocation() || 'not entered';
 
   let text = `Incident summary. Offense: ${offense}. Location: ${location}. `;
 
   // Items with prices
   if (_stolenItems.length > 0) {
-    text += `${_stolenItems.length} item${_stolenItems.length > 1 ? 's' : ''} recovered. `;
+    text += `${_stolenItems.length} item${_stolenItems.length > 1 ? 's' : ''} listed. `;
     _stolenItems.forEach((item, i) => {
       text += `Item ${i + 1}: ${item.name}`;
       if (item.qty > 1) text += `, quantity ${item.qty}`;
-      text += `, estimated value $${item.total.toFixed(2)}. `;
+      text += item.unitPrice > 0 ? `, estimated value $${item.total.toFixed(2)}. ` : ', price not verified. ';
     });
     const total = _stolenItems.reduce((s, i) => s + i.total, 0);
-    text += `Total estimated retail value: $${total.toFixed(2)}. `;
+    text += _stolenItems.some(i => !(i.unitPrice > 0)) ? 'Total retail value not established. ' : `Total estimated retail value: $${total.toFixed(2)}. `;
   }
 
   // Incident narrative from transcript
-  const aiNarrative = (_aiParsedData && !_aiParsedData.fallback && _aiParsedData.narrative) ? String(_aiParsedData.narrative).replace(/\s+/g, ' ').trim() : '';
+  const aiNarrative = _currentNarrative().replace(/\s+/g, ' ').trim();
   if (aiNarrative) {
     text += `Narrative: ${aiNarrative} `;
-  } else if (voiceTranscriptText) {
+  } else if (voiceTranscriptText && _officerNarrative === null) {
     text += `${usedVoice ? 'Your dictation, as spoken' : 'Your notes, as typed'}: ${voiceTranscriptText.replace(/[.\s]+$/, '')}. `;
   }
 
@@ -5317,15 +5441,15 @@ function submitCitation() {
     offense: selectedOffense || 'Shoplifting',
     offense_statute: _offenseStatutes[selectedOffense] || '',
     offense_category: (selectedOffense || 'shoplifting').toLowerCase().replace(/\s+/g, '-'),
-    location: document.getElementById('loc-address') ? document.getElementById('loc-address').value : '',
+    location: _fullLocation(),
     incident_date: new Date().toISOString().split('T')[0],
     incident_time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}),
     officer_notes: document.getElementById('notes-textarea') ? document.getElementById('notes-textarea').value : '',
     formatted_notes: formattedNotesText || '',
-    voice_transcript: usedVoice ? voiceTranscriptText : '',
+    voice_transcript: _rawDictation,
     items_description: _lastPriceResults.found.map(f => f.item + (f.qty > 1 ? ' x'+f.qty : '')).join(', ') || '',
     estimated_value: _lastPriceResults.total || 0,
-    intake_source: usedVoice ? 'voice' : 'manual',
+    intake_source: _rawDictation ? 'voice' : 'manual',
     first_offense: 1,
     citation_code: citCode,
     items_json: _stolenItems.map(it => ({ name: it.name, qty: it.qty, unitPrice: it.unitPrice, total: it.total, source: it.source, photoData: it.photoData || null })),
@@ -5357,8 +5481,10 @@ function submitCitation() {
   document.getElementById('confirm-offense').textContent = citationData.offense;
   if (_stolenItems.length > 0) {
     const total = _stolenItems.reduce((s, i) => s + i.total, 0);
-    document.getElementById('confirm-items-value').textContent = _stolenItems.length + ' items — $' + total.toFixed(2);
+    document.getElementById('confirm-items-value').textContent = _stolenItems.length + (_stolenItems.length === 1 ? ' item' : ' items') + (_stolenItems.some(i => !(i.unitPrice > 0)) ? ', value not established' : ', $' + total.toFixed(2));
     document.getElementById('confirm-items-row').style.display = 'flex';
+  } else {
+    document.getElementById('confirm-items-row').style.display = 'none';
   }
 
   nav('confirm');
@@ -5379,6 +5505,8 @@ let _locMarker = null;
 let _locGpsTried = false;     // once per citation
 let _locLookupSeq = 0;        // only the newest lookup may write to the form
 let _locTouched = {};         // fields typed by hand since the last location lookup
+let _locPinReal = false;      // the pin came from GPS or the officer, not the default or the last citation
+let _locTilesFailed = false;  // every map source failed; try again next time the screen opens
 const LOC_FIELDS = ['loc-address', 'loc-city', 'loc-state', 'loc-zip'];
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
 
@@ -5397,6 +5525,7 @@ const MAP_TILES = [
 function _loadMapTiles(index) {
   const source = MAP_TILES[index];
   if (!source) {
+    _locTilesFailed = true;
     _locStatus('The map could not load. The address can still be filled from GPS or typed.', 'warn');
     return;
   }
@@ -5432,6 +5561,7 @@ function _resetLocationScreen() {
   _locLookupSeq++;
   _locGpsTried = false;
   _locTouched = {};
+  _locPinReal = false;
   LOC_FIELDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   _locStatus('Finding your location…');
 }
@@ -5447,14 +5577,18 @@ function initLocMap() {
     _locMarker = L.marker([lat, lng], { draggable: true }).addTo(locMap);
     _locMarker.on('dragend', function() {
       const p = _locMarker.getLatLng();
+      _locPinReal = true;
       _locStatus('Looking up the address at the pin…');
       _reverseGeocode(p.lat, p.lng);
     });
-    locMap.on('click', function(e) {
-      _locMarker.setLatLng(e.latlng);
-      _locStatus('Looking up the address at the pin…');
-      _reverseGeocode(e.latlng.lat, e.latlng.lng);
-    });
+    // Dragging only. A tap on the map used to move the pin too, so a tap to put the
+    // keyboard away, or a double-tap to zoom, replaced a correct address.
+  } else if (typeof L === 'undefined') {
+    _locStatus('The map could not load. The address can still be filled from GPS or typed.', 'warn');
+  }
+  if (locMap && _locTilesFailed) { // signal may be back, so try the map again
+    _locTilesFailed = false;
+    _loadMapTiles(0);
   }
   if (locMap) setTimeout(() => locMap.invalidateSize(), 100);
   // GPS runs once per citation, and never over anything already in the fields.
@@ -5479,6 +5613,7 @@ function locateOfficer() {
     done();
     if (seq !== _locLookupSeq) return;
     const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    _locPinReal = true;
     if (locMap && _locMarker) { locMap.setView([lat, lng], 17); _locMarker.setLatLng([lat, lng]); }
     _locStatus('Location found. Looking up the address…');
     _reverseGeocode(lat, lng, pos.coords.accuracy);
@@ -5556,12 +5691,12 @@ function _reverseGeocode(lat, lng, accuracy, isRetry) {
   // A retry rounds the point by about a meter so it is a new address to the
   // service's cache, which can hold a copy of an answer that browsers refuse.
   const la = isRetry ? Number(lat).toFixed(5) : lat, lo = isRetry ? Number(lng).toFixed(5) : lng;
-  fetch(NOMINATIM + '/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=en-US&lat=' + la + '&lon=' + lo, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(10000) })
+  fetch(NOMINATIM + '/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=en-US&lat=' + la + '&lon=' + lo, { headers: { 'Accept': 'application/json' }, signal: _timeoutSignal(10000) })
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(data => {
       if (seq !== _locLookupSeq) return;
       if (!data || data.error || !data.address) {
-        _locStatus('No address found at this spot. Drag the pin, or type the address.', 'warn');
+        _locStatus('No address found at this spot.' + _locStillShows() + ' Drag the pin, or type the address.', 'warn');
         return;
       }
       const { street, city } = _writeLocationFields(data.address);
@@ -5585,44 +5720,82 @@ function _reverseGeocode(lat, lng, accuracy, isRetry) {
         setTimeout(() => { if (seq === _locLookupSeq) _reverseGeocode(lat, lng, accuracy, true); }, 2000);
         return;
       }
-      _locStatus('The pin is placed, but the address lookup did not answer. Tap "Use my location" to try again, or type the address.', 'warn');
+      _locStatus('The pin is placed, but the address lookup did not answer.' + _locStillShows() + (accuracy === undefined ? ' Drag the pin again to retry, or type the address.' : ' Tap "Use my location" to try again, or type the address.'), 'warn');
     });
 }
 
-// Typed address to pin. Runs when the address or town changes and loses focus.
-// The typed street is kept. Town, state and zip come from this same lookup,
-// unless the officer typed them by hand.
+// Typed address to pin. Runs when the address, town, state or zip changes and
+// loses focus. The typed street is kept. Town, state and zip come from this same
+// lookup, unless the officer typed them by hand.
 function findAddressOnMap() {
   const addr = document.getElementById('loc-address');
-  const city = document.getElementById('loc-city');
-  const state = document.getElementById('loc-state');
-  if (!addr || addr.value.trim().length < 4 || !locMap) return;
+  if (!addr || addr.value.trim().length < 4) return;
   const seq = ++_locLookupSeq;
-  const q = [addr.value, city && city.value, state && state.value].filter(Boolean).join(', ');
-  const here = _locMarker.getLatLng(); // prefer a match near the pin over one across the country
-  const viewbox = [here.lng - 0.5, here.lat + 0.5, here.lng + 0.5, here.lat - 0.5].join(',');
+  // Only what the officer typed goes in the query. A town left by the last lookup
+  // belongs to a different street, and asking for both finds nothing.
+  const typed = id => { const el = document.getElementById(id); return _locTouched[id] && el ? el.value.trim() : ''; };
+  const q = [addr.value.trim(), typed('loc-city'), typed('loc-state'), typed('loc-zip')].filter(Boolean).join(', ');
+  const townGiven = !!(typed('loc-city') || typed('loc-zip')) || addr.value.includes(',');
+  let url = NOMINATIM + '/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=us&accept-language=en-US';
+  if (_locMarker) { // prefer a match near the pin over one across the country
+    const here = _locMarker.getLatLng();
+    url += '&viewbox=' + [here.lng - 0.5, here.lat + 0.5, here.lng + 0.5, here.lat - 0.5].join(',');
+  }
+  const fill = (id, value) => { const el = document.getElementById(id); if (el && !_locTouched[id]) el.value = value; };
+  const blankTheRest = () => { fill('loc-city', ''); fill('loc-state', ''); fill('loc-zip', ''); };
   _locStatus('Finding "' + q + '" on the map…');
-  fetch(NOMINATIM + '/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=us&accept-language=en-US&viewbox=' + viewbox + '&q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(10000) })
+  fetch(url + '&q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' }, signal: _timeoutSignal(10000) })
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(list => {
       if (seq !== _locLookupSeq) return;
-      if (!list || !list.length) { _locStatus('Could not find that address on the map. What you typed is kept.', 'warn'); return; }
+      if (!list || !list.length) {
+        // A town from an earlier lookup must not stand beside this street.
+        blankTheRest();
+        _locStatus('Could not find that address on the map. Type the town.', 'warn');
+        return;
+      }
       const hit = list[0];
       const lat = parseFloat(hit.lat), lng = parseFloat(hit.lon);
-      locMap.setView([lat, lng], 17);
-      _locMarker.setLatLng([lat, lng]);
       const a = hit.address || {};
-      const fill = (id, value) => { const el = document.getElementById(id); if (el && !_locTouched[id]) el.value = value; };
-      fill('loc-city', _cityFromAddress(a));
-      fill('loc-state', _stateFromAddress(a));
+      const street = _streetFromAddress(a), town = _cityFromAddress(a), st = _stateFromAddress(a);
+      // A street with no town matches somewhere in the country ("120 Bedford
+      // Avenue" typed in Brooklyn came back as Lowell, MA). Only believe it if the
+      // pin is real and close by. Otherwise ask, rather than fill in a wrong town.
+      const near = _locPinReal && _locMarker && _locMarker.getLatLng().distanceTo([lat, lng]) < 30000;
+      if (!townGiven && !near) {
+        blankTheRest();
+        _locStatus('Best match is ' + ([street, town, st].filter(Boolean).join(', ') || q) + '. Type the town to confirm.', 'warn');
+        return;
+      }
+      // "40 South 6th Street, Brooklyn, NY" typed in the street box: the town now
+      // has its own box, so keep the street alone or the report says it twice.
+      if (addr.value.includes(',')) addr.value = addr.value.split(',')[0].trim();
+      if (locMap && _locMarker) { locMap.setView([lat, lng], 17); _locMarker.setLatLng([lat, lng]); }
+      _locPinReal = true;
+      fill('loc-city', town);
+      fill('loc-state', st);
       fill('loc-zip', _zipFromAddress(a));
-      _locStatus('Pin moved to ' + ([_streetFromAddress(a), _cityFromAddress(a)].filter(Boolean).join(', ') || q) + '.', 'ok');
+      _locStatus('Pin moved to ' + ([street, town].filter(Boolean).join(', ') || q) + '.', 'ok');
     })
     .catch(err => {
       if (seq !== _locLookupSeq) return;
       console.warn('[MEA] address search failed:', err);
       _locStatus('The address search did not answer, so the pin has not moved. What you typed is kept.', 'warn');
     });
+}
+
+// The whole location as one line, for everything that reads or files it.
+function _fullLocation(withZip) {
+  const v = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const place = [v('loc-city'), v('loc-state')].filter(Boolean).join(', ');
+  const tail = [place, withZip === false ? '' : v('loc-zip')].filter(Boolean).join(' ');
+  return [v('loc-address'), tail].filter(Boolean).join(', ');
+}
+
+// After a failed lookup the boxes hold the previous answer while the pin has moved.
+function _locStillShows() {
+  const filled = LOC_FIELDS.some(id => { const f = document.getElementById(id); return f && f.value.trim(); });
+  return filled ? ' The boxes still show the previous address.' : '';
 }
 
 // ── TOAST ──

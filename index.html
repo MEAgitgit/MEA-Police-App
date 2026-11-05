@@ -2088,7 +2088,8 @@ function _narrativeSettled() {
 function _requestNarrative(transcript) {
   const seq = ++_narrativeSeq; // any answer still on its way for older words is now ignored
   const noun = _detailsNoun();
-  const asGiven = usedVoice ? 'your dictation as spoken' : 'your notes as typed';
+  const asGiven = usedVoice ? 'it as spoken' : 'them as typed';
+  const putInto = 'Put ' + (usedVoice ? 'it' : 'them') + ' into report language before filing, or go back and tap Continue to try again.';
   _narrativeFor = transcript;
   _aiParsedData = null;
   _aiStoreName = '';
@@ -2102,7 +2103,7 @@ function _requestNarrative(transcript) {
   if (!authToken) {
     ensureSignedIn();
     _narrativeState = 'failed';
-    _setFormatStatus('Not connected right now, so the report shows ' + asGiven + '. Edit it into report language before filing, or go back and tap Continue to try again.', 'warn');
+    _setFormatStatus('Not connected right now, so your ' + noun + ' could not be formalized. The report shows ' + asGiven + '. ' + putInto, 'warn');
     return;
   }
   _narrativeState = 'pending';
@@ -2114,7 +2115,7 @@ function _requestNarrative(transcript) {
   const fail = (reason) => {
     console.log('[MEA] narrative not formalized:', reason);
     _narrativeState = 'failed';
-    _setFormatStatus('Could not formalize your ' + noun + '. The report shows ' + asGiven + '. Edit it into report language before filing, or go back and tap Continue to try again.', 'warn');
+    _setFormatStatus('Could not formalize your ' + noun + '. The report shows ' + asGiven + '. ' + putInto, 'warn');
     render();
     _narrativeSettled();
   };
@@ -4197,7 +4198,7 @@ function buildFullReadback() {
   if (aiNarrative) {
     text += `Narrative: ${aiNarrative} `;
   } else if (voiceTranscriptText) {
-    text += `${usedVoice ? 'Your dictation, as spoken' : 'Your notes, as typed'}: ${voiceTranscriptText}. `;
+    text += `${usedVoice ? 'Your dictation, as spoken' : 'Your notes, as typed'}: ${voiceTranscriptText.replace(/[.\s]+$/, '')}. `;
   }
 
   text += `This incident qualifies for pre-arrest diversion under the SWIFT program.`;
@@ -4331,8 +4332,8 @@ function _loadMapTiles(index) {
   layer.on('tileerror', () => {
     failed++;
     if (!loaded && failed >= 3) {
+      locMap.removeLayer(layer); // takes its credit line with it, so this comes before off()
       layer.off();
-      locMap.removeLayer(layer);
       _loadMapTiles(index + 1);
     }
   });

@@ -11,8 +11,8 @@
 <meta http-equiv="Expires" content="0">
 <title>MEA — Officer Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" onerror="var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';document.head.appendChild(s);"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -40,6 +40,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 .s.back{animation:sBack .28s cubic-bezier(.4,0,.2,1) forwards;}
 /* A second tap during the slide must not land on the next screen's button. */
 .s.in,.s.back{pointer-events:none;}
+button{-webkit-user-select:none;user-select:none;} /* a double tap must not select the label */
 @keyframes sIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
 @keyframes sBack{from{transform:translateX(-24%)}to{transform:translateX(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -415,7 +416,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <div style="height:40px;"></div>
   </div>
   <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
-    <button class="btn" onclick="nav('time')">Confirm Location</button>
+    <button class="btn" id="loc-confirm-btn" onclick="confirmLocation()">Confirm Location</button>
   </div>
 </div>
 
@@ -587,6 +588,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
               </button>
               <button onclick="confirmPhotoItem()" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--green);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✓ Add Item</button>
             </div>
+            <button type="button" onclick="discardPhotoItem()" style="display:block;margin:8px 0 0;padding:4px 0;border:none;background:none;color:var(--g4);font-size:12px;font-weight:600;text-decoration:underline;cursor:pointer;">Discard this photo</button>
             <div id="photo-voice-listening" style="display:none;margin-top:6px;text-align:center;">
               <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
                 <div style="width:8px;height:8px;border-radius:50%;background:#E8444F;animation:pulse 1s infinite;"></div>
@@ -1207,6 +1209,7 @@ function loginToBackend(onDone) {
     _loginInFlight = false;
     updateConnectionIndicator();
     console.log(token ? '[MEA] Signed in (' + how + ')' : '[MEA] NOT signed in - AI features will be refused');
+    if (token) _retryNarrativeAfterSignIn();
     if (onDone) onDone(!!token);
   }
 
@@ -2007,6 +2010,7 @@ let _narrativeFor = null;      // what the current narrative was built from: wor
 let _officerNarrative = null;  // the narrative as the officer corrected it; null means untouched
 let _rawDictation = '';        // exactly what was spoken, kept for the record if the words are later edited
 let _summaryOpenedAt = 0;      // when the summary last opened, to ignore a stray second tap
+let _narrativeNeedsSignIn = false; // refused only for want of a token, so try again when one arrives
 let _itemsPricing = 0;         // price lookups still running
 let _identifySeq = 0;          // only the newest photo identification may fill the panel
 
@@ -2063,12 +2067,12 @@ function continueFromNotes() {
 
 function _detailsNoun() { return usedVoice ? 'dictation' : 'notes'; }
 
-// The narrative is written from the words AND the place and offense, so a
-// corrected town has to count as a change, or the opening and the narrative
+// The narrative is written from the words AND the place, offense, date and time,
+// so a corrected town has to count as a change, or the opening and the narrative
 // end up naming different places.
 function _narrativeKey(text) {
   const ctx = _reportContext();
-  return JSON.stringify([text, ctx.location, ctx.offense]);
+  return JSON.stringify([text, ctx.location, ctx.offense, ctx.incidentDate, ctx.incidentTime]);
 }
 
 // One road from "what happened" to the items screen, however the officer gave it.
@@ -2081,14 +2085,18 @@ function _openIncidentSummary(details, viaVoice) {
     : (text ? 'Incident details received' : 'No incident details yet');
   document.getElementById('vr-what-label').textContent = viaVoice ? '🎤 What you said' : '✏️ What you typed';
   document.getElementById('voice-what-you-said').textContent = text ? '"' + text + '"' : 'Nothing entered.';
-  // Nothing changed (Back, then Continue): keep the narrative already written,
-  // still on its way, or corrected by hand, and do not ask again.
+  // Nothing changed (Back, then Continue): keep the narrative already written or
+  // still on its way, corrections included, and do not ask again. After a failure
+  // the status line promised a retry, so that is what Continue does, and the
+  // officer's corrections survive it if it fails again.
   const same = _narrativeKey(text) === _narrativeFor &&
-    (_narrativeState === 'done' || _narrativeState === 'pending' || _officerNarrative !== null);
+    (_narrativeState === 'done' || _narrativeState === 'pending');
   if (!same) _requestNarrative(text);
+  const firstOpen = !_summaryOpenedAt; // a new citation starts at the top, with the camera in view
   _summaryOpenedAt = Date.now();
   generateFormattedReport(text, _lastPriceResults || { found: [], total: 0 });
   nav('voice-result');
+  if (firstOpen) { const area = document.querySelector('#s-voice-result .scroll'); if (area) area.scrollTop = 0; }
   setTimeout(() => { _autosizeNarrative(); updateReadbackText(); }, 350);
 }
 
@@ -2140,13 +2148,19 @@ function _requestNarrative(transcript) {
   const noun = _detailsNoun();
   const asGiven = usedVoice ? 'it as spoken' : 'them as typed';
   const fixIt = 'Correct ' + (usedVoice ? 'it' : 'them') + ' in the report below before filing, or go back and tap Continue to try again.';
-  const hadCorrections = _officerNarrative !== null;
+  // The officer's corrections stay the record until a new narrative actually
+  // exists. Clearing them first meant a dropped signal destroyed them for nothing.
+  const earlier = _officerNarrative;
+  const hadCorrections = earlier !== null;
+  const keepCorrections = () => { if (hadCorrections) _officerNarrative = earlier; };
+  const keptNote = 'Your corrected narrative is kept, but it may not match what you changed. Read it, or go back and tap Continue to try again.';
   _narrativeFor = _narrativeKey(transcript);
+  _narrativeNeedsSignIn = false;
   _aiParsedData = null;
   _officerNarrative = null;
   _aiStoreName = '';
-  _clearSuggestions();
   if (!transcript) {
+    _clearSuggestions();
     _narrativeState = 'none';
     _updateAcceptButton();
     _setFormatStatus('Go back to type or dictate what happened.', 'warn');
@@ -2155,8 +2169,12 @@ function _requestNarrative(transcript) {
   if (!authToken) {
     ensureSignedIn();
     _narrativeState = 'failed';
+    _narrativeNeedsSignIn = !hadCorrections; // the moment sign-in lands, this asks again by itself
+    keepCorrections();
     _updateAcceptButton();
-    _setFormatStatus('Not connected right now, so your ' + noun + ' could not be formalized. The report shows ' + asGiven + '. ' + fixIt, 'warn');
+    _setFormatStatus(hadCorrections
+      ? 'Not connected right now, so the report was not rewritten. ' + keptNote
+      : 'Not connected right now, so your ' + noun + ' could not be formalized. The report shows ' + asGiven + '. ' + fixIt, 'warn');
     return;
   }
   _narrativeState = 'pending';
@@ -2170,7 +2188,10 @@ function _requestNarrative(transcript) {
   const fail = (reason) => {
     console.log('[MEA] narrative not formalized:', reason);
     _narrativeState = 'failed';
-    _setFormatStatus('Could not formalize your ' + noun + '. The report shows ' + asGiven + '. ' + fixIt, 'warn');
+    keepCorrections();
+    _setFormatStatus(hadCorrections
+      ? 'Could not rewrite the report. ' + keptNote
+      : 'Could not formalize your ' + noun + '. The report shows ' + asGiven + '. ' + fixIt, 'warn');
     settle();
   };
   const ctx = _reportContext();
@@ -2186,7 +2207,7 @@ function _requestNarrative(transcript) {
     _narrativeState = 'done';
     console.log('[MEA] AI parsed transcript:', ai);
     _setFormatStatus(hadCorrections
-      ? 'Narrative rewritten from your changes. Your earlier corrections were not carried over, so read it again.'
+      ? 'Narrative rewritten. Your earlier corrections were not carried over, so read it again.'
       : 'Narrative formalized. Read it and correct anything that is not what happened.', 'ok');
 
     // Fill the name if the AI found one, replacing only what it filled itself.
@@ -2204,7 +2225,7 @@ function _requestNarrative(transcript) {
     // and through a lookup, so a town comes with it and nothing gets mixed.
     if (ai.storeAddress && LOC_FIELDS.every(id => { const f = document.getElementById(id); return f && !f.value.trim(); })) {
       document.getElementById('loc-address').value = ai.storeAddress;
-      _locTouched['loc-address'] = true;
+      _locAuto = true;
       findAddressOnMap();
     }
     if (ai.storeName) _aiStoreName = ai.storeName;
@@ -2223,6 +2244,17 @@ function _requestNarrative(transcript) {
     if (seq !== _narrativeSeq) return;
     fail(err && err.message);
   });
+}
+
+// Sign-in was still running when the officer tapped Continue, which on a backend
+// that has been idle is the first citation of the day. Nobody should have to know
+// to go back and tap Continue again.
+function _retryNarrativeAfterSignIn() {
+  if (!_narrativeNeedsSignIn) return;
+  _narrativeNeedsSignIn = false;
+  if (cur !== 'voice-result' || _narrativeState !== 'failed' || _officerNarrative !== null || !voiceTranscriptText) return;
+  _requestNarrative(voiceTranscriptText);
+  generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
 }
 
 // The narrative as it stands: what the officer corrected it to, else what the AI
@@ -2296,7 +2328,7 @@ function _clearSuggestions() {
   if (box) box.remove();
   const hint = document.getElementById('photo-section-hint');
   if (hint) hint.textContent = 'Items detected from your report are shown below. Tap to correct, or snap photos to verify and add more.';
-  if (_stolenItems.length === 0) {
+  if (_stolenItems.length === 0 && !_itemsPricing) { // a row still being priced lives in this list
     const list = document.getElementById('items-list-container');
     if (list) list.style.display = 'none';
   }
@@ -2308,6 +2340,7 @@ function _resetIncidentSummary() {
   _identifySeq++;
   _narrativeState = 'none';
   _narrativeFor = null;
+  _narrativeNeedsSignIn = false;
   _aiParsedData = null;
   _officerNarrative = null;
   _rawDictation = '';
@@ -2327,16 +2360,7 @@ function _resetIncidentSummary() {
   const total = document.getElementById('items-total-amount');
   if (total) total.textContent = '$0.00';
   _clearSuggestions();
-  // The photo panel and item boxes hold the last item's name and AI details.
-  const nameInput = document.getElementById('photo-item-name-input');
-  if (nameInput) {
-    nameInput.value = '';
-    nameInput.disabled = false;
-    nameInput.placeholder = 'e.g. Don Julio 1942, Tide Pods...';
-    ['aiPrice', 'aiBrand', 'aiCategory', 'aiConfidence', 'searchQuery', 'aiName'].forEach(k => { nameInput.dataset[k] = ''; });
-  }
-  const identifyStatus = document.getElementById('photo-ai-status');
-  if (identifyStatus) identifyStatus.style.display = 'none';
+  _resetPhotoPanel(); // it holds the last item's photo, name and AI details
   const manual = document.getElementById('item-manual-input');
   if (manual) manual.value = '';
   // Anything still listening or talking belongs to the last person.
@@ -2344,6 +2368,35 @@ function _resetIncidentSummary() {
   if (_itemVoiceRecognition) { try { _itemVoiceRecognition.abort(); } catch (e) {} _itemVoiceRecognition = null; }
   if (typeof stopReadBack === 'function') stopReadBack();
   if (typeof stopSpokenPrompts === 'function') stopSpokenPrompts();
+}
+
+// The photo panel back to empty: no photo, no AI answer on its way, nothing left
+// of the last item in the boxes.
+function _resetPhotoPanel() {
+  _identifySeq++;
+  _currentPhotoData = null;
+  const nameInput = document.getElementById('photo-item-name-input');
+  if (nameInput) {
+    nameInput.value = '';
+    nameInput.disabled = false;
+    nameInput.placeholder = 'e.g. Don Julio 1942, Tide Pods...';
+    ['aiPrice', 'aiBrand', 'aiCategory', 'aiConfidence', 'searchQuery', 'aiName'].forEach(k => { nameInput.dataset[k] = ''; });
+  }
+  ['item-photo-panel', 'photo-ai-status', 'photo-alternatives', 'photo-ai-confidence'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  ['item-photo-preview', 'photo-alternatives'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+}
+
+// A wrong photo, or one nobody can name, must not have to become an item.
+function discardPhotoItem() {
+  if (_photoVoiceRecognition) { try { _photoVoiceRecognition.abort(); } catch (e) {} }
+  _resetPhotoPanel();
+  showToast('Photo discarded');
 }
 
 function _escapeHtml(s) {
@@ -2359,8 +2412,9 @@ function _renderReportGaps(id) {
   const ok = _aiParsedData && !_aiParsedData.fallback;
   const gaps = ok && Array.isArray(_aiParsedData.missingInfo) ? _aiParsedData.missingInfo.filter(Boolean) : [];
   const left = ok && Array.isArray(_aiParsedData.leftOut) ? _aiParsedData.leftOut.filter(Boolean) : [];
-  if (!gaps.length && !left.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  let html = '';
+  const place = _locationGap();
+  if (!place && !gaps.length && !left.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  let html = place ? '<div style="margin-bottom:' + (gaps.length || left.length ? 6 : 0) + 'px;"><strong>' + _escapeHtml(place) + '</strong></div>' : '';
   if (gaps.length) {
     html += '<strong>Not in your ' + _detailsNoun() + '. Add before filing:</strong><ul style="margin:4px 0 0 16px;padding:0;">'
       + gaps.map(g => '<li>' + _escapeHtml(g) + '</li>').join('') + '</ul>';
@@ -2981,8 +3035,8 @@ function acceptFormattedNotes() {
   if (_itemVoiceActive) { stopItemVoice(); return; }
   // A photographed item not yet added would be dropped without a word.
   const panel = document.getElementById('item-photo-panel');
-  if (panel && panel.style.display !== 'none' && _currentPhotoData) {
-    showToast('Tap Add Item for this photo first');
+  if (panel && panel.offsetParent !== null && _currentPhotoData) {
+    showToast('Tap Add Item or Discard for this photo first');
     panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
@@ -3434,6 +3488,7 @@ async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice, sea
   // Replace searching row with result — use full re-render for correction support
   _stolenItems.push({ name: displayName, qty, unitPrice: price, total: itemTotal, source, sourceUrl, photoData: photoData || null });
   rerenderItemsList();
+  container.style.display = 'block'; // a narrative landing during the wait can have hidden it
 
 
   // Scroll the item into view, unless the officer has moved on to the narrative
@@ -3667,7 +3722,7 @@ function editItem(idx) {
 function updateItemsTotal() {
   const total = _stolenItems.reduce((s, i) => s + i.total, 0);
   document.getElementById('items-total-amount').textContent = '$' + total.toFixed(2);
-  if (_stolenItems.length === 0 && !_aiSuggestedItems.length) { // suggestions live inside this list
+  if (_stolenItems.length === 0 && !_aiSuggestedItems.length && !_itemsPricing) { // suggestions and rows being priced live inside this list
     document.getElementById('items-list-container').style.display = 'none';
   }
   // Sync to _lastPriceResults for later use in report and submission
@@ -4453,18 +4508,27 @@ function submitCitation() {
 // GPS ("Use my location", also tried once per citation), moving the pin, or
 // typing an address, which moves the pin to it.
 //
-// THE RULE: a location lookup writes all four fields as one unit, blanks
-// included. Topping up only the empty ones is what put "40 South 6th Street"
-// next to "Town of Shelter Island, 11965": the new street, the old town.
+// THE RULE: a town belongs to the street it was looked up with. When the street
+// changes, every box the officer did not type follows the new answer or goes
+// blank, even when the search fails. Topping up only the empty ones is what put
+// "40 South 6th Street" next to "Town of Shelter Island, 11965": the new street,
+// the old town.
 let locMap = null;
 let _locMarker = null;
 let _locGpsTried = false;     // once per citation
 let _locLookupSeq = 0;        // only the newest lookup may write to the form
-let _locTouched = {};         // fields typed by hand since the last location lookup
-let _locPinReal = false;      // the pin came from GPS or the officer, not the default or the last citation
+let _locAnswered = {};        // what the last lookup put in each box. Anything else in a box was typed.
+let _locFix = null;           // {lat, lng} from GPS, a moved pin or a found address, never the default or the last citation
+let _locAuto = false;         // the newest lookup was the app's own idea, not something the officer asked for
+let _locSearchSeq = 0;        // the address search that is out, if any
+let _locSearchedFor = '';     // the street last searched, so Confirm does not search it twice
+let _locConfirmWaiting = false; // Confirm was tapped while that search was out
+let _locNoTownAskedAt = 0;    // when Confirm last stopped to ask for a missing town
+let _locStatusNow = '';
 let _locTilesFailed = false;  // every map source failed; try again next time the screen opens
 const LOC_FIELDS = ['loc-address', 'loc-city', 'loc-state', 'loc-zip'];
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
+const LOC_NEAR_KM = 15;       // about one department's patch. Further than this, ask.
 
 // Neither needs a key. OpenStreetMap shows street and store names. The US
 // government map is public domain and takes over if the first will not load.
@@ -4500,24 +4564,49 @@ function _loadMapTiles(index) {
 }
 
 function _locStatus(text, tone) {
+  _locStatusNow = text;
   const el = document.getElementById('loc-status-text');
   if (!el) return;
   el.textContent = text;
   el.style.color = tone === 'ok' ? '#059669' : tone === 'warn' ? '#B45309' : 'var(--g4)';
 }
 
+function _locValue(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+// What the officer typed in this box, or nothing. A box holding what the last
+// lookup put there was not typed, and an emptied box is open for a lookup to fill.
+function _locTyped(id) {
+  const value = _locValue(id);
+  return value && value !== (_locAnswered[id] || '') ? value : '';
+}
+
+function _locConfirmIdle() {
+  _locConfirmWaiting = false;
+  const btn = document.getElementById('loc-confirm-btn');
+  if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.textContent = 'Confirm Location'; }
+}
+
 // The officer is typing. Their words win over any lookup still on its way.
 function _locTouch(el) {
-  _locTouched[el.id] = true;
   _locLookupSeq++;
+  _locAuto = false;
+  _locNoTownAskedAt = 0;
+  _locConfirmIdle();
   _locStatus('');
 }
 
 function _resetLocationScreen() {
   _locLookupSeq++;
   _locGpsTried = false;
-  _locTouched = {};
-  _locPinReal = false;
+  _locAnswered = {};
+  _locFix = null;
+  _locAuto = false;
+  _locSearchedFor = '';
+  _locNoTownAskedAt = 0;
+  _locConfirmIdle();
   LOC_FIELDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   _locStatus('Finding your location…');
 }
@@ -4527,20 +4616,25 @@ function initLocMap() {
   if (!el) return;
   if (!locMap && typeof L !== 'undefined') {
     const lat = 42.4084, lng = -71.0119; // Revere, until GPS or the officer says otherwise
+    el.innerHTML = '';
     locMap = L.map(el, { zoomControl: false }).setView([lat, lng], 15);
     locMap.attributionControl.setPrefix(false);
     _loadMapTiles(0);
     _locMarker = L.marker([lat, lng], { draggable: true }).addTo(locMap);
     _locMarker.on('dragend', function() {
       const p = _locMarker.getLatLng();
-      _locPinReal = true;
+      _locFix = { lat: p.lat, lng: p.lng };
+      _locAuto = false;
+      _locNoTownAskedAt = 0;
+      _locConfirmIdle();
       _locStatus('Looking up the address at the pin…');
       _reverseGeocode(p.lat, p.lng);
     });
     // Dragging only. A tap on the map used to move the pin too, so a tap to put the
     // keyboard away, or a double-tap to zoom, replaced a correct address.
   } else if (typeof L === 'undefined') {
-    _locStatus('The map could not load. The address can still be filled from GPS or typed.', 'warn');
+    // In the map's own box, because every lookup overwrites the status line.
+    el.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;font-size:13px;line-height:1.4;color:var(--g4);">The map could not load. GPS and typing still fill in the address.</div>';
   }
   if (locMap && _locTilesFailed) { // signal may be back, so try the map again
     _locTilesFailed = false;
@@ -4551,17 +4645,20 @@ function initLocMap() {
   const filled = LOC_FIELDS.some(id => { const f = document.getElementById(id); return f && f.value.trim(); });
   if (!_locGpsTried && !filled) {
     _locGpsTried = true;
-    locateOfficer();
+    locateOfficer(true);
   }
 }
 
-function locateOfficer() {
+function locateOfficer(auto) {
   const btn = document.getElementById('loc-gps-btn');
   if (!navigator.geolocation) {
     _locStatus('This device does not offer location. Enter the address or drag the pin.', 'warn');
     return;
   }
   const seq = ++_locLookupSeq;
+  _locAuto = auto === true;
+  _locNoTownAskedAt = 0;
+  _locConfirmIdle();
   if (btn) { btn.disabled = true; btn.textContent = 'Locating…'; }
   _locStatus('Finding your location…');
   const done = () => { if (btn) { btn.disabled = false; btn.textContent = 'Use my location'; } };
@@ -4569,7 +4666,7 @@ function locateOfficer() {
     done();
     if (seq !== _locLookupSeq) return;
     const lat = pos.coords.latitude, lng = pos.coords.longitude;
-    _locPinReal = true;
+    _locFix = { lat, lng };
     if (locMap && _locMarker) { locMap.setView([lat, lng], 17); _locMarker.setLatLng([lat, lng]); }
     _locStatus('Location found. Looking up the address…');
     _reverseGeocode(lat, lng, pos.coords.accuracy);
@@ -4638,7 +4735,7 @@ function _writeLocationFields(a) {
   const street = _streetFromAddress(a), city = _cityFromAddress(a);
   const values = { 'loc-address': street, 'loc-city': city, 'loc-state': _stateFromAddress(a), 'loc-zip': _zipFromAddress(a) };
   LOC_FIELDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = values[id]; });
-  _locTouched = {};
+  _locAnswered = values;
   return { street, city };
 }
 
@@ -4666,6 +4763,7 @@ function _reverseGeocode(lat, lng, accuracy, isRetry) {
       } else {
         _locStatus('Address filled: ' + street + ', ' + city + '. Correct it if the pin is off.', 'ok');
       }
+      _locationLanded();
     })
     .catch(err => {
       if (seq !== _locLookupSeq) return;
@@ -4680,64 +4778,203 @@ function _reverseGeocode(lat, lng, accuracy, isRetry) {
     });
 }
 
-// Typed address to pin. Runs when the address, town, state or zip changes and
-// loses focus. The typed street is kept. Town, state and zip come from this same
-// lookup, unless the officer typed them by hand.
-function findAddressOnMap() {
+function _kmFrom(fix, hit) {
+  const rad = d => d * Math.PI / 180;
+  const lat = parseFloat(hit.lat), lng = parseFloat(hit.lon);
+  const dLat = rad(lat - fix.lat), dLng = rad(lng - fix.lng);
+  const h = Math.pow(Math.sin(dLat / 2), 2) + Math.cos(rad(fix.lat)) * Math.cos(rad(lat)) * Math.pow(Math.sin(dLng / 2), 2);
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}
+
+// True when this piece of typed text only names the place the search found, such
+// as "Brooklyn", "NY" or "Brooklyn NY 11249". "CVS" and "Apt 2" do not.
+function _locNamesPlace(segment, a) {
+  const plain = s => String(s || '').replace(/^(City|Town|Village|Township|Borough|Municipality) of\s+/i, '').toLowerCase().trim();
+  const names = [a.city, a.town, a.village, a.hamlet, a.suburb, a.borough, a.city_district, a.municipality, a.county, a.state,
+    _cityFromAddress(a), _stateFromAddress(a), _zipFromAddress(a), 'usa', 'us', 'united states'].map(plain).filter(Boolean);
+  if (/^new york/.test(plain(a.city))) names.push('nyc', 'new york city');
+  let left = ' ' + String(segment).toLowerCase().replace(/\./g, '').replace(/(\d{5})-\d{4}/, '$1').replace(/\s+/g, ' ').trim() + ' ';
+  names.sort((x, y) => y.length - x.length).forEach(n => { left = left.split(' ' + n + ' ').join(' '); });
+  return !left.trim();
+}
+
+// An apartment or suite is on the report but not on the map, and asking for it
+// finds nothing. It stays in the box and stays out of the search.
+const LOC_UNIT = /[,\s]+(?:(?:apt|apartment|unit|suite|ste|floor|fl|room|rm)\b\.?\s*#?\s*|#\s*)(?:[a-z]?\d[\w-]*|[a-z])\b(?=\s*(?:,|$))/i;
+
+// Typed address to pin. Runs when the address, town or zip changes and loses
+// focus, and when Confirm is tapped. The typed street is kept.
+//   A different street: boxes the officer did not type follow the answer, or blank.
+//   A corrected town: the old zip and state went with the old town, so they follow.
+//   A corrected zip on the same street: the town was left alone on purpose, so it
+//   stays, and only an empty box gets filled.
+function findAddressOnMap(isRetry) {
   const addr = document.getElementById('loc-address');
-  if (!addr || addr.value.trim().length < 4) return;
+  const text = _locValue('loc-address');
+  if (!addr || text.length < 4) return Promise.resolve();
+  const oldStreet = _locAnswered['loc-address'] || '';
+  const otherStreet = !!oldStreet && text !== oldStreet;
+  const townTyped = !!_locTyped('loc-city'), zipTyped = !!_locTyped('loc-zip');
+  const anyEmpty = ['loc-city', 'loc-state', 'loc-zip'].some(id => !_locValue(id));
+  // Same street and nothing left to settle: a corrected state needs no search.
+  if (text === oldStreet && !townTyped && !zipTyped && !anyEmpty) return Promise.resolve();
+
   const seq = ++_locLookupSeq;
+  _locSearchSeq = seq;
+  _locSearchedFor = text;
+  const follow = otherStreet || townTyped;
+  const put = (id, value) => {
+    const el = document.getElementById(id);
+    if (!el || _locTyped(id)) return;
+    if (!follow && el.value.trim()) return;
+    el.value = value;
+    _locAnswered[id] = value;
+  };
+  const blankTheRest = () => { put('loc-city', ''); put('loc-state', ''); put('loc-zip', ''); };
   // Only what the officer typed goes in the query. A town left by the last lookup
   // belongs to a different street, and asking for both finds nothing.
-  const typed = id => { const el = document.getElementById(id); return _locTouched[id] && el ? el.value.trim() : ''; };
-  const q = [addr.value.trim(), typed('loc-city'), typed('loc-state'), typed('loc-zip')].filter(Boolean).join(', ');
-  const townGiven = !!(typed('loc-city') || typed('loc-zip')) || addr.value.includes(',');
-  let url = NOMINATIM + '/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=us&accept-language=en-US';
-  if (_locMarker) { // prefer a match near the pin over one across the country
-    const here = _locMarker.getLatLng();
-    url += '&viewbox=' + [here.lng - 0.5, here.lat + 0.5, here.lng + 0.5, here.lat - 0.5].join(',');
+  const q = [text.replace(LOC_UNIT, ''), _locTyped('loc-city'), _locTyped('loc-state'), _locTyped('loc-zip')].filter(Boolean).join(', ');
+  // A retry asks for one fewer so it is a new address to the service's cache.
+  let url = NOMINATIM + '/search?format=jsonv2&limit=' + (isRetry ? 9 : 10) + '&addressdetails=1&countrycodes=us&accept-language=en-US';
+  const around = _locFix || (_locMarker && _locMarker.getLatLng());
+  if (around) { // prefer a match near the pin over one across the country
+    url += '&viewbox=' + [around.lng - 0.5, around.lat + 0.5, around.lng + 0.5, around.lat - 0.5].join(',');
   }
-  const fill = (id, value) => { const el = document.getElementById(id); if (el && !_locTouched[id]) el.value = value; };
-  const blankTheRest = () => { fill('loc-city', ''); fill('loc-state', ''); fill('loc-zip', ''); };
   _locStatus('Finding "' + q + '" on the map…');
-  fetch(url + '&q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' }, signal: _timeoutSignal(10000) })
+  return fetch(url + '&q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' }, signal: _timeoutSignal(10000) })
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(list => {
       if (seq !== _locLookupSeq) return;
       if (!list || !list.length) {
         // A town from an earlier lookup must not stand beside this street.
-        blankTheRest();
-        _locStatus('Could not find that address on the map. Type the town.', 'warn');
+        if (otherStreet) blankTheRest();
+        else if (townTyped) put('loc-zip', '');
+        _locStatus(_locValue('loc-city')
+          ? 'Could not find that address on the map. What you typed is kept, so check it.'
+          : 'Could not find that address on the map. Type the town.', 'warn');
         return;
       }
-      const hit = list[0];
+      // The service ranks by how well known a place is, so "385 Broadway" typed in
+      // Revere comes back as Cambridge first and Revere fourth. With a real pin, the
+      // nearest one is it. Within 100 m it is the same place (a shop in a building),
+      // so the service's own order stands.
+      let hit = list[0];
+      if (_locFix) list.forEach(h => { if (_kmFrom(_locFix, h) < _kmFrom(_locFix, hit) - 0.1) hit = h; });
       const lat = parseFloat(hit.lat), lng = parseFloat(hit.lon);
       const a = hit.address || {};
       const street = _streetFromAddress(a), town = _cityFromAddress(a), st = _stateFromAddress(a);
+      const parts = text.split(',').map(s => s.trim()).filter(Boolean);
       // A street with no town matches somewhere in the country ("120 Bedford
       // Avenue" typed in Brooklyn came back as Lowell, MA). Only believe it if the
-      // pin is real and close by. Otherwise ask, rather than fill in a wrong town.
-      const near = _locPinReal && _locMarker && _locMarker.getLatLng().distanceTo([lat, lng]) < 30000;
+      // officer named the place, or the pin is real and close by. Otherwise ask,
+      // rather than fill in a wrong town.
+      const townGiven = townTyped || zipTyped || parts.slice(1).some(p => _locNamesPlace(p, a)) ||
+        (!otherStreet && !!_locValue('loc-city'));
+      const near = _locFix && _kmFrom(_locFix, hit) < LOC_NEAR_KM;
       if (!townGiven && !near) {
-        blankTheRest();
+        if (otherStreet) blankTheRest();
         _locStatus('Best match is ' + ([street, town, st].filter(Boolean).join(', ') || q) + '. Type the town to confirm.', 'warn');
         return;
       }
-      // "40 South 6th Street, Brooklyn, NY" typed in the street box: the town now
-      // has its own box, so keep the street alone or the report says it twice.
-      if (addr.value.includes(',')) addr.value = addr.value.split(',')[0].trim();
+      // The officer left this town alone. If the map disagrees, say so, not choose.
+      const boxTown = _locValue('loc-city');
+      if (!follow && boxTown && town && boxTown.toLowerCase() !== town.toLowerCase()) {
+        _locStatus('The map puts that address in ' + town + ', not ' + boxTown + '. Check the town and zip.', 'warn');
+        return;
+      }
+      // "40 South 6th Street, Brooklyn, NY" typed in the street box: the town has its
+      // own box, so it comes out or the report says it twice. Only a piece that names
+      // this place. "CVS, 375 Broadway" and "120 Bedford Avenue, Apt 2" stay whole.
+      const kept = parts.filter((p, i) => !((i > 0 || !street) && _locNamesPlace(p, a)));
+      if (kept.length !== parts.length) addr.value = kept.join(', ');
       if (locMap && _locMarker) { locMap.setView([lat, lng], 17); _locMarker.setLatLng([lat, lng]); }
-      _locPinReal = true;
-      fill('loc-city', town);
-      fill('loc-state', st);
-      fill('loc-zip', _zipFromAddress(a));
-      _locStatus('Pin moved to ' + ([street, town].filter(Boolean).join(', ') || q) + '.', 'ok');
+      _locFix = { lat, lng };
+      _locAnswered['loc-address'] = _locValue('loc-address');
+      put('loc-city', town);
+      put('loc-state', st);
+      put('loc-zip', _zipFromAddress(a));
+      // The status repeats what went in the boxes, so the two can never disagree.
+      if (!_locValue('loc-address')) _locStatus('Found ' + _fullLocation(false) + '. Type the street.', 'warn');
+      else if (!_locValue('loc-city')) _locStatus('Pin moved to ' + _fullLocation(false) + '. Type the town.', 'warn');
+      else _locStatus('Pin moved to ' + _fullLocation(false) + '.', 'ok');
     })
     .catch(err => {
       if (seq !== _locLookupSeq) return;
       console.warn('[MEA] address search failed:', err);
-      _locStatus('The address search did not answer, so the pin has not moved. What you typed is kept.', 'warn');
+      // The service limits how fast it answers, so one quiet retry covers most
+      // blips. Not when someone is standing there waiting on Confirm.
+      if (!isRetry && !_locConfirmWaiting) {
+        return new Promise(resolve => setTimeout(resolve, 2000)).then(() => {
+          if (seq === _locLookupSeq) return findAddressOnMap(true);
+        });
+      }
+      if (otherStreet) blankTheRest();
+      else if (townTyped) put('loc-zip', '');
+      _locStatus(_locValue('loc-city')
+        ? 'The address search did not answer, so the pin has not moved. What you typed is kept.'
+        : 'The address search did not answer. Type the town, state and zip, or retype the street to search again.', 'warn');
+    })
+    .then(() => {
+      if (seq !== _locLookupSeq) return; // something newer took over
+      _locSearchSeq = 0;
+      _locationLanded();
+      if (_locConfirmWaiting) {
+        _locConfirmIdle();
+        if (cur === 'location') confirmLocation();
+      }
     });
+}
+
+// The one way off this screen. A street with no town is not an address anyone can
+// find again, and the prompt asking for one is no use once the screen is gone.
+function confirmLocation() {
+  // On an iPad a tap on a button leaves the box focused and the keyboard up, so
+  // the box never reports its change. Do both here, and search what it holds.
+  const active = document.activeElement;
+  if (active && LOC_FIELDS.indexOf(active.id) !== -1) active.blur();
+  const street = _locValue('loc-address');
+  if (street.length >= 4 && street !== (_locAnswered['loc-address'] || '') && street !== _locSearchedFor) findAddressOnMap();
+  if (_locSearchSeq && _locSearchSeq === _locLookupSeq) {
+    _locConfirmWaiting = true;
+    const btn = document.getElementById('loc-confirm-btn');
+    if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.textContent = 'Checking the address…'; }
+    return;
+  }
+  if (street && !_locValue('loc-city')) {
+    const since = Date.now() - _locNoTownAskedAt;
+    if (!_locNoTownAskedAt) {
+      _locNoTownAskedAt = Date.now();
+      _locStatus(/type the town/i.test(_locStatusNow)
+        ? _locStatusNow + ' Or tap Confirm Location again to go on without it.'
+        : 'This address has no town yet. Type the town, or tap Confirm Location again to go on without it.', 'warn');
+      const city = document.getElementById('loc-city');
+      if (city) city.focus();
+      return;
+    }
+    if (since < 700) return; // a double tap must not skip the question it just asked
+  }
+  _locNoTownAskedAt = 0;
+  nav('time');
+}
+
+// A lookup finished, possibly after the summary was written. The report around
+// the narrative catches up. If the app found this location by itself the officer
+// changed nothing, so it must not count as a change that rewrites the narrative.
+function _locationLanded() {
+  if (_narrativeFor === null) return; // no summary yet for this citation
+  if (_locAuto) _narrativeFor = _narrativeKey(voiceTranscriptText);
+  generateFormattedReport(voiceTranscriptText, _lastPriceResults || { found: [], total: 0 });
+  updateReadbackText();
+}
+
+// What the report still lacks about where this happened. On the summary and on
+// Review, because the lookup that left it blank may have run on a hidden screen.
+function _locationGap() {
+  const street = _locValue('loc-address'), town = _locValue('loc-city');
+  if (!street && !town) return 'No incident address yet. Go back to the Location screen and enter it.';
+  if (!town) return 'No town on the incident address. Go back to the Location screen and type it.';
+  if (!street) return 'No street on the incident address. Go back to the Location screen and type it.';
+  return '';
 }
 
 // The whole location as one line, for everything that reads or files it.

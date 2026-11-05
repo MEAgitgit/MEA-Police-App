@@ -176,7 +176,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
 
 /* ── Map ── */
 #loc-map{width:100%;height:220px;border-radius:14px;overflow:hidden;border:1px solid var(--g2);}
-.leaflet-control-attribution{display:none !important;}
+.leaflet-control-attribution{font-size:9px;line-height:1.4;padding:0 4px;}
 </style>
 </head>
 <body>
@@ -398,20 +398,20 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     </div>
     <div style="margin-top:14px;">
       <label class="form-label">Address</label>
-      <input type="text" class="form-input" id="loc-address" value="" placeholder="Enter incident address" style="font-weight:600;" onchange="findAddressOnMap()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
+      <input type="text" class="form-input" id="loc-address" value="" autocomplete="off" placeholder="Enter incident address" style="font-weight:600;" oninput="_locTouch(this)" onchange="findAddressOnMap()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;">
       <div style="flex:1;">
         <label class="form-label">City</label>
-        <input type="text" class="form-input" id="loc-city" value="" placeholder="City">
+        <input type="text" class="form-input" id="loc-city" value="" autocomplete="off" placeholder="City" oninput="_locTouch(this)" onchange="findAddressOnMap()">
       </div>
       <div style="width:80px;">
         <label class="form-label">State</label>
-        <input type="text" class="form-input" id="loc-state" value="" placeholder="ST">
+        <input type="text" class="form-input" id="loc-state" value="" autocomplete="off" placeholder="ST" oninput="_locTouch(this)" onchange="findAddressOnMap()">
       </div>
       <div style="width:100px;">
         <label class="form-label">Zip</label>
-        <input type="text" class="form-input" id="loc-zip" value="" placeholder="Zip">
+        <input type="text" class="form-input" id="loc-zip" value="" autocomplete="off" placeholder="Zip" oninput="_locTouch(this)">
       </div>
     </div>
     <div style="height:40px;"></div>
@@ -466,24 +466,24 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
   <div class="sb-light"><span>9:41</span><div class="sb-icons" style="color:#000;">●●●</div></div>
   <div class="light-nav">
     <button class="back-circle" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <h2>Additional Notes</h2>
+    <h2>Incident Details</h2>
   </div>
   <div class="scroll" style="padding:0 20px;">
-    <p style="font-size:14px;color:var(--g4);margin-bottom:16px;line-height:1.5;">Enter additional notes about the incident, or tap the microphone to dictate and we'll format it for you.</p>
+    <p style="font-size:14px;color:var(--g4);margin-bottom:16px;line-height:1.5;">Type what happened, or tap the microphone to dictate. We'll turn it into report language either way.</p>
     <div style="position:relative;">
-      <textarea class="form-textarea" id="notes-textarea" rows="5" placeholder="Enter additional notes if any..." style="min-height:130px;padding-right:50px;"></textarea>
+      <textarea class="form-textarea" id="notes-textarea" rows="5" placeholder="Type what happened..." style="min-height:130px;padding-right:50px;"></textarea>
       <button onclick="startVoice()" id="mic-btn" style="position:absolute;right:10px;bottom:10px;width:40px;height:40px;border-radius:50%;background:var(--blue);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(20,75,216,.3);">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
       </button>
     </div>
     <div style="margin-top:20px;">
       <label class="form-label">Evidence & Item Photos</label>
-      <p style="font-size:12px;color:var(--g4);margin-bottom:8px;">Tap the mic to dictate the incident, then you'll photograph each item on the next screen</p>
+      <p style="font-size:12px;color:var(--g4);margin-bottom:8px;">You'll photograph each item on the next screen</p>
     </div>
     <div style="height:40px;"></div>
   </div>
   <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
-    <button class="btn" onclick="nav('code')">Continue</button>
+    <button class="btn" onclick="continueFromNotes()">Continue</button>
   </div>
 </div>
 
@@ -523,15 +523,15 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <div style="background:#ECFDF5;border:1.5px solid #A7F3D0;border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
       <span style="font-size:18px;">✓</span>
       <div>
-        <div style="font-size:13px;font-weight:700;color:#065F46;">Voice transcription complete</div>
-        <div id="vr-format-status" style="font-size:11px;color:#1D4ED8;margin-top:2px;line-height:1.4;">Transcribed. Formalizing it into report language…</div>
+        <div id="vr-step-title" style="font-size:13px;font-weight:700;color:#065F46;">Voice transcription complete</div>
+        <div id="vr-format-status" style="font-size:11px;color:#1D4ED8;margin-top:2px;line-height:1.4;">Formalizing it into report language…</div>
       </div>
     </div>
 
     <!-- What you said (collapsible) -->
     <div style="margin-bottom:14px;">
       <button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('span:last-child').textContent=this.nextElementSibling.style.display==='none'?'▶':'▼'" style="width:100%;padding:8px 0;border:none;background:none;display:flex;align-items:center;gap:6px;cursor:pointer;">
-        <span style="font-size:12px;font-weight:700;color:var(--g4);">🎤 What you said</span>
+        <span id="vr-what-label" style="font-size:12px;font-weight:700;color:var(--g4);">🎤 What you said</span>
         <span style="font-size:10px;color:var(--g4);">▼</span>
       </button>
       <div id="voice-what-you-said" style="background:var(--g1);border-radius:10px;padding:12px;font-size:12px;color:var(--g4);line-height:1.5;font-style:italic;max-height:80px;overflow-y:auto;"></div>
@@ -649,7 +649,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <!-- FORMATTED INCIDENT REPORT -->
     <div style="margin-bottom:14px;">
       <label class="form-label" style="color:var(--navy);">📋 Formatted Incident Report:</label>
-      <div id="formatted-notes" style="background:#fff;border:1.5px solid var(--blue);border-radius:10px;padding:14px;font-size:13px;color:var(--navy);line-height:1.7;max-height:200px;overflow-y:auto;" contenteditable="true"></div>
+      <div id="formatted-notes" oninput="_syncNarrativeEdits()" style="background:#fff;border:1.5px solid var(--blue);border-radius:10px;padding:14px;font-size:13px;color:var(--navy);line-height:1.7;max-height:200px;overflow-y:auto;" contenteditable="true"></div>
       <div id="report-gaps" style="display:none;margin-top:8px;font-size:12px;color:#92400E;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:8px 10px;line-height:1.5;"></div>
     </div>
 
@@ -669,7 +669,7 @@ html,body{height:100%;background:#000;font-family:var(--font);-webkit-font-smoot
     <div style="height:20px;"></div>
   </div>
   <div style="padding:12px 20px calc(var(--sb)+12px);background:#fff;border-top:1px solid var(--g2);">
-    <button class="btn" onclick="acceptFormattedNotes()">Accept & Continue</button>
+    <button class="btn" id="vr-accept-btn" onclick="acceptFormattedNotes()">Accept & Continue</button>
   </div>
 </div>
 
@@ -1159,6 +1159,7 @@ if ((localStorage.getItem('mea_api_url') || '').includes('localhost')) localStor
 const _selfHosted = location.hostname.endsWith('.onrender.com') ? location.origin : null;
 const API_BASE = localStorage.getItem('mea_api_url') || _selfHosted || 'https://mea-backend-um9p.onrender.com';
 let authToken = null;
+let _tokenAt = 0;
 let apiConnected = false;
 
 // Check backend connectivity and show indicator
@@ -1198,6 +1199,7 @@ function loginToBackend() {
     body: JSON.stringify({email: 'dercolo@revere.pd', password: '4321'})
   }).then(r => r.json()).then(d => {
     authToken = d.token;
+    _tokenAt = d.token ? Date.now() : 0;
     apiConnected = true;
     updateConnectionIndicator();
     console.log('[MEA] Backend authenticated');
@@ -1207,6 +1209,20 @@ function loginToBackend() {
     console.log('[MEA] Backend unavailable — demo mode');
   });
 }
+
+function ensureSignedIn() { if (!authToken) loginToBackend(); }
+
+// A token lasts 24 hours, but a tab on an iPad can stay open for days. An expired
+// one still reads as connected while every AI call is refused, so renew it first.
+const TOKEN_REFRESH_MS = 23 * 60 * 60 * 1000;
+function _refreshSignInIfStale() {
+  if (_tokenAt && Date.now() - _tokenAt > TOKEN_REFRESH_MS) {
+    authToken = null;
+    ensureSignedIn();
+  }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) _refreshSignInIfStale(); });
+setInterval(_refreshSignInIfStale, 10 * 60 * 1000);
 
 // ── STATE ──
 let cur = 'pin';
@@ -1247,11 +1263,13 @@ function resetCitationState() {
   if (notesArea) notesArea.value = '';
   const voiceTranscript = document.getElementById('voice-transcript');
   if (voiceTranscript) { voiceTranscript.textContent = ''; voiceTranscript.contentEditable = 'false'; }
-  const locInput = document.getElementById('loc-address');
-  if (locInput) locInput.value = '';
-  // Clear formatted report area
-  const reportEl = document.getElementById('formatted-report');
-  if (reportEl) reportEl.innerHTML = '';
+  // The whole location goes together, and the whole summary screen with it.
+  // Clearing only the street is how a new citation picked up the last one's
+  // town, state and zip, and how the last citation's narrative could reach the
+  // next one's report.
+  _resetLocationScreen();
+  _resetIncidentSummary();
+  _refreshSignInIfStale();
   // Reset offense selection UI
   document.querySelectorAll('.offense-card').forEach(c => c.classList.remove('selected'));
 }
@@ -2994,20 +3012,23 @@ function stopVoice() {
   if (recognition) { recognition.stop(); recognition = null; }
 }
 let _aiParsedData = null; // Store AI-parsed transcript data
+let _narrativeSeq = 0;         // only the newest request may write its answer
+let _narrativeState = 'none';  // none | pending | done | failed
+let _narrativeFor = null;      // the exact words the current narrative was built from
+let _acceptWhenReady = false;  // Accept was tapped while the narrative was still coming
 
 function finishVoice() {
   clearInterval(voiceTimer);
   if (recognition) { recognition.stop(); recognition = null; }
-  usedVoice = true;
   // If we have a live transcript from speech recognition, use it
+  let spoken;
   if (liveTranscript.trim()) {
-    voiceTranscriptText = liveTranscript.trim();
-    document.getElementById('voice-transcript').textContent = '"' + liveTranscript.trim() + '"';
+    spoken = liveTranscript.trim();
+    document.getElementById('voice-transcript').textContent = '"' + spoken + '"';
   } else {
     // Grab manually typed text (contentEditable fallback) or displayed text
     const transcriptEl = document.getElementById('voice-transcript');
-    const rawText = (transcriptEl.innerText || transcriptEl.textContent || '').replace(/^"|"$/g, '').trim();
-    voiceTranscriptText = rawText;
+    spoken = (transcriptEl.innerText || transcriptEl.textContent || '').replace(/^"|"$/g, '').trim();
     // Reset contentEditable if it was set
     transcriptEl.contentEditable = 'false';
     transcriptEl.style.border = 'none';
@@ -3016,15 +3037,15 @@ function finishVoice() {
     transcriptEl.style.background = '';
     transcriptEl.style.cursor = '';
   }
-  // Update the "what you said" section with real transcript
-  if (voiceTranscriptText) {
-    document.getElementById('voice-what-you-said').textContent = '"' + voiceTranscriptText + '"';
-  }
-  // Generate formatted report from transcript (narrative only — items come from photo flow)
-  generateFormattedReport(voiceTranscriptText, { found: [], total: 0 });
-  nav('voice-result');
-  // Populate initial readback
-  setTimeout(updateReadbackText, 500);
+  // Anything already typed stays and the dictation adds to it. The box always
+  // holds the officer's own words, however they got there.
+  const box = document.getElementById('notes-textarea');
+  const combined = [box ? box.value.trim() : '', spoken].filter(Boolean).join(' ');
+  if (box) box.value = combined;
+  _openIncidentSummary(combined, true);
+  // The recording is over, so Back from the summary lands on the box rather
+  // than on a finished recording screen.
+  navHistory = navHistory.filter(h => h !== 'voice');
   // Speak the prompt to the officer after a short delay
   setTimeout(() => {
     if (authToken) {
@@ -3033,14 +3054,38 @@ function finishVoice() {
       speakPrompt('Transcription complete. Now send me photos of each stolen item, one at a time.');
     }
   }, 800);
+}
 
-  // ── AI-POWERED TRANSCRIPT PARSING ──
-  // The dictation goes to the backend, which returns the report narrative
-  // (report language, pertinent facts only) plus the structured facts. Until
-  // that comes back the screen says so; it does not claim the words are
-  // formatted, because the first render below is a template.
-  _aiParsedData = null;
-  _requestNarrative(voiceTranscriptText);
+// Continue on the details screen. Typing is a full alternative to dictating: it
+// takes the same road to the items screen and gets the same narrative.
+function continueFromNotes() {
+  const box = document.getElementById('notes-textarea');
+  // v2 demo: with nothing typed, the charge's sample transcript stands in, as it
+  // does when nothing was dictated. It never replaces what an officer wrote.
+  const typed = (box ? box.value : '').trim() || _subTranscript || '';
+  // Came back from the summary without changing the dictated words: still voice.
+  _openIncidentSummary(typed, usedVoice && typed === voiceTranscriptText);
+}
+
+function _detailsNoun() { return usedVoice ? 'dictation' : 'notes'; }
+
+// One road from "what happened" to the items screen, however the officer gave it.
+function _openIncidentSummary(details, viaVoice) {
+  const text = (details || '').trim();
+  usedVoice = !!viaVoice;
+  voiceTranscriptText = text;
+  document.getElementById('vr-step-title').textContent = viaVoice
+    ? 'Voice transcription complete'
+    : (text ? 'Incident details received' : 'No incident details yet');
+  document.getElementById('vr-what-label').textContent = viaVoice ? '🎤 What you said' : '✏️ What you typed';
+  document.getElementById('voice-what-you-said').textContent = text ? '"' + text + '"' : 'Nothing entered.';
+  // Same words as last time (Back, then Continue with no changes): keep the
+  // narrative already written or still on its way, and do not ask again.
+  const sameWords = text === _narrativeFor && (_narrativeState === 'done' || _narrativeState === 'pending');
+  if (!sameWords) _requestNarrative(text);
+  generateFormattedReport(text, _lastPriceResults || { found: [], total: 0 });
+  nav('voice-result');
+  setTimeout(updateReadbackText, 500);
 }
 
 function _setFormatStatus(text, tone) {
@@ -3076,27 +3121,67 @@ function _reportContext() {
   };
 }
 
+function _setAcceptWaiting(waiting) {
+  const btn = document.getElementById('vr-accept-btn');
+  if (!btn) return;
+  btn.disabled = waiting;
+  btn.style.opacity = waiting ? '.6' : '';
+  btn.textContent = waiting ? 'Finishing the report…' : 'Accept & Continue';
+}
+
+// The request is finished, one way or the other. If the officer tapped Accept
+// while waiting, carry on, but only on success: a failure has to be read.
+function _narrativeSettled() {
+  const wanted = _acceptWhenReady;
+  _acceptWhenReady = false;
+  _setAcceptWaiting(false);
+  if (wanted && _narrativeState === 'done' && cur === 'voice-result') acceptFormattedNotes();
+}
+
 function _requestNarrative(transcript) {
-  if (!transcript) return;
-  if (!authToken) {
-    _setFormatStatus('Not signed in to the backend, so the report shows your dictation as spoken. Edit it into report language before filing.', 'warn');
+  const seq = ++_narrativeSeq; // any answer still on its way for older words is now ignored
+  const noun = _detailsNoun();
+  const asGiven = usedVoice ? 'your dictation as spoken' : 'your notes as typed';
+  _narrativeFor = transcript;
+  _aiParsedData = null;
+  _aiStoreName = '';
+  _acceptWhenReady = false;
+  _setAcceptWaiting(false);
+  if (!transcript) {
+    _narrativeState = 'none';
+    _setFormatStatus('Go back to type or dictate what happened, or add the items below.', 'warn');
     return;
   }
-  _setFormatStatus('Formalizing your dictation into report language…', 'pending');
+  if (!authToken) {
+    ensureSignedIn();
+    _narrativeState = 'failed';
+    _setFormatStatus('Not connected right now, so the report shows ' + asGiven + '. Edit it into report language before filing, or go back and tap Continue to try again.', 'warn');
+    return;
+  }
+  _narrativeState = 'pending';
+  _setFormatStatus('Formalizing your ' + noun + ' into report language…', 'pending');
+  const render = () => {
+    generateFormattedReport(transcript, _lastPriceResults || { found: [], total: 0 });
+    updateReadbackText();
+  };
+  const fail = (reason) => {
+    console.log('[MEA] narrative not formalized:', reason);
+    _narrativeState = 'failed';
+    _setFormatStatus('Could not formalize your ' + noun + '. The report shows ' + asGiven + '. Edit it into report language before filing, or go back and tap Continue to try again.', 'warn');
+    render();
+    _narrativeSettled();
+  };
   const ctx = _reportContext();
   fetch(API_BASE + '/api/ai/parse-transcript', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-    body: JSON.stringify(Object.assign({ transcript }, ctx))
+    body: JSON.stringify(Object.assign({ transcript }, ctx)),
+    signal: AbortSignal.timeout(60000)
   }).then(r => r.json()).then(ai => {
-    if (!ai || ai.fallback || !ai.narrative) {
-      console.log('[MEA] narrative not formalized:', ai && (ai.error || ai.reason));
-      _setFormatStatus('Could not formalize the dictation. The report shows your words as spoken; edit them into report language before filing.', 'warn');
-      generateFormattedReport(transcript, _lastPriceResults || { found: [], total: 0 });
-      updateReadbackText();
-      return;
-    }
+    if (seq !== _narrativeSeq) return; // the words changed, or this is a new citation
+    if (!ai || ai.fallback || !ai.narrative) return fail(ai && (ai.reason || ai.error));
     _aiParsedData = ai;
+    _narrativeState = 'done';
     console.log('[MEA] AI parsed transcript:', ai);
     _setFormatStatus('Narrative formalized. Read it and correct anything that is not what happened.', 'ok');
 
@@ -3116,19 +3201,53 @@ function _requestNarrative(transcript) {
     if (ai.storeName) _aiStoreName = ai.storeName;
 
     // Items the officer mentioned are suggestions until confirmed
-    if (ai.items && ai.items.length > 0) {
-      showToast('AI found ' + ai.items.length + ' item' + (ai.items.length > 1 ? 's' : '') + ' — review below');
-      speakPrompt('I heard ' + ai.items.length + ' item' + (ai.items.length > 1 ? 's' : '') + ' from your description. Please confirm or remove before continuing.');
-      _showAiSuggestedItems(ai.items);
+    const suggested = ai.items && ai.items.length ? _showAiSuggestedItems(ai.items) : 0;
+    if (suggested) {
+      const items = suggested + ' item' + (suggested > 1 ? 's' : '');
+      showToast('AI found ' + items + '. Review them below.');
+      if (usedVoice) speakPrompt('I heard ' + items + ' from your description. Please confirm or remove before continuing.');
     } else {
-      showToast('Narrative formalized' + (ai.personName ? ' — subject: ' + ai.personName : ''));
+      showToast('Narrative formalized' + (ai.personName ? '. Subject: ' + ai.personName : ''));
     }
-    generateFormattedReport(transcript, _lastPriceResults || { found: [], total: 0 });
-    updateReadbackText();
+    render();
+    _narrativeSettled();
   }).catch(err => {
-    console.warn('[MEA] AI parse failed:', err);
-    _setFormatStatus('Could not reach the backend to formalize the dictation. The report shows your words as spoken; edit them before filing.', 'warn');
+    if (seq !== _narrativeSeq) return;
+    fail(err && err.message);
   });
+}
+
+// Corrections typed into the narrative are the record. Without this they
+// vanished the moment an item was added, and never reached the report that gets
+// copied. Only ever runs while the screen is on show, so the line breaks are real.
+function _syncNarrativeEdits() {
+  const el = document.getElementById('fn-narrative');
+  if (!el || !_aiParsedData) return;
+  const edited = (el.innerText || '').trim();
+  if (edited) _aiParsedData.narrative = edited;
+}
+
+// Back to a blank summary screen for a new citation.
+function _resetIncidentSummary() {
+  _narrativeSeq++; // an answer still on its way belongs to the last citation
+  _narrativeState = 'none';
+  _narrativeFor = null;
+  _aiParsedData = null;
+  _aiStoreName = '';
+  _acceptWhenReady = false;
+  _setAcceptWaiting(false);
+  ['voice-what-you-said', 'formatted-notes', 'report-gaps', 'formal-report-gaps', 'formal-report-body',
+   'items-list-rows', 'item-photo-thumbs', 'price-lookup-results', 'readback-summary-text', 'photo-alternatives'
+  ].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
+  ['report-gaps', 'formal-report-gaps', 'items-list-container', 'add-another-prompt', 'price-lookup-results',
+   'item-photo-panel', 'photo-alternatives'
+  ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  const total = document.getElementById('items-total-amount');
+  if (total) total.textContent = '$0.00';
+  const suggestions = document.getElementById('ai-suggestions-box');
+  if (suggestions) suggestions.remove();
+  const hint = document.getElementById('photo-section-hint');
+  if (hint) hint.textContent = 'Items detected from your report are shown below. Tap to correct, or snap photos to verify and add more.';
 }
 
 function _escapeHtml(s) {
@@ -3147,7 +3266,7 @@ function _renderReportGaps(id) {
   if (!gaps.length && !left.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
   let html = '';
   if (gaps.length) {
-    html += '<strong>Not in your dictation — add before filing:</strong><ul style="margin:4px 0 0 16px;padding:0;">'
+    html += '<strong>Not in your ' + _detailsNoun() + '. Add before filing:</strong><ul style="margin:4px 0 0 16px;padding:0;">'
       + gaps.map(g => '<li>' + _escapeHtml(g) + '</li>').join('') + '</ul>';
   }
   if (left.length) {
@@ -3164,23 +3283,32 @@ function _showAiSuggestedItems(items) {
   // v2 guard: only the shoplifting flow uses the items-suggestion UI
   const _cfg = getCharge();
   if (_cfg && _cfg.evidenceMode !== 'items') return;
-  _aiSuggestedItems = items.map((it, i) => ({ id: i, name: it.name, qty: it.qty || 1, confirmed: false }));
+  // Whatever is already on the list stays on it. This answer can arrive after
+  // the officer has started photographing, and it used to wipe the list.
+  const have = _stolenItems.map(i => String(i.name).toLowerCase());
+  const isNew = it => {
+    const n = String(it.name || '').toLowerCase();
+    return n && !have.some(h => h.includes(n) || n.includes(h));
+  };
+  _aiSuggestedItems = items.filter(isNew).map((it, i) => ({ id: i, name: it.name, qty: it.qty || 1, confirmed: false }));
+
+  const oldBox = document.getElementById('ai-suggestions-box');
+  if (!_aiSuggestedItems.length) {
+    if (oldBox) oldBox.remove();
+    return 0;
+  }
 
   // Build suggestion UI inside the voice-result screen
   const container = document.getElementById('items-list-container');
   container.style.display = 'block';
-  const rows = document.getElementById('items-list-rows');
-
-  // Clear any existing rows
-  rows.innerHTML = '';
-  _stolenItems = [];
 
   // Add header for suggestions
   const hintEl = document.getElementById('photo-section-hint');
-  if (hintEl) hintEl.textContent = 'AI heard these items from your dictation. Confirm the ones that are correct, remove any mistakes, then add photos.';
+  if (hintEl) hintEl.textContent = (usedVoice ? 'AI heard these items in your dictation.' : 'AI found these items in your notes.') + ' Confirm the ones that are correct, remove any mistakes, then add photos.';
 
   // Render each suggestion as a confirmable card
   _renderAiSuggestions();
+  return _aiSuggestedItems.length;
 }
 
 function _renderAiSuggestions() {
@@ -3716,7 +3844,7 @@ function generateFormattedReport(transcript, priceResults) {
       /(?:CVS|Walgreens|Target|Walmart|Stop\s*&?\s*Shop|Star\s+Market|Market\s+Basket|7-Eleven|Dunkin|Starbucks|Home\s+Depot|Costco|TJ\s*Maxx|Dollar\s+Tree|Rite\s+Aid)/i];
     for (const sp of storePatterns) {
       const sm = transcript.match(sp);
-      if (sm) { storeName = sm[0].trim(); break; }
+      if (sm) { storeName = (sm[1] || sm[0]).trim().replace(/^the\s+/i, ''); break; }
     }
   }
 
@@ -3757,9 +3885,9 @@ function generateFormattedReport(transcript, priceResults) {
   // ══ BUILD THE FORMAL REPORT ══
   const aiNarrative = (_aiParsedData && !_aiParsedData.fallback && _aiParsedData.narrative) ? String(_aiParsedData.narrative).trim() : '';
 
-  const opening = `On ${reportDateStr}, at approximately ${reportTimeStr} hours, the reporting officer ` +
-    (storeName ? `responded to a report at ${storeName}, ${location}.` : `was on patrol in the vicinity of ${location}.`) +
-    `<br><br>`;
+  // Says when and where, and nothing about how the officer came to be there.
+  // The narrative says that, in the officer's own facts.
+  const opening = `On ${reportDateStr}, at approximately ${reportTimeStr} hours, the reporting officer documented the following incident at ${storeName ? _escapeHtml(storeName) + ', ' : ''}${_escapeHtml(location)}.<br><br>`;
   const addressPara = participantAddr ? `Subject's address on file: <strong>${_escapeHtml(participantAddr)}</strong>.<br><br>` : '';
   const itemsPara = itemsLine ? `<strong>Stolen Items (${itemsFound.length}):</strong> ${itemsLine}<br>Estimated total retail value: <strong>$${totalValue.toFixed(2)}</strong> (${thresholdLabel}).<br><br>` : '';
   const eligibility = `Based on the nature of the offense (${offense} ${thresholdLabel}, ${statute}), ` +
@@ -3767,58 +3895,35 @@ function generateFormattedReport(transcript, priceResults) {
     (cooperative ? `the subject's cooperative demeanor, ` : '') +
     `this incident qualifies for <strong>pre-arrest diversion</strong> under the SWIFT program.<br><br>`;
 
-  let body;
+  // Only ever what the officer gave. This used to fall back on stock sentences
+  // keyed to the offense ("the store manager reported...", "was detained at the
+  // scene"), which an officer could have accepted as fact nobody had stated.
+  let narrativeBlock;
   if (aiNarrative) {
-    // The narrative came back from the backend: what the officer said, in
-    // report language, with the facts a report needs and nothing else. The
-    // opening and the eligibility paragraph are the app's own.
-    // The narrative says how the officer came to be there; this line only
-    // says when and where, so the two cannot contradict each other.
-    const aiOpening = `On ${reportDateStr}, at approximately ${reportTimeStr} hours, the reporting officer documented the following incident at ${storeName ? storeName + ', ' : ''}${location}.<br><br>`;
-    body = aiOpening
-      + _escapeHtml(aiNarrative).replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>') + '<br><br>'
-      + addressPara + itemsPara + eligibility;
+    narrativeBlock = '<span id="fn-narrative">' + _escapeHtml(aiNarrative).replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>') + '</span><br><br>';
+  } else if (!transcript) {
+    narrativeBlock = `<span style="color:#B45309;"><strong>No incident details entered.</strong> Go back to type or dictate what happened.</span><br><br>`;
+  } else if (_narrativeState === 'pending') {
+    narrativeBlock = `<em style="color:var(--g4);">Turning your ${_detailsNoun()} into report language…</em><br><br>`;
   } else {
-    // No formalized narrative yet (still loading, backend unreachable, or not
-    // signed in). The sentences below are a template keyed on the offense and
-    // say nothing the officer said, so the dictation is shown as spoken and
-    // labelled as such rather than silently dropped.
-    body = opening +
-      (offense === 'Shoplifting' || offense === 'Property Crime' ?
-        (storeName ?
-          `The store manager reported that an individual, later identified as <strong>${personName}</strong>, had exited the premises without tendering payment for merchandise.` :
-          `An individual, later identified as <strong>${personName}</strong>, was observed in possession of unpaid merchandise.`
-        ) :
-      offense === 'Trespassing' ?
-        `An individual, later identified as <strong>${personName}</strong>, was found on the premises in violation of posted no-trespass signage.` :
-      offense === 'Disorderly Conduct' ?
-        `An individual, later identified as <strong>${personName}</strong>, was involved in a disturbance at the above location.` :
-      offense === 'Drug Possession' || offense === 'Simple Drug Possession' ?
-        `An individual, later identified as <strong>${personName}</strong>, was found in possession of a controlled substance.` :
-        `An individual, later identified as <strong>${personName}</strong>, was involved in an incident at the above location.`
-      ) + `<br><br>` +
-      addressPara + itemsPara +
-      (cooperative ?
-        `The officer detained the subject without incident. Subject was cooperative throughout the encounter. ` :
-        `The subject was detained at the scene. `
-      ) +
-      (noWarrants ?
-        `A records check returned <strong>no active warrants</strong> and <strong>no prior criminal history</strong> on file.<br><br>` :
-        `A records check was conducted.<br><br>`
-      ) +
-      eligibility +
-      (transcript ? `<span style="color:#B45309;"><strong>Officer's dictation, as spoken (not yet in report language):</strong> "${_escapeHtml(transcript)}"</span><br><br>` : '');
+    narrativeBlock = `<span style="color:#B45309;"><strong>${usedVoice ? "Officer's dictation, as spoken" : "Officer's notes, as typed"} (not yet in report language):</strong> "${_escapeHtml(transcript)}"</span><br><br>`;
   }
 
-  const report = `<strong>Incident Report — Officer M. Dercolo, Badge #4187</strong><br><br>` + body + `<em>— End of narrative</em>`;
+  const report = `<strong>Incident Report: Officer M. Dercolo, Badge #4187</strong><br><br>` + opening + narrativeBlock + addressPara + itemsPara + eligibility + `<em>End of narrative</em>`;
   document.getElementById('formatted-notes').innerHTML = report;
   _renderReportGaps('report-gaps');
 }
 function acceptFormattedNotes() {
-  // Copy formatted text back to notes textarea
-  const formatted = document.getElementById('formatted-notes').innerText;
-  formattedNotesText = formatted;
-  document.getElementById('notes-textarea').value = formatted;
+  // Still formalizing: moving on now would file the placeholder. Wait, then
+  // carry on by itself when the narrative lands.
+  if (_narrativeState === 'pending') {
+    _acceptWhenReady = true;
+    _setAcceptWaiting(true);
+    return;
+  }
+  // The finished report is kept apart from the officer's own words, which stay
+  // in the box so that coming back shows what they actually wrote.
+  formattedNotesText = voiceTranscriptText ? document.getElementById('formatted-notes').innerText : '';
   // Reset history to skip voice screens
   navHistory = navHistory.filter(h => h !== 'voice' && h !== 'voice-result');
   // v2: route non-shoplifting charges through the Evidence Verification screen
@@ -3947,7 +4052,7 @@ function identifyPhotoItem(photoData) {
     const shaky = ai.confidence !== 'high';
     if (shaky) nameInput.select();
     showToast(shaky
-      ? 'Best guess: ' + fullName + ' \u2014 check this is right'
+      ? 'Best guess: ' + fullName + '. Check this is right.'
       : 'Identified: ' + fullName);
     // Deliberately silent. An officer is often standing in front of the person
     // they stopped; the app announcing what it thinks it sees is the last thing
@@ -3958,8 +4063,8 @@ function identifyPhotoItem(photoData) {
       // How it was identified matters as much as how sure: a model read off a
       // label is a different claim from a model recognised by its shape.
       const basis = ai.basis === 'label' ? 'read from the label'
-        : ai.basis === 'design' ? 'recognised by design \u2014 check the model'
-        : 'generic \u2014 name the product';
+        : ai.basis === 'design' ? 'recognized by design, check the model'
+        : 'generic, name the product';
       confLabel.textContent = (ai.confidence === 'high' ? '\u2713 ' : ai.confidence === 'medium' ? '~ ' : '? ')
         + 'AI: ' + (ai.confidence || 'low') + ' confidence, ' + basis;
       confLabel.style.color = ai.confidence === 'high' ? 'var(--green)' : ai.confidence === 'medium' ? '#F59E0B' : 'var(--g4)';
@@ -4223,7 +4328,7 @@ async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice, sea
   } else if (aiEstimatedPrice && aiEstimatedPrice > 0) {
     // Lookup failed — fall back to the estimate, flagged so it reads as unconfirmed.
     price = aiEstimatedPrice;
-    source = 'AI estimate \u2014 unverified';
+    source = 'AI estimate, unverified';
     searched = false;
   } else if (!verify && getFallbackPrice(query)) {
     price = getFallbackPrice(query);
@@ -4232,7 +4337,7 @@ async function addItemAndSearchPrice(name, qty, photoData, aiEstimatedPrice, sea
     // Nothing could be verified. A made-up $9.99 on a property report is worse
     // than a blank, because the value decides the larceny threshold.
     price = 0;
-    source = 'No verified price \u2014 tap the amount to enter one';
+    source = 'No verified price. Tap the amount to enter one.';
   }
 
   const itemTotal = price * qty;
@@ -4942,14 +5047,14 @@ function buildFormalReport() {
   const closingLines = `\n\nThe subject was identified as ${fullName.toUpperCase()}${dob ? ', DOB ' + dob : ''}${addr ? ', residing at ' + addr : ''}.`
     + (totalValue > 0 ? `\n\nThe total estimated value of the merchandise involved is $${totalValue.toFixed(2)}.` : '')
     + `\n\nBased on the circumstances of this incident and the subject's eligibility under G.L. c. 276A, the subject was offered pre-arraignment diversion through the SWIFT program administered by the Suffolk County District Attorney's Office.`
-    + `\n\nDisposition: DIVERSION — SWIFT PROGRAM REFERRAL`;
+    + `\n\nDisposition: DIVERSION (SWIFT PROGRAM REFERRAL)`;
   if (aiNarrative) {
     report += openingLine + '\n\n' + aiNarrative + closingLines;
   } else if (narrative) {
     // Not formalized. The dictation goes in as spoken and is labelled, so it
     // cannot pass for report language once it is pasted somewhere else.
     report += openingLine
-      + `\n\nOFFICER'S DICTATION, AS SPOKEN (edit into report language before filing):\n"${narrative.trim()}"`
+      + `\n\n${usedVoice ? "OFFICER'S DICTATION, AS SPOKEN" : "OFFICER'S NOTES, AS TYPED"} (edit into report language before filing):\n"${narrative.trim()}"`
       + closingLines;
   } else {
     report += openingLine + closingLines;
@@ -5166,7 +5271,7 @@ function buildFullReadback() {
   if (aiNarrative) {
     text += `Narrative: ${aiNarrative} `;
   } else if (voiceTranscriptText) {
-    text += `Your dictation, as spoken: ${voiceTranscriptText}. `;
+    text += `${usedVoice ? 'Your dictation, as spoken' : 'Your notes, as typed'}: ${voiceTranscriptText}. `;
   }
 
   text += `This incident qualifies for pre-arrest diversion under the SWIFT program.`;
@@ -5261,17 +5366,52 @@ function submitCitation() {
 }
 
 // ── LOCATION MAP ──
-// Three ways to get the incident address, and the screen says which one is
-// running: GPS ("Use my location", also tried once automatically), dragging
-// or tapping the pin, or typing an address, which moves the pin to it. Every
-// lookup goes through OpenStreetMap's Nominatim. The previous version asked
-// for a high-accuracy fix with a five-second timeout, which a phone that has
-// just woken its GPS routinely misses, and then said nothing, so the field
-// simply stayed empty and the pin could not be dragged.
+// Three ways to give the incident address, and the screen says which is running:
+// GPS ("Use my location", also tried once per citation), moving the pin, or
+// typing an address, which moves the pin to it.
+//
+// THE RULE: a location lookup writes all four fields as one unit, blanks
+// included. Topping up only the empty ones is what put "40 South 6th Street"
+// next to "Town of Shelter Island, 11965": the new street, the old town.
 let locMap = null;
 let _locMarker = null;
-let _locGpsTried = false;
+let _locGpsTried = false;     // once per citation
+let _locLookupSeq = 0;        // only the newest lookup may write to the form
+let _locTouched = {};         // fields typed by hand since the last location lookup
+const LOC_FIELDS = ['loc-address', 'loc-city', 'loc-state', 'loc-zip'];
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
+
+// Neither needs a key. OpenStreetMap shows street and store names. The US
+// government map is public domain and takes over if the first will not load.
+// A provider can also stop working by serving a normal-looking image, which is
+// how CARTO's "API KEY REQUIRED" tiles went unnoticed: no error ever fires.
+const MAP_TILES = [
+  { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    options: { maxZoom: 19, referrerPolicy: 'strict-origin-when-cross-origin',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' } },
+  { url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
+    options: { maxZoom: 19, maxNativeZoom: 16, attribution: 'USGS The National Map' } }
+];
+
+function _loadMapTiles(index) {
+  const source = MAP_TILES[index];
+  if (!source) {
+    _locStatus('The map could not load. The address can still be filled from GPS or typed.', 'warn');
+    return;
+  }
+  const layer = L.tileLayer(source.url, source.options);
+  let loaded = 0, failed = 0;
+  layer.on('tileload', () => { loaded++; });
+  layer.on('tileerror', () => {
+    failed++;
+    if (!loaded && failed >= 3) {
+      layer.off();
+      locMap.removeLayer(layer);
+      _loadMapTiles(index + 1);
+    }
+  });
+  layer.addTo(locMap);
+}
 
 function _locStatus(text, tone) {
   const el = document.getElementById('loc-status-text');
@@ -5280,33 +5420,47 @@ function _locStatus(text, tone) {
   el.style.color = tone === 'ok' ? '#059669' : tone === 'warn' ? '#B45309' : 'var(--g4)';
 }
 
+// The officer is typing. Their words win over any lookup still on its way.
+function _locTouch(el) {
+  _locTouched[el.id] = true;
+  _locLookupSeq++;
+  _locStatus('');
+}
+
+function _resetLocationScreen() {
+  _locLookupSeq++;
+  _locGpsTried = false;
+  _locTouched = {};
+  LOC_FIELDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  _locStatus('Finding your location…');
+}
+
 function initLocMap() {
   const el = document.getElementById('loc-map');
   if (!el) return;
-  if (!locMap) {
+  if (!locMap && typeof L !== 'undefined') {
     const lat = 42.4084, lng = -71.0119; // Revere, until GPS or the officer says otherwise
-    locMap = L.map(el, { zoomControl: false, attributionControl: false }).setView([lat, lng], 15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(locMap);
+    locMap = L.map(el, { zoomControl: false }).setView([lat, lng], 15);
+    locMap.attributionControl.setPrefix(false);
+    _loadMapTiles(0);
     _locMarker = L.marker([lat, lng], { draggable: true }).addTo(locMap);
     _locMarker.on('dragend', function() {
       const p = _locMarker.getLatLng();
       _locStatus('Looking up the address at the pin…');
-      _reverseGeocode(p.lat, p.lng, true);
+      _reverseGeocode(p.lat, p.lng);
     });
     locMap.on('click', function(e) {
       _locMarker.setLatLng(e.latlng);
       _locStatus('Looking up the address at the pin…');
-      _reverseGeocode(e.latlng.lat, e.latlng.lng, true);
+      _reverseGeocode(e.latlng.lat, e.latlng.lng);
     });
   }
-  setTimeout(() => locMap.invalidateSize(), 100);
-  // GPS is tried once on first open; after that the button is the retry.
-  const addr = document.getElementById('loc-address');
-  if (!_locGpsTried && addr && !addr.value) {
+  if (locMap) setTimeout(() => locMap.invalidateSize(), 100);
+  // GPS runs once per citation, and never over anything already in the fields.
+  const filled = LOC_FIELDS.some(id => { const f = document.getElementById(id); return f && f.value.trim(); });
+  if (!_locGpsTried && !filled) {
     _locGpsTried = true;
     locateOfficer();
-  } else if (!_locGpsTried) {
-    _locStatus('Tap "Use my location" to fill the address from GPS, or drag the pin.');
   }
 }
 
@@ -5316,83 +5470,157 @@ function locateOfficer() {
     _locStatus('This device does not offer location. Enter the address or drag the pin.', 'warn');
     return;
   }
+  const seq = ++_locLookupSeq;
   if (btn) { btn.disabled = true; btn.textContent = 'Locating…'; }
   _locStatus('Finding your location…');
   const done = () => { if (btn) { btn.disabled = false; btn.textContent = 'Use my location'; } };
   const onFix = (pos) => {
     done();
-    const lat = pos.coords.latitude, lng = pos.coords.longitude, acc = pos.coords.accuracy;
+    if (seq !== _locLookupSeq) return;
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
     if (locMap && _locMarker) { locMap.setView([lat, lng], 17); _locMarker.setLatLng([lat, lng]); }
-    _locStatus('Location found' + (acc ? ' (within ' + Math.round(acc) + ' m)' : '') + '. Looking up the address…');
-    _reverseGeocode(lat, lng, false);
+    _locStatus('Location found. Looking up the address…');
+    _reverseGeocode(lat, lng, pos.coords.accuracy);
   };
   const onFail = (err) => {
     done();
+    if (seq !== _locLookupSeq) return;
     if (err && err.code === 1) {
       _locStatus('Location permission is off for this site. Allow it in your browser settings, or enter the address or drag the pin.', 'warn');
     } else {
       _locStatus('Could not get a GPS fix. Try again, enter the address, or drag the pin.', 'warn');
     }
   };
-  // A high-accuracy fix first, with a timeout a cold GPS can actually meet;
-  // if that misses, take the phone's coarse fix rather than nothing.
+  // A fresh high-accuracy fix first, with a timeout a cold GPS can actually
+  // meet. If that misses, take a recent coarse fix rather than nothing.
   navigator.geolocation.getCurrentPosition(onFix, function() {
-    navigator.geolocation.getCurrentPosition(onFix, onFail, { enableHighAccuracy: false, timeout: 15000, maximumAge: 120000 });
-  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
+    navigator.geolocation.getCurrentPosition(onFix, onFail, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
 }
 
-// Nominatim's address object into the four fields. With overwrite false only
-// empty fields are filled, so nothing the officer typed is replaced.
-function _fillAddressFields(a, displayName, overwrite) {
-  const set = (id, v) => { const el = document.getElementById(id); if (el && v && (overwrite || !el.value)) el.value = v; };
-  const houseNum = String(a.house_number || '').replace(/;/g, '-'); // Nominatim writes a double-numbered building as "39;41"
-  const road = a.road || a.pedestrian || a.footway || '';
-  const street = ((houseNum ? houseNum + ' ' : '') + road).trim() || (displayName ? displayName.split(',')[0] : '');
-  set('loc-address', street);
-  set('loc-city', a.city || a.town || a.village || a.municipality || a.suburb || '');
+function _streetFromAddress(a) {
+  const road = a.road || a.pedestrian || a.footway || a.path || a.square || '';
+  if (!road) return ''; // a bare house number with no street is not an address
+  // "39;41" is a double-numbered building. "1,1A,1B" lists units of one address.
+  const num = String(a.house_number || '').split(',')[0].replace(/;/g, '-');
+  return ((num ? num + ' ' : '') + road).trim();
+}
+
+// Which name belongs in the City box. The map data reports civil divisions, and
+// the right one depends on the place.
+function _cityFromAddress(a) {
+  const plain = s => String(s || '').replace(/^(City|Town|Village|Township|Borough|Municipality) of\s+/i, '').trim();
+  const city = plain(a.city);
+  // One city to the map data, five boroughs to everyone who writes a report there.
+  if (/^New York( City)?$/i.test(city)) {
+    const borough = String(a.suburb || a.city_district || a.borough || '');
+    if (/brooklyn/i.test(borough)) return 'Brooklyn';
+    if (/bronx/i.test(borough)) return 'Bronx';
+    if (/queens/i.test(borough)) return 'Queens';
+    if (/staten/i.test(borough)) return 'Staten Island';
+    return 'New York';
+  }
+  if (city) return city;
+  // "Town of Oyster Bay" is a civil township with many communities inside it, so
+  // the village or hamlet is the place: Locust Valley. A plain "Winthrop" in the
+  // town slot already is the place, and a hamlet beside it is only a neighborhood.
+  const civilTown = /^(Town|Township) of\s/i.test(a.town || '');
+  if (a.town && !civilTown) return plain(a.town); // "Village of East Hampton" is East Hampton
+  return plain(a.village || a.hamlet || a.town || a.municipality || a.suburb || '');
+}
+
+function _stateFromAddress(a) {
   const iso = a['ISO3166-2-lvl4'] || '';
-  set('loc-state', iso.indexOf('US-') === 0 ? iso.slice(3) : '');
-  set('loc-zip', a.postcode || '');
-  return street;
+  return iso.indexOf('US-') === 0 ? iso.slice(3) : '';
 }
 
-function _reverseGeocode(lat, lng, overwrite) {
-  fetch(NOMINATIM + '/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=' + lat + '&lon=' + lng, { headers: { 'Accept': 'application/json' } })
+function _zipFromAddress(a) {
+  const code = String(a.postcode || '');
+  const five = code.match(/\d{5}/); // the data sometimes lists several, "11249;11211"
+  return five ? five[0] : code;
+}
+
+// Writes all four as one unit, and whatever the lookup lacks goes blank rather
+// than keeping an answer from somewhere else.
+function _writeLocationFields(a) {
+  const street = _streetFromAddress(a), city = _cityFromAddress(a);
+  const values = { 'loc-address': street, 'loc-city': city, 'loc-state': _stateFromAddress(a), 'loc-zip': _zipFromAddress(a) };
+  LOC_FIELDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = values[id]; });
+  _locTouched = {};
+  return { street, city };
+}
+
+function _reverseGeocode(lat, lng, accuracy, isRetry) {
+  const seq = ++_locLookupSeq;
+  // A retry rounds the point by about a meter so it is a new address to the
+  // service's cache, which can hold a copy of an answer that browsers refuse.
+  const la = isRetry ? Number(lat).toFixed(5) : lat, lo = isRetry ? Number(lng).toFixed(5) : lng;
+  fetch(NOMINATIM + '/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=en-US&lat=' + la + '&lon=' + lo, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(10000) })
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(data => {
-      if (!data || data.error || !data.address) throw new Error(data && data.error ? data.error : 'no address at this point');
-      const street = _fillAddressFields(data.address, data.display_name, overwrite);
-      const town = data.address.city || data.address.town || data.address.village || '';
-      _locStatus('Address filled: ' + [street, town].filter(Boolean).join(', ') + '. Correct it if the pin is off.', 'ok');
+      if (seq !== _locLookupSeq) return;
+      if (!data || data.error || !data.address) {
+        _locStatus('No address found at this spot. Drag the pin, or type the address.', 'warn');
+        return;
+      }
+      const { street, city } = _writeLocationFields(data.address);
+      // The status repeats what went in the boxes, so the two can never disagree.
+      if (!street) {
+        _locStatus('Found ' + (city || 'this area') + ', but no street address at this spot. Type the street, or drag the pin onto it.', 'warn');
+      } else if (!city) {
+        _locStatus('Found ' + street + ', but not the town. Please type the town.', 'warn');
+      } else if (accuracy > 150) {
+        _locStatus('Approximate location, about ' + Math.round(accuracy) + ' m: ' + street + ', ' + city + '. Check it, or drag the pin.', 'warn');
+      } else {
+        _locStatus('Address filled: ' + street + ', ' + city + '. Correct it if the pin is off.', 'ok');
+      }
     })
     .catch(err => {
+      if (seq !== _locLookupSeq) return;
       console.warn('[MEA] reverse geocode failed:', err);
-      _locStatus('Pin placed, but the address lookup failed (' + (err && err.message ? err.message : 'no response') + '). Type the address.', 'warn');
+      // The address service limits how fast it answers, so one quiet retry
+      // covers most blips before the officer is asked to do anything.
+      if (!isRetry) {
+        setTimeout(() => { if (seq === _locLookupSeq) _reverseGeocode(lat, lng, accuracy, true); }, 2000);
+        return;
+      }
+      _locStatus('The pin is placed, but the address lookup did not answer. Tap "Use my location" to try again, or type the address.', 'warn');
     });
 }
 
-// Typed address → pin. Runs when the address field changes and loses focus.
+// Typed address to pin. Runs when the address or town changes and loses focus.
+// The typed street is kept. Town, state and zip come from this same lookup,
+// unless the officer typed them by hand.
 function findAddressOnMap() {
   const addr = document.getElementById('loc-address');
   const city = document.getElementById('loc-city');
   const state = document.getElementById('loc-state');
   if (!addr || addr.value.trim().length < 4 || !locMap) return;
+  const seq = ++_locLookupSeq;
   const q = [addr.value, city && city.value, state && state.value].filter(Boolean).join(', ');
+  const here = _locMarker.getLatLng(); // prefer a match near the pin over one across the country
+  const viewbox = [here.lng - 0.5, here.lat + 0.5, here.lng + 0.5, here.lat - 0.5].join(',');
   _locStatus('Finding "' + q + '" on the map…');
-  fetch(NOMINATIM + '/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=us&q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } })
+  fetch(NOMINATIM + '/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=us&accept-language=en-US&viewbox=' + viewbox + '&q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(10000) })
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(list => {
+      if (seq !== _locLookupSeq) return;
       if (!list || !list.length) { _locStatus('Could not find that address on the map. What you typed is kept.', 'warn'); return; }
       const hit = list[0];
       const lat = parseFloat(hit.lat), lng = parseFloat(hit.lon);
       locMap.setView([lat, lng], 17);
       _locMarker.setLatLng([lat, lng]);
-      if (hit.address) _fillAddressFields(hit.address, hit.display_name, false);
-      _locStatus('Pin moved to ' + String(hit.display_name || q).split(',').slice(0, 2).join(',') + '.', 'ok');
+      const a = hit.address || {};
+      const fill = (id, value) => { const el = document.getElementById(id); if (el && !_locTouched[id]) el.value = value; };
+      fill('loc-city', _cityFromAddress(a));
+      fill('loc-state', _stateFromAddress(a));
+      fill('loc-zip', _zipFromAddress(a));
+      _locStatus('Pin moved to ' + ([_streetFromAddress(a), _cityFromAddress(a)].filter(Boolean).join(', ') || q) + '.', 'ok');
     })
     .catch(err => {
+      if (seq !== _locLookupSeq) return;
       console.warn('[MEA] address search failed:', err);
-      _locStatus('Address search failed (' + (err && err.message ? err.message : 'no response') + '). What you typed is kept.', 'warn');
+      _locStatus('The address search did not answer, so the pin has not moved. What you typed is kept.', 'warn');
     });
 }
 
